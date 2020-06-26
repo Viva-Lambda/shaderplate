@@ -137,10 +137,6 @@ add_executable(ibl.out
     "src/ibl/ibl.cpp"
     )
  
- 
- 
- 
- 
 #target_link_libraries(myWin.out ${ALL_LIBS})
 target_link_libraries(texture.out ${ALL_LIBS})
 # 

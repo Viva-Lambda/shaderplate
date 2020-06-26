@@ -38,16 +38,16 @@ int main() {
 
   //--------------- shaders -----------------
   // cube & plane shader
-  fs::path cubeVertPath = shaderDirPath / "fboCube.vert";
-  fs::path cubeFragPath = shaderDirPath / "fboCube.frag";
+  fs::path cubeVertPath = shaderDirPath / "fbo" / "fboCube.vert";
+  fs::path cubeFragPath = shaderDirPath / "fbo" / "fboCube.frag";
   Shader cubeShader(cubeVertPath.c_str(), cubeFragPath.c_str());
 
   // quad shader
-  fs::path quadVertPath = shaderDirPath / "fboQuad.vert";
-  // fs::path quadFragPath = shaderDirPath / "fboQuad.frag";
-  // fs::path quadFragPath = shaderDirPath / "fboQuadInv.frag";
-  // fs::path quadFragPath = shaderDirPath / "fboQuadGrey.frag";
-  fs::path quadFragPath = shaderDirPath / "fboQuadKernel.frag";
+  fs::path quadVertPath = shaderDirPath / "fbo" / "fboQuad.vert";
+  // fs::path quadFragPath = shaderDirPath/ "fbo" / "fboQuad.frag";
+  // fs::path quadFragPath = shaderDirPath/ "fbo" / "fboQuadInv.frag";
+  // fs::path quadFragPath = shaderDirPath/ "fbo" / "fboQuadGrey.frag";
+  fs::path quadFragPath = shaderDirPath / "fbo" / "fboQuadKernel.frag";
   Shader quadShader(quadVertPath.c_str(), quadFragPath.c_str());
 
   // -------------- vertex ------------------
