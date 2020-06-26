@@ -1,0 +1,278 @@
+#version 430 core
+layout(local_size_x = 32, local_size_y = 32) in; // local work_group_size
+layout(rgba32f, binding = 0) uniform image2D img_output;
+
+/*-------------- start constants -----------------------*/
+
+const float INFINITY = 1.0 / 0.0;
+const float PI = 3.141592653;
+const float EPSILON = 1e-10;
+
+/*-------------- end constants -----------------------*/
+
+/*------------- start uniform -----------------------*/
+
+uniform mat4 projMat;
+uniform mat4 viewMat;
+uniform mat4 modelMat;
+
+struct Camera {
+  vec3 pos; // world space
+  float nearZ;
+  float farZ;
+};
+uniform Camera cam;
+
+struct Viewport {
+  float x;
+  float y;
+  float w;
+  float h;
+};
+uniform Viewport viewp;
+
+/*------------- end uniform -----------------------*/
+
+/*------------- start utility ---------------------*/
+vec3 Ndc2ScreenSpace(vec3 ndc) {
+  //
+  vec3 spos;
+  spos.x = ((viewp.w * 0.5) * ndc.x) + ((viewp.w * 0.5) + viewp.x);
+  spos.y = ((viewp.h * 0.5) * ndc.y) + ((viewp.h * 0.5) + viewp.y);
+  spos.z =
+      (((cam.farZ - cam.nearZ) * 0.5) * ndc.z) + ((cam.nearZ + cam.farZ) * 0.5);
+  return spos;
+}
+bool inRange(float v, float r) {
+  if (v <= r && v >= -1 * r) {
+    return true;
+  }
+  return false;
+}
+
+bool pointVisible(vec4 p) {
+  // check if point is visible using its
+  // clip space coordinates
+  if (inRange(p.x, 1.0) == false) {
+    return false;
+  }
+  if (inRange(p.y, 1.0) == false) {
+    return false;
+  }
+  if (inRange(p.z, 1.0) == false) {
+    return false;
+  }
+}
+
+bool fuzzyEqual(float v1, float v2) {
+  // check if v2 is in [v1 - Epsilon, v1 + Epsilon]
+  if (inRange(v2, v1 + EPSILON) == true) {
+    return true;
+  }
+  return false;
+}
+bool fuzzyEqual(vec2 v1, vec2 v2) {
+  // check if v2 is in [v1 - Epsilon, v1 + Epsilon]
+  if (inRange(v2.x, v1.x + EPSILON) && inRange(v2.y, v1.y + EPSILON)) {
+    return true;
+  }
+  return false;
+}
+bool fuzzyEqual(vec3 v1, vec3 v2) {
+  // check if v2 is in [v1 - Epsilon, v1 + Epsilon]
+  bool c1, c2, c3;
+  c1 = inRange(v2.x, v1.x + EPSILON);
+  c2 = inRange(v2.y, v1.y + EPSILON);
+  c3 = inRange(v2.z, v1.z + EPSILON);
+  if (c1 && c2 && c3) {
+    return true;
+  }
+  return false;
+}
+bool fuzzyEqual(vec4 v1, vec4 v2) {
+  // check if v2 is in [v1 - Epsilon, v1 + Epsilon]
+  bool c1, c2, c3, c4;
+  c1 = inRange(v2.x, v1.x + EPSILON);
+  c2 = inRange(v2.y, v1.y + EPSILON);
+  c3 = inRange(v2.z, v1.z + EPSILON);
+  c4 = inRange(v2.w, v1.w + EPSILON);
+  if (c1 && c2 && c3 && c4) {
+    return true;
+  }
+  return false;
+}
+
+/*------------- end utility ---------------------*/
+
+struct Triangle {
+  vec3 p1;
+  vec3 p2;
+  vec3 p3;
+  uint indx; // scene index
+};
+
+struct TriangleVS {
+  vec4 p1; // clip space
+  vec4 p2;
+  vec4 p3;
+  vec3 p1ndc; // ndc space
+  vec3 p1sp;  // screen space normally vec2
+  vec3 p2ndc;
+  vec3 p2sp;
+  vec3 p3ndc;
+  vec3 p3sp;
+  uint indx; // scene index
+};
+
+vec3 getNormalToTriangle(Triangle tri) {
+  // get normal to rectangle
+  vec3 diff1 = tri.p3 - tri.p1;
+  vec3 diff2 = tri.p2 - tri.p1;
+  return cross(diff1, diff2);
+}
+
+TriangleVS screenPosTriangle(Triangle tri) {
+  // triangle positions in screen space
+  // modelMat * vec4(...) local space -> world space
+  // viewMat * modelMat * vec4(...) world space -> view space
+  // projMat * viewMat * modelMat * vec4(...) view space -> clip space
+  //
+  //
+  // screen.x = ((view.w * 0.5) * ndc.x) + ((w * 0.5) + view.x)
+  // screen.y = ((view.h * 0.5) * ndc.y) + ((h * 0.5) + view.y)
+  // screen.z = (((view.f - view.n) * 0.5) * ndc.z) + ((view.f + view.n) * 0.5)
+  vec3 cubePos = vec3(-1.0, 2.0, -1.0);
+  mat4 newmodel = modelMat;
+  newmodel[3].xyz = cubePos;
+  vec3 tp1 = tri.p1;
+  vec3 tp2 = tri.p2;
+  vec3 tp3 = tri.p3;
+  TriangleVS t;
+  t.p1 = projMat * viewMat * newmodel * vec4(tp1, 1.0);
+  t.p2 = projMat * viewMat * newmodel * vec4(tp2, 1.0);
+  t.p3 = projMat * viewMat * newmodel * vec4(tp3, 1.0);
+  float w = t.p1.w;
+  t.p1ndc = vec3(t.p1.x / w, t.p1.y / w, t.p1.z / w);
+  t.p1sp = Ndc2ScreenSpace(t.p1ndc);
+  w = t.p2.w;
+  t.p2ndc = vec3(t.p2.x / w, t.p2.y / w, t.p2.z / w);
+  t.p2sp = Ndc2ScreenSpace(t.p2ndc);
+  w = t.p3.w;
+  t.p3ndc = vec3(t.p3.x / w, t.p3.y / w, t.p3.z / w);
+  t.p3sp = Ndc2ScreenSpace(t.p3ndc);
+  t.indx = tri.indx;
+  return t;
+}
+bool allPointsVisible(TriangleVS tri) {
+  // check if all points of triangle is visible
+  if (pointVisible(tri.p1) == false) {
+    return false;
+  }
+  if (pointVisible(tri.p2) == false) {
+    return false;
+  }
+  if (pointVisible(tri.p3) == false) {
+    return false;
+  }
+}
+
+void screenPosTriangles(Triangle tris[12], out TriangleVS trisout[12]) {
+  //
+  for (int i = 0; i < 12; i++) {
+    //
+    Triangle tri = tris[i];
+    trisout[i] = screenPosTriangle(tri);
+  }
+}
+
+bool pixelInTriangle(TriangleVS t, vec2 pixelScreenPos) {
+  // check if pixel coordinates correspond to triangle
+  bool c1, c2, c3;
+  c1 = t.p1sp.xy == pixelScreenPos;
+  c2 = t.p2sp.xy == pixelScreenPos;
+  c3 = t.p3sp.xy == pixelScreenPos;
+  if (c1 && c2 && c3) {
+    return true;
+  }
+  return false;
+}
+
+TriangleVS chooseTriangle(TriangleVS tris[12], vec2 pixelScreenPos,
+                          out bool pixelFound, out vec4 pcol) {
+  // choose triangle using pixel screen space coordinate
+  float zdist = INFINITY;
+  TriangleVS t;
+  for (int i = 0; i < 12; i++) {
+    //
+    TriangleVS tri = tris[i];
+    if (allPointsVisible(tri)) {
+      if (pixelInTriangle(tri, pixelScreenPos)) {
+        // all points of triangle visible
+        // and it contains the pixel
+        if (tri.p1.z < zdist) {
+          pcol = vec4(0.8);
+          pixelFound = true;
+          t = tri;
+          zdist = tri.p1.z;
+        }
+      }
+    }
+    return t;
+  }
+}
+
+void main() {
+  // main function for 3d viewing
+  ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 imgDims = imageSize(img_output);
+  vec4 pixel = vec4(vec3(0.0, 0.5, 0.0), 1.0);
+  // implementation details
+  // pixel MUST be visible thus the ray that originates in camera and ends up
+  // hitting what is being visible at the pixel location MUST be within the
+  // range of rays that define the visible area, frustum.
+  // We obtain the ray corresponding to pixel by interpolation.
+
+  // bound check, if the pixel is within the
+  // image range
+  if (pixelCoords.x >= imgDims.x || pixelCoords.y >= imgDims.y) {
+    return;
+  }
+  vec2 pixelScreenPos = vec2(pixelCoords) / vec2(imgDims.x, imgDims.y);
+  // boiler plate
+  // Cube
+  //
+  Triangle cube[] = {{vec3(-0.3f, -0.3f, -0.3f), vec3(0.3f, -0.3f, -0.3f),
+                      vec3(0.3f, 0.3f, -0.3f), 1},
+                     {vec3(0.3f, 0.3f, -0.3f), vec3(-0.3f, 0.3f, -0.3f),
+                      vec3(-0.3f, -0.3f, -0.3f), 2},
+                     {vec3(-0.3f, -0.3f, 0.3f), vec3(0.3f, -0.3f, 0.3f),
+                      vec3(0.3f, 0.3f, 0.3f), 3},
+                     {vec3(0.3f, 0.3f, 0.3f), vec3(-0.3f, 0.3f, 0.3f),
+                      vec3(-0.3f, -0.3f, 0.3f), 4},
+                     {vec3(-0.3f, 0.3f, 0.3f), vec3(-0.3f, 0.3f, -0.3f),
+                      vec3(-0.3f, -0.3f, -0.3f), 5},
+                     {vec3(-0.3f, -0.3f, -0.3f), vec3(-0.3f, -0.3f, 0.3f),
+                      vec3(-0.3f, 0.3f, 0.3f), 6},
+                     {vec3(0.3f, 0.3f, 0.3f), vec3(0.3f, 0.3f, -0.3f),
+                      vec3(0.3f, -0.3f, -0.3f), 7},
+                     {vec3(0.3f, -0.3f, -0.3f), vec3(0.3f, -0.3f, 0.3f),
+                      vec3(0.3f, 0.3f, 0.3f), 8},
+                     {vec3(-0.3f, -0.3f, -0.3f), vec3(0.3f, -0.3f, -0.3f),
+                      vec3(0.3f, -0.3f, 0.3f), 9},
+                     {vec3(0.3f, -0.3f, 0.3f), vec3(-0.3f, -0.3f, 0.3f),
+                      vec3(-0.3f, -0.3f, -0.3f), 10},
+                     {vec3(-0.3f, 0.3f, -0.3f), vec3(0.3f, 0.3f, -0.3f),
+                      vec3(0.3f, 0.3f, 0.3f), 11},
+                     {vec3(0.3f, 0.3f, 0.3f), vec3(-0.3f, 0.3f, 0.3f),
+                      vec3(-0.3f, 0.3f, -0.3f), 12}};
+  TriangleVS tris[12];
+  screenPosTriangles(cube, tris);
+  bool pixelFound = false;
+  vec4 pcol;
+  TriangleVS mtri = chooseTriangle(tris, pixelScreenPos, pixelFound, pcol);
+  if (pixelFound == true) {
+    pixel = pcol;
+  }
+
+  imageStore(img_output, pixelCoords, pixel);
+}

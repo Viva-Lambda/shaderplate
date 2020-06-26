@@ -1,0 +1,198 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<meta name="generator" content="Doxygen 1.8.15"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>&#x202A;Shader vs: &#x202A;/media/kaan/Data7510/GitProjects/simplepbr/include/custom/mesh.hpp Dosya Referansı</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/searchdata.js"></script>
+<script type="text/javascript" src="search/search.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td id="projectalign" style="padding-left: 0.5em;">
+   <div id="projectname">&#x202A;Shader vs
+   &#160;<span id="projectnumber">0.0.1</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Oluşturan Doxygen 1.8.15 -->
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+var searchBox = new SearchBox("searchBox", "search",false,'Ara');
+/* @license-end */
+</script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(function() {
+  initMenu('',true,false,'search.php','Ara');
+  $(document).ready(function() { init_search(); });
+});
+/* @license-end */</script>
+<div id="main-nav"></div>
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+</div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<iframe src="javascript:void(0)" frameborder="0" 
+        name="MSearchResults" id="MSearchResults">
+</iframe>
+</div>
+
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a class="el" href="dir_d44c64559bbebec7f509842c48db8b23.html">&#x202A;include</a></li><li class="navelem"><a class="el" href="dir_acde8a1373d3945bfe7e600bbb94d01b.html">&#x202A;custom</a></li>  </ul>
+</div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#nested-classes">Sınıflar</a> &#124;
+<a href="#enum-members">Enümerasyonlar</a> &#124;
+<a href="#func-members">Fonksiyonlar</a>  </div>
+  <div class="headertitle">
+<div class="title">mesh.hpp Dosya Referansı</div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="textblock"><code>#include &lt;glad/glad.h&gt;</code><br />
+<code>#include &lt;glm/glm.hpp&gt;</code><br />
+<code>#include &lt;glm/gtc/matrix_transform.hpp&gt;</code><br />
+<code>#include &lt;<a class="el" href="shader_8hpp_source.html">custom/shader.hpp</a>&gt;</code><br />
+<code>#include &lt;filesystem&gt;</code><br />
+<code>#include &lt;string&gt;</code><br />
+<code>#include &lt;vector&gt;</code><br />
+</div>
+<p><a href="mesh_8hpp_source.html">Bu dosyanın kaynak koduna git.</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
+Sınıflar</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structVertex.html">Vertex</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structTexture.html">Texture</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMesh.html">Mesh</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
+Enümerasyonlar</h2></td></tr>
+<tr class="memitem:a65468556d79304b3a4bfc464cc12e549"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549">TextureType</a> { <br />
+&#160;&#160;<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549a39b0044dd8789d333e7794f359406740">TextureType::Specular</a>, 
+<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549a960b44c579bc2f6818d2daaf9e4c16f0">TextureType::Normal</a>, 
+<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549a41178642cae095a6bdb909119b4d16e8">TextureType::Diffuse</a>, 
+<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549aeec6c4bdbd339edf8cbea68becb85244">TextureType::Height</a>, 
+<br />
+&#160;&#160;<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549a7ed77d076dd20c12fd04aca00eed22ca">TextureType::Displacement</a>, 
+<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549a767078b82d60bc9dfaec29326b0b7c06">TextureType::Roughness</a>, 
+<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549a19dce4a66f8f7b74a6ef0664a88a15dd">TextureType::Metallic</a>, 
+<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549ac9afbd87df24ed59189d19040508c7de">TextureType::Ao</a>, 
+<br />
+&#160;&#160;<a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549af879d0a27915d351a8e47c2223777710">TextureType::Albedo</a>
+<br />
+ }</td></tr>
+<tr class="separator:a65468556d79304b3a4bfc464cc12e549"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Fonksiyonlar</h2></td></tr>
+<tr class="memitem:abc52e8c4eab80691dcf53de6aaef7226"><td class="memItemLeft" align="right" valign="top">std::ostream &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mesh_8hpp.html#abc52e8c4eab80691dcf53de6aaef7226">operator&lt;&lt;</a> (std::ostream &amp;out, const <a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549">TextureType</a> &amp;t)</td></tr>
+<tr class="separator:abc52e8c4eab80691dcf53de6aaef7226"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<h2 class="groupheader">Enümerasyon Tipi Dokümantasyonu</h2>
+<a id="a65468556d79304b3a4bfc464cc12e549"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a65468556d79304b3a4bfc464cc12e549">&#9670;&nbsp;</a></span>TextureType</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549">TextureType</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enümeratör</th></tr><tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549a39b0044dd8789d333e7794f359406740"></a>Specular&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549a960b44c579bc2f6818d2daaf9e4c16f0"></a>Normal&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549a41178642cae095a6bdb909119b4d16e8"></a>Diffuse&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549aeec6c4bdbd339edf8cbea68becb85244"></a>Height&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549a7ed77d076dd20c12fd04aca00eed22ca"></a>Displacement&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549a767078b82d60bc9dfaec29326b0b7c06"></a>Roughness&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549a19dce4a66f8f7b74a6ef0664a88a15dd"></a>Metallic&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549ac9afbd87df24ed59189d19040508c7de"></a>Ao&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a65468556d79304b3a4bfc464cc12e549af879d0a27915d351a8e47c2223777710"></a>Albedo&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Fonksiyon Dokümantasyonu</h2>
+<a id="abc52e8c4eab80691dcf53de6aaef7226"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abc52e8c4eab80691dcf53de6aaef7226">&#9670;&nbsp;</a></span>operator&lt;&lt;()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::ostream&amp; operator&lt;&lt; </td>
+          <td>(</td>
+          <td class="paramtype">std::ostream &amp;&#160;</td>
+          <td class="paramname"><em>out</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="mesh_8hpp.html#a65468556d79304b3a4bfc464cc12e549">TextureType</a> &amp;&#160;</td>
+          <td class="paramname"><em>t</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Oluşturan &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.15
+</small></address>
+</body>
+</html>

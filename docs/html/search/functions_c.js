@@ -1,0 +1,22 @@
+var searchData=
+[
+  ['saveimage',['saveImage',['../utils_8hpp.html#a5047a7f13f656c3d5c2a4c93f2080e0c',1,'utils.hpp']]],
+  ['scale',['scale',['../singulars_8hpp.html#a28104a1f4f9b40c7fa0a5b83c6a81667',1,'singulars.hpp']]],
+  ['setbooluni',['setBoolUni',['../classShader.html#a558d140c185ae58c69dd0bb02107936d',1,'Shader']]],
+  ['setcoeff',['setCoeff',['../classLightSource.html#a72cb66b852d81a3c87caea7b33d4fbc1',1,'LightSource::setCoeff(glm::vec3 coefficient)'],['../classLightSource.html#aa34a7f0437bfceea788fe14bd249deac',1,'LightSource::setCoeff(float redc, float greenc, float bluec)']]],
+  ['setdirection',['setDirection',['../classDirectionalLight.html#a5abf09bd199384c97ce4fd5b7a6e4dc6',1,'DirectionalLight']]],
+  ['setfloatuni',['setFloatUni',['../classShader.html#ad661dfacd70677f01d94cdbbc4741be9',1,'Shader']]],
+  ['setintensity',['setIntensity',['../classLightSource.html#aea7d8641de261f6810022f06486e701f',1,'LightSource::setIntensity(glm::vec3 intensity)'],['../classLightSource.html#a1d429542026341d25b5177cafbc05754',1,'LightSource::setIntensity(float red, float, green, float blue)']]],
+  ['setintuni',['setIntUni',['../classShader.html#a28930868dff05b4013f2c279a902b48f',1,'Shader']]],
+  ['setmat2uni',['setMat2Uni',['../classShader.html#a1fc784ee75a87aaf10f0da207cac6f47',1,'Shader']]],
+  ['setmat3uni',['setMat3Uni',['../classShader.html#ad5c5bd43f34ccaa03babb1f4fbd6ff03',1,'Shader']]],
+  ['setmat4uni',['setMat4Uni',['../classShader.html#aae66aaf15e38fce726d3d8754735d613',1,'Shader']]],
+  ['setpostoshader',['setPosToShader',['../compute3d_8cpp.html#a847047124bf371795a5e458cc8723f2a',1,'setPosToShader(Shader shader, glm::vec3 topLeftS, glm::vec3 bottomLeftS, glm::vec3 topRightS, glm::vec3 bottomRightS):&#160;compute3d.cpp'],['../compute3dEski_8cpp.html#a847047124bf371795a5e458cc8723f2a',1,'setPosToShader(Shader shader, glm::vec3 topLeftS, glm::vec3 bottomLeftS, glm::vec3 topRightS, glm::vec3 bottomRightS):&#160;compute3dEski.cpp']]],
+  ['setsegmenttoshader',['setSegmentToShader',['../compute3d_8cpp.html#aadd79d9625ffdfc37f0c2c3f7c258d40',1,'setSegmentToShader(Shader shader, Segment topLeftS, Segment bottomLeftS, Segment topRightS, Segment bottomRightS):&#160;compute3d.cpp'],['../compute3dEski_8cpp.html#aadd79d9625ffdfc37f0c2c3f7c258d40',1,'setSegmentToShader(Shader shader, Segment topLeftS, Segment bottomLeftS, Segment topRightS, Segment bottomRightS):&#160;compute3dEski.cpp']]],
+  ['setvec2uni',['setVec2Uni',['../classShader.html#a13d103257320d6b1aa08f136467ce66a',1,'Shader::setVec2Uni(const std::string &amp;name, const glm::vec2 &amp;value) const'],['../classShader.html#a16cffc46d66f3e48faf4d5458d066415',1,'Shader::setVec2Uni(const std::string &amp;name, float x, float y) const']]],
+  ['setvec3uni',['setVec3Uni',['../classShader.html#a94a17460d78f93543809b59b9ed03b02',1,'Shader::setVec3Uni(const std::string &amp;name, const glm::vec3 &amp;value) const'],['../classShader.html#a14cad5a3046f5574a51f17f9a6928fcb',1,'Shader::setVec3Uni(const std::string &amp;name, float x, float y, float z) const']]],
+  ['setvec4uni',['setVec4Uni',['../classShader.html#a0763de8175b162f2f3b9f70f48059fd0',1,'Shader::setVec4Uni(const std::string &amp;name, const glm::vec4 &amp;value) const'],['../classShader.html#a476dc7165a7075ecdbfd455686a72920',1,'Shader::setVec4Uni(const std::string &amp;name, float x, float y, float z, float w) const']]],
+  ['shader',['Shader',['../classShader.html#a03421a8419cdad4b84cf58ecdb156879',1,'Shader::Shader(const GLchar *vertexPath, const GLchar *fragmentPath)'],['../classShader.html#abe1e644336fb86316cfbb7e62f2df818',1,'Shader::Shader(const GLchar *computePath)'],['../classShader.html#a783871c7cb6f0fac2a61410e41144d63',1,'Shader::Shader(const GLchar *vertexPath, const GLchar *fragmentPath, const GLchar *computePath)']]],
+  ['shaderdir',['shaderDir',['../compute01_8cpp.html#ac25b78274ce3360afe9be707365f6957',1,'shaderDir(&quot;shaders&quot;):&#160;compute01.cpp'],['../compute02_8cpp.html#ac25b78274ce3360afe9be707365f6957',1,'shaderDir(&quot;shaders&quot;):&#160;compute02.cpp'],['../compute3d_8cpp.html#ac25b78274ce3360afe9be707365f6957',1,'shaderDir(&quot;shaders&quot;):&#160;compute3d.cpp'],['../compute3dEski_8cpp.html#ac25b78274ce3360afe9be707365f6957',1,'shaderDir(&quot;shaders&quot;):&#160;compute3dEski.cpp'],['../simplecompute_8cpp.html#ac25b78274ce3360afe9be707365f6957',1,'shaderDir(&quot;shaders&quot;):&#160;simplecompute.cpp']]],
+  ['showkeys',['showKeys',['../utils_8hpp.html#a3df5c7f15619cc90a3c5ff065e9a6f21',1,'utils.hpp']]]
+];

@@ -1,0 +1,436 @@
+#version 430 core
+// implement phong shading in compute shader
+//
+// steps:
+// 1. check if any cube triangle is visible from camera
+// 2. if it is do ray casting stuff
+// Need
+float INFINITY = 1.0 / 0.0;
+
+// camera related uniforms
+layout(location = 0) uniform vec3 cameraPos;   // world space
+layout(location = 1) uniform vec3 cameraFront; // world space
+layout(location = 2) uniform vec3 cameraUp;    // world space
+layout(location = 3) uniform vec3 cameraRight; // world space
+layout(location = 4) uniform float cameraTanFovY;
+layout(location = 5) uniform float cameraTanFovX;
+// end camera related uniforms
+struct Camera {
+  vec3 pos;
+  float nearZ;
+  float farZ;
+  float fovX;
+};
+struct Material {
+  vec4 diffMapColor;
+  vec4 specMapColor;
+  vec3 shadingNormal;
+  vec3 pos;        // ndc coordinate
+  vec2 tpos;       // texture position
+  vec4 wpos;       // world position
+  vec4 vpos;       // view position
+  vec4 ppos;       // projection position
+  float shininess; // gloss coefficient
+  mat3 tbn;        // tbn matrix world coordinates
+};
+struct Triangle {
+  Material pmats[3]; // point materials
+  vec3 color;        // the result of a bsdf
+  vec3 tangent;      // triangle tangent or geometric tangent
+  vec3 tnormal;      // triangle normal or geometric normal
+};
+// light uniforms
+layout(location = 6) uniform vec3 lightPos;
+layout(location = 7) uniform vec3 lightColor;
+layout(location = 8) uniform vec3 lightAttc;
+// end light uniforms
+
+struct Light {
+  vec3 pos;   // world position
+  vec3 power; // over entire sphere
+  vec3 attC;  // attenuation coefficient
+};
+
+// material uniforms
+layout(location = 9) uniform sampler2D diffuseMap;
+layout(location = 10) uniform sampler2D specularMap;
+layout(location = 11) uniform sampler2D normalMap;
+layout(location = 12) uniform float shininess;
+// end material uniforms
+
+// view projection model matrix uniforms
+layout(location = 13) uniform mat4 viewMat;
+layout(location = 14) uniform mat4 projMat;
+layout(location = 15) uniform mat4 modelMat;
+// end view projection model matrix uniforms
+
+struct Ray {
+  vec3 direction;
+  vec3 origin;
+};
+struct SurfaceElement {
+  vec3 pos;
+  vec3 shadingNormal;
+  vec3 surfaceNormal;
+};
+struct HitInfo {
+  vec3 pos;
+  vec3 normal;
+};
+
+layout(location = 16) uniform uint maxBounceNb;
+layout(location = 17) uniform mat4 cubeSide1; // each side containing topLeft
+// bottomRight
+layout(location = 18) uniform mat4 cubeSide2;
+layout(location = 19) uniform mat4 cubeSide3;
+layout(location = 20) uniform mat4 cubeSide4;
+layout(location = 21) uniform mat4 cubeSide5;
+layout(location = 22) uniform mat4 cubeSide6;
+layout(location = 23) uniform mat3 sideNormal1;
+layout(location = 24) uniform mat3 sideNormal2;
+
+// tbn light pos
+vec3 getCornerFromSide(mat4 side, uint indx) {
+  // get corner from side
+  // 0 top left
+  // 1 top right
+  // 2 bottom right
+  // 3 bottom left
+  vec4 cornerWithTexture = side[indx];
+  vec3 corner =
+      vec3(cornerWithTexture.x, cornerWithTexture.y, cornerWithTexture.z);
+  return corner;
+}
+vec3 getTopLeft(mat4 side) {
+  // get top left corner value from side
+  return getCornerFromSide(side, 0);
+}
+vec3 getTopRight(mat4 side) {
+  // get top right corner value from side
+  return getCornerFromSide(side, 1);
+}
+vec3 getBottomRight(mat4 side) {
+  // get bottom right corner value from side
+  return getCornerFromSide(side, 2);
+}
+vec3 getBottomLeft(mat4 side) {
+  // get bottom left corner value from side
+  return getCornerFromSide(side, 3);
+}
+vec2 getTopLeftTexture(mat4 side) {
+  // get top left texture
+  vec2 topLeftTexture = vec2(side[0].w, side[1].w);
+  return topLeftTexture;
+}
+vec2 getBottomRightTexture(mat4 side) {
+  // get top left texture
+  vec2 bottomRightTexture = vec2(side[2].w, side[3].w);
+  return bottomRightTexture;
+}
+vec2 getTopRightTexture(mat4 side) {
+  // get top left texture
+  vec2 tLeft = getTopLeftTexture(side);
+  vec2 bRight = getBottomRightTexture(side);
+  vec2 topRightTexture = vec2(bRight.x, tLeft.y);
+  return topRightTexture;
+}
+vec2 getBottomLeftTexture(mat4 side) {
+  // get top left texture
+  vec2 tLeft = getTopLeftTexture(side);
+  vec2 bRight = getBottomRightTexture(side);
+  vec2 bottomLeftTexture = vec2(tLeft.x, bRight.y);
+  return bottomLeftTexture;
+}
+vec3 getTangent(vec2 deltaUV2, vec2 deltaUV1, vec3 edge1, vec3 edge2) {
+  // compute tangent
+  float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+  vec3 tangent;
+  tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+  tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+  tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+  tangent = normalize(tangent);
+  return tangent;
+}
+vec3 getTriangleTangent(vec3 p1, vec3 p2, vec3 p3, vec2 t1, vec2 t2, vec2 t3) {
+  // get triangle tangent
+  vec3 edge1 = p2 - p1;
+  vec3 edge2 = p3 - p1;
+  vec2 deltaUV1 = t2 - t1;
+  vec2 deltaUV2 = t3 - t1;
+  return getTangent(deltaUV2, deltaUV1, edge1, edge2);
+}
+mat3 getTBNPerVertex(vec3 vertex, vec3 tangent, vec3 aNormal) {
+  // get tbn per vertex
+  // tan world
+  vec4 tanW = modelMat * vec4(tangent, 0.0);
+  vec3 Tan = normalize(vec3(tanW));
+  // compute world normal
+  vec4 normW = modelMat * vec4(aNormal, 0.0);
+  vec3 Norm = normalize(vec3(normW));
+  Tan = normalize(Tan - dot(Tan, Norm) * Norm);
+  vec3 BiTan = cross(Norm, Tan);
+  mat3 tbn = transpose(mat3(Tan, BiTan, Norm));
+  return tbn;
+}
+Material getMaterialFromPoint(vec3 point, vec2 textureCoord,
+                              vec3 triangleTangent, vec3 triangleNormal) {
+  // get material from point and use texture coordinates
+  Material pmat;
+  pmat.diffMapColor = texture(diffuseMap, textureCoord);
+  pmat.specMapColor = texture(specularMap, textureCoord);
+  vec3 normal = texture(normalMap, TexCoord).rgb;
+  pmat.shadingNormal = normalize(normal * 2.0 - 1.0);
+  pmat.pos = point;
+  pmat.tpos = textureCoord;
+  pmat.wpos = transformToWorld(point);
+  pmat.vpos = transformToView(point);
+  pmat.ppos = transformToProjection(point);
+  pmat.shininess = shininess;
+  pmat.tbn = getTBNPerVertex(point, triangleTangent, triangleNormal);
+}
+vec3 makeTriangleNormalFromPoints(vec3 p1, vec3 p2, vec3 p3) {
+  // make triangle normal from points
+  vec3 s1 = p2 - p1;                  // side 1
+  vec3 s2 = p3 - p1;                  // side 2
+  vec3 n1 = normalize(cross(s1, s2)); // triangle normal
+  return n1;
+}
+Triangle makeTriangleFromPoints(vec3 ps[3], vec2 txts[3]) {
+  // make triangle from points
+  vec3 triangleTangent =
+      getTriangleTangent(ps[0], ps[1], ps[2], txts[0], txts[1], txts[2]);
+  vec3 tnormal = makeTriangleNormalFromPoints(ps[0], ps[1], ps[2]);
+
+  //
+  Material m0 = getMaterialFromPoint(ps[0], txts[0], triangleTangent, tnormal);
+  Material m1 = getMaterialFromPoint(ps[1], txts[1], triangleTangent, tnormal);
+  Material m2 = getMaterialFromPoint(ps[2], txts[2], triangleTangent, tnormal);
+
+  //
+  Triangle tri;
+  tri.pmats[0] = m0;
+  tri.pmats[1] = m1;
+  tri.pmats[2] = m2;
+  tri.color = vec3(0);
+  tri.tangent = triangleTangent;
+  tri.tnormal = tnormal;
+  return tri;
+}
+void takeTrianglesFromSide(mat4 side, Triangle tris[2]) {
+  // make plane from side
+  vec3 topLeft = getTopLeft(side);
+  vec2 tLeftTexture = getTopLeftTexture(side);
+  vec3 topRight = getTopRight(side);
+  vec2 tRightTexture = getTopRightTexture(side);
+  vec3 bottomLeft = getBottomLeft(side);
+  vec2 bLeftTexture = getBottomLeftTexture(side);
+  vec3 bottomRight = getBottomRight(side);
+  vec2 bRightTexture = getBottomRightTexture(side);
+
+  // points for first triangle
+  vec3 ps1[3];
+  ps1[0] = topLeft;
+  ps1[1] = bottomLeft;
+  ps1[2] = bottomRight;
+
+  // texture list for material
+  vec2 ts1[3];
+  ts1[0] = tLeftTexture;
+  ts1[1] = bLeftTexture;
+  ts1[2] = bRightTexture;
+
+  // points for second triangle
+  vec3 ps2[3];
+  ps2[0] = bottomRight;
+  ps2[1] = topRight;
+  ps2[2] = topLeft;
+
+  // texture for material
+  vec2 ts2[3];
+  ts2[0] = bRightTexture;
+  ts2[1] = tRightTexture;
+  ts2[2] = tLeftTexture;
+
+  tris[0] = makeTriangleFromPoints(ps1, ts1);
+  tris[1] = makeTriangleFromPoints(ps2, ts2);
+}
+vec4 transformToWorld(vec3 vertex) {
+  // transform vertex to world coordinate
+  return modelMat * vec4(vertex, 1.0);
+}
+vec4 transformWorldToView(vec4 worldPos) {
+  // transform world position to view matrix
+  return viewMat * worldPos;
+}
+vec4 transformToView(vec3 vertex) {
+  // transform vertex to view coordinate
+  return transformWorldToView(transformToWorld(vertex));
+}
+vec4 transformViewToProjection(vec4 viewPosition) {
+  // transform view position to projection position
+  return projMat * viewPosition;
+}
+vec4 transformToProjection(vec3 vertex) {
+  // transform vertex to view coordinate
+  return transformViewToProjection(
+      transformWorldToView(transformToWorld(vertex)));
+}
+vec3 getBiTangent(vec2 deltaUV2, vec2 deltaUV1, vec3 edge1, vec3 edge2) {
+  GLfloat f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+  vec3 bitangent;
+  bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+  bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+  bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+  bitangent = normalize(bitangent);
+  return bitangent;
+}
+void getPlaneTangentBiTangent(vec3[4] corners, vec2[4] textures,
+                              vec3 tangents[2]) {
+  // corners
+  vec3 topLeft = corners[0];     // p1
+  vec3 topRight = corners[1];    // p2
+  vec3 bottomLeft = corners[2];  // p3
+  vec3 bottomRight = corners[3]; // p4
+  // 0,2,3 == 0,1,3
+
+  // plane textures
+  vec2 topLeftTexture = textures[0];     // tp1
+  vec2 topRightTexture = textures[1];    // tp2
+  vec2 bottomLeftTexture = textures[2];  // tp3
+  vec2 bottomRightTexture = textures[3]; // tp4
+  // 0,2,3 == 0,1,3
+  //
+  // first triangle
+  vec3 edge1 = bottomLeft - topLeft;
+  vec3 edge2 = bottomRight - topLeft;
+  vec2 deltaUV1 = bottomLeftTexture - topLeftTexture;
+  vec2 deltaUV2 = bottomRightTexture - topLeftTexture;
+  // end first triangle
+  // second triangle
+  vec3 edge3 = bottomRight - topLeft;
+  vec3 edge4 = topRight - topLeft;
+  vec2 deltaUV3 = bottomRightTexture - topLeftTexture;
+  vec2 deltaUV4 = topRightTexture - topLeftTexture;
+  // end second triangle
+  //
+  // compute tangents
+  tangents[0] = getTangent(deltaUV2, deltaUV1, edge1, edge2);
+  tangents[1] = getTangent(deltaUV4, deltaUV3, edge3, edge4);
+  // compute bitangents
+  // bitangents[0] = getTangent(deltaUV2, deltaUV1, edge1, edge2);
+  // bitangents[1] = getTangent(deltaUV4, deltaUV3, edge3, edge4);
+}
+bool inRange(float component, float bottomRange, float topRange) {
+  // in given range
+  if (component > topRange) {
+    return false;
+  } else if (component < bottomRange) {
+    return false;
+  }
+  return true;
+}
+bool isVisible(vec3 vertex) {
+  // is vertex visible
+  vec3 proj = transformToProjection(vertex);
+  bool xval, yval, zval;
+  xval = inRange(vertex.x, -1.0, 1.0);
+  yval = inRange(vertex.y, -1.0, 1.0);
+  zval = inRange(vertex.z, -1.0, 1.0);
+  if (xval == false) {
+    return false;
+  }
+  if (yval == false) {
+    return false;
+  }
+  if (zval == false) {
+    return false;
+  }
+  return true;
+}
+float hitTriangle(Ray r, Triangle tri, vec3 vertexWeights) {
+  // hit triangle using Möller and Trumbore
+  // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+  // Foley et. al. 2013, p.410, listing no: 15.16
+  //
+  float EPSILON = 0.0000001;
+  vec3 edge1 = tri.pmats[1].wpos - tri.pmats[0].wpos;
+  vec3 edge2 = tri.pmats[2].wpos - tri.pmats[0].wpos;
+  vec3 q = cross(r.direction, edge2);
+  float a = dot(edge1, h);
+  vec3 s = r.origin - tri.pmats[0].wpos;
+  float f = 1.0 / a;
+  vec3 q = cross(s, edge1);
+  float u = f * dot(s, h);
+  float v = f * dot(r.direction, q);
+  float t = f * dot(edge2, q);
+
+  if (a > -EPSILON && a < EPSILON) {
+    return INFINITY;
+  }
+  if (u < 0.0 || u > 0.0) {
+    return INFINITY;
+  }
+  if (v < 0.0 || u + v > 1.0) {
+    return INFINITY;
+  }
+  if (t > EPSILON) {
+    // ray intersection
+    outvec = r.direction * t + r.origin;
+    return outvec;
+  } else {
+    return false;
+  }
+}
+Ray getReflectionRay(Ray r, vec3 normal, float magnitude) {
+  // get reflection ray
+  vec3 refDir = reflect(r.direction, normal);
+  vec3 point = r.direction * magnitude + r.origin;
+  vec3 refOrigin = point - (refDir * magnitude);
+  Ray ref;
+  ref.direction = refDir;
+  ref.origin = refOrigin;
+  return ref;
+}
+Ray computeEyeRay(float centerPixX, float centerPixY, int imWidth, int imHeight,
+                  Camera camera) {
+  // implementation of compute eye ray function
+  // of Foley et al 2013, listing 15.14
+  float imw = float(imWidth);
+  float imh = float(imHeight);
+  float aspect = imh / imw;
+  float s = -2.0 * tan(camera.fovX * 0.5);
+  vec3 origin = vec3((x / imw - 0.5) * s, -(y / imh - 0.5) * s * aspect, 1.0) *
+                camera.nearZ;
+  Ray r;
+  r.origin = origin;
+  r.direction = normalize(origin);
+  return r;
+}
+vec3 scatteringBlinnPhong(vec3 w_i, vec3 w_o, float s, vec3 snormal,
+                          vec3 dcolor, vec3 specColor) {
+  // implements blinn phong scattering function
+  float costheta = dot(w_i, snormal);
+  vec3 diffuse = dcolor * max(costheta, 0.0);
+}
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main() {
+  // main function to implement
+  // for each pixel check if it is located in
+  // cube. To do that I can either transform the vertices of the cube
+  // to normalized device coordinates or transform pixels to world
+  // coordinates
+  // Pseudo code for raytracing algorithm
+  // for each pixel row y:
+  //    for each pixel column x:
+  //        let R = ray through screen space position (x + 0.5, y + 0.5)
+  //        closest = ∞
+  //        for each triangle T:
+  //            d = intersect(T, R)
+  //            if (d < closest)
+  //                closest = d
+  //                sum = 0
+  //                let P be the intersection point
+  //                for each direction v i :
+  //                    sum += light scattered at P from v i to v o
+  //                image[x, y] = sum
+}

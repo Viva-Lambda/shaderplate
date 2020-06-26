@@ -1,0 +1,893 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<meta name="generator" content="Doxygen 1.8.15"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>&#x202A;Shader vs: &#x202A;/media/kaan/Data7510/GitProjects/simplepbr/src/raytrace/compute3dEski.cpp Dosya Referansı</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/searchdata.js"></script>
+<script type="text/javascript" src="search/search.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td id="projectalign" style="padding-left: 0.5em;">
+   <div id="projectname">&#x202A;Shader vs
+   &#160;<span id="projectnumber">0.0.1</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Oluşturan Doxygen 1.8.15 -->
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+var searchBox = new SearchBox("searchBox", "search",false,'Ara');
+/* @license-end */
+</script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(function() {
+  initMenu('',true,false,'search.php','Ara');
+  $(document).ready(function() { init_search(); });
+});
+/* @license-end */</script>
+<div id="main-nav"></div>
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+</div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<iframe src="javascript:void(0)" frameborder="0" 
+        name="MSearchResults" id="MSearchResults">
+</iframe>
+</div>
+
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">&#x202A;src</a></li><li class="navelem"><a class="el" href="dir_f80f97491cfb3318e7ed93c295c56abc.html">&#x202A;raytrace</a></li>  </ul>
+</div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#func-members">Fonksiyonlar</a> &#124;
+<a href="#var-members">Değişkenler</a>  </div>
+  <div class="headertitle">
+<div class="title">compute3dEski.cpp Dosya Referansı</div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="textblock"><code>#include &lt;glad/glad.h&gt;</code><br />
+<code>#include &lt;GLFW/glfw3.h&gt;</code><br />
+<code>#include &lt;filesystem&gt;</code><br />
+<code>#include &lt;fstream&gt;</code><br />
+<code>#include &lt;iostream&gt;</code><br />
+<code>#include &lt;sstream&gt;</code><br />
+<code>#include &lt;string&gt;</code><br />
+<code>#include &lt;glm/glm.hpp&gt;</code><br />
+<code>#include &lt;glm/gtc/matrix_transform.hpp&gt;</code><br />
+<code>#include &lt;<a class="el" href="camera_8hpp_source.html">custom/camera.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="shader_8hpp_source.html">custom/shader.hpp</a>&gt;</code><br />
+</div><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Fonksiyonlar</h2></td></tr>
+<tr class="memitem:a79b40ba2a0cfbc992c366251e3db7f81"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> (filesystem::current_path())</td></tr>
+<tr class="separator:a79b40ba2a0cfbc992c366251e3db7f81"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff3cae597e68c35cbdd86135c0433131"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> (&quot;media&quot;)</td></tr>
+<tr class="separator:aff3cae597e68c35cbdd86135c0433131"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45a09ca5df043576bfbcb278ac753927"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a45a09ca5df043576bfbcb278ac753927">textureDir</a> (&quot;textures&quot;)</td></tr>
+<tr class="separator:a45a09ca5df043576bfbcb278ac753927"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac25b78274ce3360afe9be707365f6957"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#ac25b78274ce3360afe9be707365f6957">shaderDir</a> (&quot;shaders&quot;)</td></tr>
+<tr class="separator:ac25b78274ce3360afe9be707365f6957"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae8a65741103854129920367a60b001f4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#ae8a65741103854129920367a60b001f4">printDebug</a> (const char *mes, float arg)</td></tr>
+<tr class="separator:ae8a65741103854129920367a60b001f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af127d973746ad16d53957c7a31b001eb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#af127d973746ad16d53957c7a31b001eb">printDebug</a> (const char *mes, glm::vec3 arg)</td></tr>
+<tr class="separator:af127d973746ad16d53957c7a31b001eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa2f27eb7bab05d528a2c71daa0196e87"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#aa2f27eb7bab05d528a2c71daa0196e87">printDebug</a> (const char *mes, glm::vec4 arg)</td></tr>
+<tr class="separator:aa2f27eb7bab05d528a2c71daa0196e87"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2fe4ef9a10fdb7067fff10b05170d856"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a2fe4ef9a10fdb7067fff10b05170d856">printDebug</a> (const char *mes, glm::mat3 arg)</td></tr>
+<tr class="separator:a2fe4ef9a10fdb7067fff10b05170d856"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae8fe244dca535fce4acf21dba32fd5b8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#ae8fe244dca535fce4acf21dba32fd5b8">printDebug</a> (const char *mes, glm::mat4 arg)</td></tr>
+<tr class="separator:ae8fe244dca535fce4acf21dba32fd5b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abec79e500faa3bfdc04f0919a3d4a38a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#abec79e500faa3bfdc04f0919a3d4a38a">printDebug</a> (const char *mes, <a class="el" href="structRay.html">Ray</a> arg)</td></tr>
+<tr class="separator:abec79e500faa3bfdc04f0919a3d4a38a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7a98688609b02f4a8c1ad0d0dfc5d82b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a7a98688609b02f4a8c1ad0d0dfc5d82b">printDebug</a> (const char *mes, <a class="el" href="structSegment.html">Segment</a> arg)</td></tr>
+<tr class="separator:a7a98688609b02f4a8c1ad0d0dfc5d82b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac6b1ab58251f5ed57f8ae8cd74957675"><td class="memItemLeft" align="right" valign="top">glm::vec3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#ac6b1ab58251f5ed57f8ae8cd74957675">interpCoord</a> (<a class="el" href="structSegment.html">Segment</a> s1, <a class="el" href="structSegment.html">Segment</a> s2, float coord)</td></tr>
+<tr class="separator:ac6b1ab58251f5ed57f8ae8cd74957675"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60b3b0f82ccfaa462f41391808cdd363"><td class="memItemLeft" align="right" valign="top">glm::vec3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a60b3b0f82ccfaa462f41391808cdd363">interpCoordVec</a> (glm::vec3 v1, glm::vec3 v2, float coord)</td></tr>
+<tr class="separator:a60b3b0f82ccfaa462f41391808cdd363"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa321ee00d910ba06729fd50f22f634ac"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structRay.html">Ray</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#aa321ee00d910ba06729fd50f22f634ac">getPixelSegment</a> (glm::vec2 pixelScreenPos, <a class="el" href="structSegment.html">Segment</a> bottomLeftS, <a class="el" href="structSegment.html">Segment</a> bottomRightS, <a class="el" href="structSegment.html">Segment</a> topLeftS, <a class="el" href="structSegment.html">Segment</a> topRightS, glm::vec3 pos)</td></tr>
+<tr class="separator:aa321ee00d910ba06729fd50f22f634ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a886c4a5d65c89646e7f9caf875db6b63"><td class="memItemLeft" align="right" valign="top">glm::vec3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a886c4a5d65c89646e7f9caf875db6b63">getPixelVec3</a> (glm::vec2 pixelScreenPos, glm::vec3 bottomLeftS, glm::vec3 bottomRightS, glm::vec3 topLeftS, glm::vec3 topRightS)</td></tr>
+<tr class="separator:a886c4a5d65c89646e7f9caf875db6b63"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3a4cd7317d89a505fe1338b9871af38"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#af3a4cd7317d89a505fe1338b9871af38">initializeGLFWMajorMinor</a> (unsigned int maj, unsigned int min)</td></tr>
+<tr class="separator:af3a4cd7317d89a505fe1338b9871af38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab52d9e20e25e4779dd15cfb6f0f44aad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#ab52d9e20e25e4779dd15cfb6f0f44aad">framebuffer_size_callback</a> (GLFWwindow *window, int newWidth, int newHeight)</td></tr>
+<tr class="separator:ab52d9e20e25e4779dd15cfb6f0f44aad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadd79d9625ffdfc37f0c2c3f7c258d40"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#aadd79d9625ffdfc37f0c2c3f7c258d40">setSegmentToShader</a> (<a class="el" href="classShader.html">Shader</a> shader, <a class="el" href="structSegment.html">Segment</a> topLeftS, <a class="el" href="structSegment.html">Segment</a> bottomLeftS, <a class="el" href="structSegment.html">Segment</a> topRightS, <a class="el" href="structSegment.html">Segment</a> bottomRightS)</td></tr>
+<tr class="separator:aadd79d9625ffdfc37f0c2c3f7c258d40"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a847047124bf371795a5e458cc8723f2a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a847047124bf371795a5e458cc8723f2a">setPosToShader</a> (<a class="el" href="classShader.html">Shader</a> shader, glm::vec3 topLeftS, glm::vec3 bottomLeftS, glm::vec3 topRightS, glm::vec3 bottomRightS)</td></tr>
+<tr class="separator:a847047124bf371795a5e458cc8723f2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae66f6b31b5ad750f1fe042a706a4e3d4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#ae66f6b31b5ad750f1fe042a706a4e3d4">main</a> ()</td></tr>
+<tr class="separator:ae66f6b31b5ad750f1fe042a706a4e3d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
+Değişkenler</h2></td></tr>
+<tr class="memitem:a78e849654b8bbfc0506f94ac5782db29"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a78e849654b8bbfc0506f94ac5782db29">shaderDirPath</a> = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#ac25b78274ce3360afe9be707365f6957">shaderDir</a></td></tr>
+<tr class="separator:a78e849654b8bbfc0506f94ac5782db29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7b68e34c57fc86c41fdee502bb97c95d"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a7b68e34c57fc86c41fdee502bb97c95d">textureDirPath</a> = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#a45a09ca5df043576bfbcb278ac753927">textureDir</a></td></tr>
+<tr class="separator:a7b68e34c57fc86c41fdee502bb97c95d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9c4ab189c2f018bc7ccc8ba4f6e04b9d"><td class="memItemLeft" align="right" valign="top">const bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a9c4ab189c2f018bc7ccc8ba4f6e04b9d">DEBUG</a> = true</td></tr>
+<tr class="separator:a9c4ab189c2f018bc7ccc8ba4f6e04b9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8752eb74c3c1a29f75ce331fb96f0068"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a8752eb74c3c1a29f75ce331fb96f0068">VIEWPORTX</a> = 0</td></tr>
+<tr class="separator:a8752eb74c3c1a29f75ce331fb96f0068"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a270a534a5481371daad721f6081654d4"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a270a534a5481371daad721f6081654d4">VIEWPORTY</a> = 0</td></tr>
+<tr class="separator:a270a534a5481371daad721f6081654d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a94137fdb38087697224fa566a9facf5b"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a94137fdb38087697224fa566a9facf5b">VIEWPORTF</a> = 1000.0f</td></tr>
+<tr class="separator:a94137fdb38087697224fa566a9facf5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa4e44dcfd686483340b7e45ffcd24050"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#aa4e44dcfd686483340b7e45ffcd24050">VIEWPORTN</a> = 1.0f</td></tr>
+<tr class="separator:aa4e44dcfd686483340b7e45ffcd24050"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a62d5b784d2d648ed95559ac33750cbc5"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a62d5b784d2d648ed95559ac33750cbc5">WINWIDTH</a> = 1280</td></tr>
+<tr class="separator:a62d5b784d2d648ed95559ac33750cbc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a819a7bd05dcf52d08aa95877ffcad9e0"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="compute3dEski_8cpp.html#a819a7bd05dcf52d08aa95877ffcad9e0">WINHEIGHT</a> = 960</td></tr>
+<tr class="separator:a819a7bd05dcf52d08aa95877ffcad9e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<h2 class="groupheader">Fonksiyon Dokümantasyonu</h2>
+<a id="a79b40ba2a0cfbc992c366251e3db7f81"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a79b40ba2a0cfbc992c366251e3db7f81">&#9670;&nbsp;</a></span>current_dir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path current_dir </td>
+          <td>(</td>
+          <td class="paramtype">filesystem::current_path()&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab52d9e20e25e4779dd15cfb6f0f44aad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab52d9e20e25e4779dd15cfb6f0f44aad">&#9670;&nbsp;</a></span>framebuffer_size_callback()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void framebuffer_size_callback </td>
+          <td>(</td>
+          <td class="paramtype">GLFWwindow *&#160;</td>
+          <td class="paramname"><em>window</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>newWidth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>newHeight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa321ee00d910ba06729fd50f22f634ac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa321ee00d910ba06729fd50f22f634ac">&#9670;&nbsp;</a></span>getPixelSegment()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structRay.html">Ray</a> getPixelSegment </td>
+          <td>(</td>
+          <td class="paramtype">glm::vec2&#160;</td>
+          <td class="paramname"><em>pixelScreenPos</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>bottomLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>bottomRightS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>topLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>topRightS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>pos</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a886c4a5d65c89646e7f9caf875db6b63"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a886c4a5d65c89646e7f9caf875db6b63">&#9670;&nbsp;</a></span>getPixelVec3()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">glm::vec3 getPixelVec3 </td>
+          <td>(</td>
+          <td class="paramtype">glm::vec2&#160;</td>
+          <td class="paramname"><em>pixelScreenPos</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>bottomLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>bottomRightS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>topLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>topRightS</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af3a4cd7317d89a505fe1338b9871af38"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3a4cd7317d89a505fe1338b9871af38">&#9670;&nbsp;</a></span>initializeGLFWMajorMinor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void initializeGLFWMajorMinor </td>
+          <td>(</td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>maj</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>min</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac6b1ab58251f5ed57f8ae8cd74957675"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac6b1ab58251f5ed57f8ae8cd74957675">&#9670;&nbsp;</a></span>interpCoord()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">glm::vec3 interpCoord </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>s1</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>s2</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>coord</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a60b3b0f82ccfaa462f41391808cdd363"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a60b3b0f82ccfaa462f41391808cdd363">&#9670;&nbsp;</a></span>interpCoordVec()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">glm::vec3 interpCoordVec </td>
+          <td>(</td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>v1</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>v2</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>coord</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae66f6b31b5ad750f1fe042a706a4e3d4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae66f6b31b5ad750f1fe042a706a4e3d4">&#9670;&nbsp;</a></span>main()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int main </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aff3cae597e68c35cbdd86135c0433131"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aff3cae597e68c35cbdd86135c0433131">&#9670;&nbsp;</a></span>mediaDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path mediaDir </td>
+          <td>(</td>
+          <td class="paramtype">&quot;media&quot;&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae8a65741103854129920367a60b001f4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae8a65741103854129920367a60b001f4">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[1/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af127d973746ad16d53957c7a31b001eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af127d973746ad16d53957c7a31b001eb">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[2/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa2f27eb7bab05d528a2c71daa0196e87"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa2f27eb7bab05d528a2c71daa0196e87">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[3/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec4&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2fe4ef9a10fdb7067fff10b05170d856"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2fe4ef9a10fdb7067fff10b05170d856">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[4/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::mat3&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae8fe244dca535fce4acf21dba32fd5b8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae8fe244dca535fce4acf21dba32fd5b8">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[5/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::mat4&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="abec79e500faa3bfdc04f0919a3d4a38a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abec79e500faa3bfdc04f0919a3d4a38a">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[6/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structRay.html">Ray</a>&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7a98688609b02f4a8c1ad0d0dfc5d82b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7a98688609b02f4a8c1ad0d0dfc5d82b">&#9670;&nbsp;</a></span>printDebug() <span class="overload">[7/7]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printDebug </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>mes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>arg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a847047124bf371795a5e458cc8723f2a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a847047124bf371795a5e458cc8723f2a">&#9670;&nbsp;</a></span>setPosToShader()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void setPosToShader </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classShader.html">Shader</a>&#160;</td>
+          <td class="paramname"><em>shader</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>topLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>bottomLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>topRightS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::vec3&#160;</td>
+          <td class="paramname"><em>bottomRightS</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aadd79d9625ffdfc37f0c2c3f7c258d40"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadd79d9625ffdfc37f0c2c3f7c258d40">&#9670;&nbsp;</a></span>setSegmentToShader()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void setSegmentToShader </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classShader.html">Shader</a>&#160;</td>
+          <td class="paramname"><em>shader</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>topLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>bottomLeftS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>topRightS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSegment.html">Segment</a>&#160;</td>
+          <td class="paramname"><em>bottomRightS</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac25b78274ce3360afe9be707365f6957"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac25b78274ce3360afe9be707365f6957">&#9670;&nbsp;</a></span>shaderDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path shaderDir </td>
+          <td>(</td>
+          <td class="paramtype">&quot;shaders&quot;&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a45a09ca5df043576bfbcb278ac753927"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45a09ca5df043576bfbcb278ac753927">&#9670;&nbsp;</a></span>textureDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path textureDir </td>
+          <td>(</td>
+          <td class="paramtype">&quot;textures&quot;&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Değişken Dokümantasyonu</h2>
+<a id="a9c4ab189c2f018bc7ccc8ba4f6e04b9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9c4ab189c2f018bc7ccc8ba4f6e04b9d">&#9670;&nbsp;</a></span>DEBUG</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const bool DEBUG = true</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a78e849654b8bbfc0506f94ac5782db29"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a78e849654b8bbfc0506f94ac5782db29">&#9670;&nbsp;</a></span>shaderDirPath</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path shaderDirPath = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#ac25b78274ce3360afe9be707365f6957">shaderDir</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7b68e34c57fc86c41fdee502bb97c95d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7b68e34c57fc86c41fdee502bb97c95d">&#9670;&nbsp;</a></span>textureDirPath</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path textureDirPath = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#a45a09ca5df043576bfbcb278ac753927">textureDir</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a94137fdb38087697224fa566a9facf5b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a94137fdb38087697224fa566a9facf5b">&#9670;&nbsp;</a></span>VIEWPORTF</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float VIEWPORTF = 1000.0f</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa4e44dcfd686483340b7e45ffcd24050"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa4e44dcfd686483340b7e45ffcd24050">&#9670;&nbsp;</a></span>VIEWPORTN</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float VIEWPORTN = 1.0f</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a8752eb74c3c1a29f75ce331fb96f0068"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8752eb74c3c1a29f75ce331fb96f0068">&#9670;&nbsp;</a></span>VIEWPORTX</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int VIEWPORTX = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a270a534a5481371daad721f6081654d4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a270a534a5481371daad721f6081654d4">&#9670;&nbsp;</a></span>VIEWPORTY</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int VIEWPORTY = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a819a7bd05dcf52d08aa95877ffcad9e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a819a7bd05dcf52d08aa95877ffcad9e0">&#9670;&nbsp;</a></span>WINHEIGHT</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int WINHEIGHT = 960</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a62d5b784d2d648ed95559ac33750cbc5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a62d5b784d2d648ed95559ac33750cbc5">&#9670;&nbsp;</a></span>WINWIDTH</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int WINWIDTH = 1280</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Oluşturan &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.15
+</small></address>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<meta name="generator" content="Doxygen 1.8.15"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>&#x202A;Shader vs: &#x202A;/media/kaan/Data7510/GitProjects/simplepbr/src/raytrace/simplecompute.cpp Dosya Referansı</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/searchdata.js"></script>
+<script type="text/javascript" src="search/search.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td id="projectalign" style="padding-left: 0.5em;">
+   <div id="projectname">&#x202A;Shader vs
+   &#160;<span id="projectnumber">0.0.1</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Oluşturan Doxygen 1.8.15 -->
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+var searchBox = new SearchBox("searchBox", "search",false,'Ara');
+/* @license-end */
+</script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(function() {
+  initMenu('',true,false,'search.php','Ara');
+  $(document).ready(function() { init_search(); });
+});
+/* @license-end */</script>
+<div id="main-nav"></div>
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+</div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<iframe src="javascript:void(0)" frameborder="0" 
+        name="MSearchResults" id="MSearchResults">
+</iframe>
+</div>
+
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">&#x202A;src</a></li><li class="navelem"><a class="el" href="dir_f80f97491cfb3318e7ed93c295c56abc.html">&#x202A;raytrace</a></li>  </ul>
+</div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#func-members">Fonksiyonlar</a> &#124;
+<a href="#var-members">Değişkenler</a>  </div>
+  <div class="headertitle">
+<div class="title">simplecompute.cpp Dosya Referansı</div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="textblock"><code>#include &lt;glad/glad.h&gt;</code><br />
+<code>#include &lt;GLFW/glfw3.h&gt;</code><br />
+<code>#include &lt;filesystem&gt;</code><br />
+<code>#include &lt;fstream&gt;</code><br />
+<code>#include &lt;iostream&gt;</code><br />
+<code>#include &lt;sstream&gt;</code><br />
+<code>#include &lt;string&gt;</code><br />
+</div><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Fonksiyonlar</h2></td></tr>
+<tr class="memitem:a79b40ba2a0cfbc992c366251e3db7f81"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> (filesystem::current_path())</td></tr>
+<tr class="separator:a79b40ba2a0cfbc992c366251e3db7f81"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff3cae597e68c35cbdd86135c0433131"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> (&quot;media&quot;)</td></tr>
+<tr class="separator:aff3cae597e68c35cbdd86135c0433131"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45a09ca5df043576bfbcb278ac753927"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#a45a09ca5df043576bfbcb278ac753927">textureDir</a> (&quot;textures&quot;)</td></tr>
+<tr class="separator:a45a09ca5df043576bfbcb278ac753927"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac25b78274ce3360afe9be707365f6957"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#ac25b78274ce3360afe9be707365f6957">shaderDir</a> (&quot;shaders&quot;)</td></tr>
+<tr class="separator:ac25b78274ce3360afe9be707365f6957"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3a4cd7317d89a505fe1338b9871af38"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#af3a4cd7317d89a505fe1338b9871af38">initializeGLFWMajorMinor</a> (unsigned int maj, unsigned int min)</td></tr>
+<tr class="separator:af3a4cd7317d89a505fe1338b9871af38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab52d9e20e25e4779dd15cfb6f0f44aad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#ab52d9e20e25e4779dd15cfb6f0f44aad">framebuffer_size_callback</a> (GLFWwindow *window, int newWidth, int newHeight)</td></tr>
+<tr class="separator:ab52d9e20e25e4779dd15cfb6f0f44aad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa0df041eb3f7e425ca45cc7bbb6a5903"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#aa0df041eb3f7e425ca45cc7bbb6a5903">loadStringFromPath</a> (const char *stringPath)</td></tr>
+<tr class="separator:aa0df041eb3f7e425ca45cc7bbb6a5903"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5321a15f89e81dc4ebadba65331e2e5b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#a5321a15f89e81dc4ebadba65331e2e5b">checkShaderCompilation</a> (GLuint shader, const char *shaderType)</td></tr>
+<tr class="separator:a5321a15f89e81dc4ebadba65331e2e5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad1d655e572414a0e3c49fa03a787fb34"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#ad1d655e572414a0e3c49fa03a787fb34">checkShaderProgramCompilation</a> (GLuint program)</td></tr>
+<tr class="separator:ad1d655e572414a0e3c49fa03a787fb34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae66f6b31b5ad750f1fe042a706a4e3d4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#ae66f6b31b5ad750f1fe042a706a4e3d4">main</a> ()</td></tr>
+<tr class="separator:ae66f6b31b5ad750f1fe042a706a4e3d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
+Değişkenler</h2></td></tr>
+<tr class="memitem:a78e849654b8bbfc0506f94ac5782db29"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#a78e849654b8bbfc0506f94ac5782db29">shaderDirPath</a> = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#ac25b78274ce3360afe9be707365f6957">shaderDir</a></td></tr>
+<tr class="separator:a78e849654b8bbfc0506f94ac5782db29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7b68e34c57fc86c41fdee502bb97c95d"><td class="memItemLeft" align="right" valign="top">filesystem::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#a7b68e34c57fc86c41fdee502bb97c95d">textureDirPath</a> = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#a45a09ca5df043576bfbcb278ac753927">textureDir</a></td></tr>
+<tr class="separator:a7b68e34c57fc86c41fdee502bb97c95d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a88ca3ffdecd0fe0d91be19b8186c68cb"><td class="memItemLeft" align="right" valign="top">const unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#a88ca3ffdecd0fe0d91be19b8186c68cb">WINWIDTH</a> = 1280</td></tr>
+<tr class="separator:a88ca3ffdecd0fe0d91be19b8186c68cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac8da72efc957d5ab1abbac8965eb30c6"><td class="memItemLeft" align="right" valign="top">const unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="simplecompute_8cpp.html#ac8da72efc957d5ab1abbac8965eb30c6">WINHEIGHT</a> = 960</td></tr>
+<tr class="separator:ac8da72efc957d5ab1abbac8965eb30c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<h2 class="groupheader">Fonksiyon Dokümantasyonu</h2>
+<a id="a5321a15f89e81dc4ebadba65331e2e5b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5321a15f89e81dc4ebadba65331e2e5b">&#9670;&nbsp;</a></span>checkShaderCompilation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void checkShaderCompilation </td>
+          <td>(</td>
+          <td class="paramtype">GLuint&#160;</td>
+          <td class="paramname"><em>shader</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>shaderType</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad1d655e572414a0e3c49fa03a787fb34"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad1d655e572414a0e3c49fa03a787fb34">&#9670;&nbsp;</a></span>checkShaderProgramCompilation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void checkShaderProgramCompilation </td>
+          <td>(</td>
+          <td class="paramtype">GLuint&#160;</td>
+          <td class="paramname"><em>program</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a79b40ba2a0cfbc992c366251e3db7f81"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a79b40ba2a0cfbc992c366251e3db7f81">&#9670;&nbsp;</a></span>current_dir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path current_dir </td>
+          <td>(</td>
+          <td class="paramtype">filesystem::current_path()&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab52d9e20e25e4779dd15cfb6f0f44aad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab52d9e20e25e4779dd15cfb6f0f44aad">&#9670;&nbsp;</a></span>framebuffer_size_callback()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void framebuffer_size_callback </td>
+          <td>(</td>
+          <td class="paramtype">GLFWwindow *&#160;</td>
+          <td class="paramname"><em>window</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>newWidth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>newHeight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af3a4cd7317d89a505fe1338b9871af38"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3a4cd7317d89a505fe1338b9871af38">&#9670;&nbsp;</a></span>initializeGLFWMajorMinor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void initializeGLFWMajorMinor </td>
+          <td>(</td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>maj</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>min</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa0df041eb3f7e425ca45cc7bbb6a5903"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0df041eb3f7e425ca45cc7bbb6a5903">&#9670;&nbsp;</a></span>loadStringFromPath()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string loadStringFromPath </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>stringPath</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae66f6b31b5ad750f1fe042a706a4e3d4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae66f6b31b5ad750f1fe042a706a4e3d4">&#9670;&nbsp;</a></span>main()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int main </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aff3cae597e68c35cbdd86135c0433131"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aff3cae597e68c35cbdd86135c0433131">&#9670;&nbsp;</a></span>mediaDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path mediaDir </td>
+          <td>(</td>
+          <td class="paramtype">&quot;media&quot;&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac25b78274ce3360afe9be707365f6957"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac25b78274ce3360afe9be707365f6957">&#9670;&nbsp;</a></span>shaderDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path shaderDir </td>
+          <td>(</td>
+          <td class="paramtype">&quot;shaders&quot;&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a45a09ca5df043576bfbcb278ac753927"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45a09ca5df043576bfbcb278ac753927">&#9670;&nbsp;</a></span>textureDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path textureDir </td>
+          <td>(</td>
+          <td class="paramtype">&quot;textures&quot;&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Değişken Dokümantasyonu</h2>
+<a id="a78e849654b8bbfc0506f94ac5782db29"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a78e849654b8bbfc0506f94ac5782db29">&#9670;&nbsp;</a></span>shaderDirPath</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path shaderDirPath = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#ac25b78274ce3360afe9be707365f6957">shaderDir</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7b68e34c57fc86c41fdee502bb97c95d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7b68e34c57fc86c41fdee502bb97c95d">&#9670;&nbsp;</a></span>textureDirPath</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filesystem::path textureDirPath = <a class="el" href="simplecompute_8cpp.html#a79b40ba2a0cfbc992c366251e3db7f81">current_dir</a> / <a class="el" href="simplecompute_8cpp.html#aff3cae597e68c35cbdd86135c0433131">mediaDir</a> / <a class="el" href="simplecompute_8cpp.html#a45a09ca5df043576bfbcb278ac753927">textureDir</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac8da72efc957d5ab1abbac8965eb30c6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac8da72efc957d5ab1abbac8965eb30c6">&#9670;&nbsp;</a></span>WINHEIGHT</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const unsigned int WINHEIGHT = 960</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a88ca3ffdecd0fe0d91be19b8186c68cb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a88ca3ffdecd0fe0d91be19b8186c68cb">&#9670;&nbsp;</a></span>WINWIDTH</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const unsigned int WINWIDTH = 1280</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Oluşturan &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.15
+</small></address>
+</body>
+</html>

@@ -1,0 +1,252 @@
+#version 430 core
+layout(local_size_x = 1, local_size_y = 1) in; // local work_group_size
+layout(rgba32f, binding = 0) uniform image2D img_output;
+
+/*-------------- start constants -----------------------*/
+
+const float INFINITY = 1.0 / 0.0;
+const float PI = 3.141592653;
+const float EPSILON = 1e-10;
+
+/*-------------- end constants -----------------------*/
+
+/*------------- start uniform -----------------------*/
+
+uniform vec3 r00; // in world space
+uniform vec3 r01; // in world space
+uniform vec3 r10; // in world space
+uniform vec3 r11; // in world space
+
+struct Camera {
+  vec3 pos; // world space
+  float nearZ;
+  float farZ;
+};
+uniform Camera cam;
+
+struct Viewport {
+  float x;
+  float y;
+  float w;
+  float h;
+};
+uniform Viewport viewp;
+
+/*------------- end uniform -----------------------*/
+
+/*------------- start utility ---------------------*/
+vec3 Ndc2ScreenSpace(vec3 ndc) {
+  //
+  //
+  vec3 spos;
+  spos.x = ((viewp.w * 0.5) * ndc.x) + ((viewp.w * 0.5) + viewp.x);
+  spos.y = ((viewp.h * 0.5) * ndc.y) + ((viewp.h * 0.5) + viewp.y);
+  spos.z =
+      (((cam.farZ - cam.nearZ) * 0.5) * ndc.z) + ((cam.nearZ + cam.farZ) * 0.5);
+  return spos;
+}
+vec3 fromScreen2Ndc(vec2 pixelCoords) {
+  // change pixel coordinate to ndc coordinate
+  // default depth range near 0 far 1
+  // following the formula here
+  // https://www.khronos.org/opengl/wiki/Vertex_Post-Processing#Viewport_transform
+  ivec2 img_dims = imageSize(img_output); // image dimensions
+  float w, h;
+  w = float(img_dims.x);
+  h = float(img_dims.y);
+  vec3 ndc;
+  float wdiv = w * 0.5;
+  float hdiv = h * 0.5;
+  ndc.x = (pixelCoords.x - viewp.x - wdiv) / wdiv;
+  ndc.y = (pixelCoords.y - viewp.y - hdiv) / hdiv;
+  ndc.z = 0.0; // can either be -1 0 +1
+  return ndc;
+}
+
+/*------------- end utility ---------------------*/
+
+float MAX_X = 10.0;
+float MAX_Y = 10.0;
+
+struct Ray {
+  vec3 origin;
+  vec3 direction;
+};
+
+Ray getCameraRay(ivec2 pixelCoords) {
+
+  ivec2 imageDims = imageSize(img_output); // image dimensions
+  float ndcx = (float(pixelCoords.x * 2 - imageDims.x) / imageDims.x);
+  float ndcy = (float(pixelCoords.y * 2 - imageDims.y) / imageDims.y);
+  float ndcz = (float(pixelCoords.y * 2 - imageDims.y) / imageDims.y);
+  // ray origin
+  Ray cameraRay;
+  cameraRay.origin = vec3(ndcx * MAX_X, ndcy * MAX_Y, -6.0);
+  // ray direction
+  cameraRay.direction = vec3(0.0, 0.0, -1.0); // orthographic projection
+  return cameraRay;
+}
+Ray getPixelRay(vec3 pixelNdc) {
+  vec3 pixelBottom = mix(r00, r10, pixelNdc.y);
+  vec3 pixelTop = mix(r10, r11, pixelNdc.y);
+  vec3 pixelVec = mix(pixelBottom, pixelTop, pixelNdc.x);
+  Ray r;
+  r.origin = cam.pos;
+  r.direction = pixelVec;
+  return r;
+}
+
+struct Sphere {
+  vec3 center;
+  float radius;
+};
+struct Light {
+  vec3 pos;
+  vec3 color;
+};
+vec3 getNormalToSphere(vec3 pos, Sphere s) {
+  // normal to point on sphere
+  return normalize(pos - s.center);
+}
+
+vec3 getPointOnRay(Ray r, float dist) {
+  // get point on ray
+  // point = origin + direction * magnitude
+  return r.origin + r.direction * dist;
+}
+//
+bool hitSphere(Sphere s, Ray r, vec3 hitPoint) {
+
+  float dist = 1.0 / 0.0; // infinity
+  // ray hits sphere or not
+  // ray interaction with sphere
+  // points on sphere ||Point - sphere_center|| - sphere_radius = 0
+
+  // || origin_of_ray + direction_of_ray * magnitude - sphere_center|| -
+  // sphere_radius = 0
+  // || origin_of_ray + direction_of_ray * magnitude - sphere_center|| =
+  // sphere_radius
+  // || origin_of_ray + direction_of_ray * magnitude - sphere_center||^2 =
+  // sphere_radius^2
+  // || o + d * m - c ||^2 = r^2
+  // (o+d*m-c) (o+d*m-c) = r^2
+  // d^2 * m^2 + 2d(m *(o-c)) + (o-c)^2 = r^2
+  // ax^2 + bx + c = 0
+  // a = d^2
+  // x = m
+  // b = 2*(d*(o-c))
+  // c = (o-c)^2 - r^2
+  // m = -b ± sqrt(b^2 - c)
+  //
+  // intersect hit on 2 points b^2 - c > 0
+  // miss case hit on 0 point b^2 - c < 0
+  // tangent hit on 1 point b^2 - c = 0
+
+  vec3 ray_to_sphere = r.origin - s.center;
+  float c = dot(ray_to_sphere, ray_to_sphere) - s.radius * s.radius;
+  float b = 2 * dot(r.direction, ray_to_sphere);
+  float b2_minus_c = b * b - c;
+  if (b2_minus_c > 0.0) {
+    float m1 = sqrt(b2_minus_c) - b;
+    float m2 = sqrt(b2_minus_c) + b;
+    dist = min(m1, m2);
+    hitPoint = getPointOnRay(r, dist);
+    return true;
+  } else if (b2_minus_c == 0) {
+    dist = -1.0 * b;
+    hitPoint = getPointOnRay(r, dist);
+    return true;
+  } else {
+    return false;
+  }
+}
+vec3 lambert(vec3 normal, Light light, vec3 point) {
+  // scatter with lambert
+  vec3 lightDir = normalize(light.pos - point);
+  float costheta = dot(lightDir, normal);
+  costheta = max(0.0, costheta);
+  return costheta * light.color;
+}
+
+void main() {
+  // index of global work group
+  vec4 pixel = vec4(0.0, 0.0, 0.0, 1.0);
+  ivec2 pixel_index = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 img_dims = imageSize(img_output); // image dimensions
+  Ray cameraRay;
+  cameraRay = getCameraRay(pixel_index);
+  Ray pixelRay = getPixelRay(fromScreen2Ndc(pixel_index));
+
+  // define a sphere
+  // Sphere s1;
+  // s1.center = vec3(1.0, 2.0, -7.0);
+  // s1.radius = 1.0;
+
+  // Sphere s2;
+  // s2.center = vec3(4.0, 5.0, -6.0);
+  // s2.radius = 1.0;
+
+  // Light light;
+  // light.pos = vec3(6.1, 4.0, -6.0);
+  // light.color = vec3(1.0);
+  // Sphere s3;
+  // s3.center = light.pos;
+  // s3.radius = light.color.x;
+
+  // vec3 hitPoint1;
+  // bool isHit1 = hitSphere(s1, cameraRay, hitPoint1);
+  // vec3 hitPoint2;
+  // bool isHit2 = hitSphere(s2, cameraRay, hitPoint2);
+  // vec3 hitPoint3;
+  // bool isHit3 = hitSphere(s3, cameraRay, hitPoint3);
+  //
+
+  // define a sphere
+  Sphere s1;
+  s1.center = vec3(1.0, 1.1, -5.0);
+  s1.radius = 1.0;
+
+  Sphere s2;
+  s2.center = vec3(0.0, 0.0, 0.0);
+  s2.radius = 1.0;
+
+  Light light;
+  light.pos = vec3(1.0, 1.0, 1.3);
+  light.color = vec3(1.0);
+  Sphere s3;
+  s3.center = light.pos;
+  s3.radius = light.color.x;
+
+  vec3 hitPoint1;
+  bool isHit1 = hitSphere(s1, pixelRay, hitPoint1);
+  // bool isHit2 = hitSphere(s2, cameraRay, hitPoint);
+  // vec3 hitPoint2;
+  // bool isHit2 = hitSphere(s5, pixelRay, hitPoint2);
+  vec3 hitPoint3;
+  bool isHit3 = hitSphere(s3, pixelRay, hitPoint3);
+
+  if (isHit1 == true) {
+    // isin degiyor
+    vec3 hitNormal = getNormalToSphere(hitPoint1, s1);
+    vec3 lightVec = light.pos - hitPoint1;
+    vec3 color = lambert(hitNormal, light, hitPoint1);
+    // color *= (1 / PI) / pow(length(lightVec), 2);
+
+    float ambient = 0.05;
+    pixel = vec4(color, 1.0);
+  }
+  // if (isHit2 == true) {
+  //  vec3 hitNormal = getNormalToSphere(hitPoint2, s2);
+  //  vec3 lightVec = light.pos - hitPoint2;
+  //  vec3 color = lambert(hitNormal, light, hitPoint2);
+  //  // color *= (1 / PI) / pow(length(lightVec), 2);
+
+  //  pixel = vec4(color, 1.0);
+  //}
+  if (isHit3 == true) {
+    // pixel = vec4(light.color, 1.0);
+  }
+
+  // output to a specific pixel in the image
+  imageStore(img_output, pixel_index, pixel);
+}

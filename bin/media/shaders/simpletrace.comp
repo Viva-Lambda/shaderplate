@@ -1,0 +1,366 @@
+#version 430
+
+/*
+ *
+#include <custom/color.hpp>
+#include <custom/commons.hpp>
+//
+#include <custom/hittables.hpp>
+//
+#include <custom/camera.hpp>
+#include <custom/sphere.hpp>
+ * */
+
+// start constants
+// constants.hpp
+float PI = 3.1415926535;
+float INFINITY = 1.0 / 0.0;
+// end constants
+//
+// start utils
+
+float degree_to_radian(float degree) {
+  //
+  return degree * PI / 180.0;
+}
+
+float rand(vec2 co) {
+  // random gen
+  float a = 12.9898;
+  float b = 78.233;
+  float c = 43758.5453;
+  float dt = dot(co.xy, vec2(a, b));
+  float sn = mod(dt, 3.14);
+  return fract(sin(sn) * c);
+}
+float random_double() {
+  // random double
+  return rand(vec2(0.0, 1.0));
+}
+float random_double(float mi, float mx) {
+  // random double
+  return rand(vec2(mi, mx));
+}
+
+vec3 random_vec() {
+  // random vector
+  return vec3(random_double(), random_double(), random_double());
+}
+vec3 random_vec(double mi, double ma) {
+  // random vector in given seed
+  return vec3(random_double(mi, ma), random_double(mi, ma),
+              random_double(mi, ma));
+}
+vec3 random_in_unit_sphere() {
+  // random in unit sphere
+  while (true) {
+    //
+    vec3 v = random_vec(-1, 1);
+    if (dot(v, v) >= 1) {
+      continue;
+    }
+    return v;
+  }
+}
+vec3 random_unit_vector() {
+  // unit vector
+  double a = random_double(0, 2 * PI);
+  double z = random_double(-1, 1);
+  double r = sqrt(1 - z * z);
+  return vec3(r * cos(a), r * sin(a), z);
+}
+vec3 random_in_hemisphere(vec3 normal) {
+  // normal ekseninde dagilan yon
+  vec3 unit_sphere_dir = random_in_unit_sphere();
+  if (dot(unit_sphere_dir, normal) > 0.0) {
+    return unit_sphere_dir;
+  } else {
+    return -1 * unit_sphere_dir;
+  }
+}
+vec3 random_in_unit_disk() {
+  // lens yakinsamasi için gerekli
+  while (true) {
+    vec3 point = vec3(random_double(-1, 1), random_double(-1, 1), 0);
+    if (dot(point, point) >= 1) {
+      continue;
+    }
+    return point;
+  }
+}
+
+// end utils
+//
+struct Ray {
+  vec3 origin;
+  vec3 direction;
+};
+
+vec3 at(Ray r, float dist) { return r.direction * dist + r.origin; }
+
+struct Lambertian {
+  vec3 albedo;
+};
+
+struct Material {
+  int s; // material type, 1 lambert, 2 metal, 3 dielectric
+  Lambertian la;
+  Metal me;
+  Dielectric di;
+};
+
+struct HitRecord {
+  vec3 point;
+  vec3 normal;
+  Material mat;
+  float dist;
+  bool front_face;
+};
+void set_face_normal(in Ray r, in vec3 out_normal, out HitRecord record) {
+  // gelen dikme on yuze mi arka yuze mi
+  record.front_face = dot(r.direction, out_normal) < 0;
+  record.normal = front_face ? out_normal : -1 * out_normal;
+}
+
+bool scatterLambert(Lambertian lamb, in Ray ray_in, in HitRecord record,
+                    inout attenuation, inout Ray ray_out) {
+  // scatter lambert
+  vec3 out_dir = record.normal + random_unit_vector();
+  ray_out = Ray(record.point, out_dir);
+  attenuation = lamb.albedo;
+  return true;
+}
+struct Metal {
+  vec3 albedo;
+  float rough;
+};
+bool scatterMetal(Metal met, in Ray ray_in, in HitRecord record,
+                  inout attenuation, inout Ray ray_out) {
+  // scatter metal
+  vec3 unit_in_dir = normalize(ray_in.direction);
+  vec3 out_dir = reflect(unit_in_dir, record.normal);
+  ray_out = Ray(record.point, out_dir + met.rough * random_in_unit_sphere());
+  attenuation = met.albedo;
+  return dot(ray_out.direction, record.normal) > 0.0;
+}
+struct Dielectric {
+  float ref_idx;
+};
+
+float fresnelSchlick(float costheta, float ridx) {
+  //
+  float r0 = (1 - ridx) / (1 + ridx);
+  r0 = r0 * r0;
+  return r0 + (1 - r0) * pow((1 - costheta), 5);
+}
+
+float fresnelCT(float costheta, float ridx) {
+  // cook torrence fresnel equation
+  float etao = 1 + sqrt(ridx);
+  float etau = 1 - sqrt(ridx);
+  float eta = etao / etau;
+  float g = sqrt(pow(eta, 2) + pow(costheta, 2) - 1);
+  float g_c = g - costheta;
+  float gplusc = g + costheta;
+  float gplus_cc = (gplusc * costheta) - 1;
+  float g_cc = (g_c * costheta) + 1;
+  float oneplus_gcc = 1 + pow(gplus_cc / g_cc, 2);
+  float half_plus_minus = 0.5 * pow(g_c / gplusc, 2);
+  return half_plus_minus * oneplus_gcc;
+}
+
+float get_fresnel(float costheta, float ridx, int choice) {
+  // compute freshnel
+  float fresnel;
+  switch (choice) {
+  case 0:
+    fresnel = fresnelSchlick(costheta, ridx);
+    break;
+  case 1:
+    fresnel = fresnelCT(costheta, ridx);
+    break;
+  default:
+    fresnel = fresnelSchlick(costheta, ridx);
+    break;
+  }
+  return fresnel;
+}
+bool scatterDielectric(Dielectric di, in Ray r_in, in HitRecord record,
+                       inout vec3 attenuation, inout Ray r_out) const {
+  // ray out
+  attenuation = color(1.0);
+  vec3 unit_in_dir = normalize(r_in.direction);
+  float eta_over = (record.front_face) ? 1.0 / di.ref_idx : di.ref_idx;
+  float costheta = min(dot(-1 * unit_in_dir, record.normal), 1.0);
+  float sintheta = sqrt(1.0 - costheta * costheta);
+  vec3 ref;
+  if (eta_over * sintheta > 1.0) {
+    //
+    ref = reflect(unit_in_dir, record.normal);
+    r_out = Ray(record.point, ref);
+    return true;
+  }
+  //
+  float fresnel_term = get_fresnel(costheta, eta_over, 0); // schlick
+  if (random_double() < fresnel_term) {
+    ref = reflect(unit_in_dir, record.normal);
+    r_out = Ray(record.point, ref);
+    return true;
+  }
+  ref = refract(unit_in_dir, record.normal, eta_over);
+  r_out = Ray(record.point, ref);
+  return true;
+}
+
+struct Sphere {
+  vec3 center;
+  float radius;
+  Material mat;
+};
+bool hitSphere(in Sphere s, in Ray r, float dist_min, float dist_max,
+               out HitRecord record) {
+  // kureye isin vurdu mu onu test eden fonksiyon
+  vec3 origin_to_center = r.origin - s.center;
+  float a = dot(r.direction, r.direction);
+  float half_b = dot(origin_to_center, r.direction);
+  float c = dot(origin_to_center, origin_to_center) - s.radius * s.radius;
+  float isHit = half_b * half_b - a * c;
+  float margin;
+  if (isHit > 0) {
+    float root = sqrt(isHit);
+    margin = (-1 * half_b - root) / a;
+    if (margin < dist_max && margin > dist_min) {
+      record.dist = margin;
+      record.point = at(r, record.dist);
+      vec3 out_normal = (record.point - s.center) / s.radius;
+      record.set_face_normal(r, out_normal);
+      record.mat = s.mat;
+      return true;
+    }
+    margin = (-1 * half_b + root) / a;
+    if (margin < dist_max && margin > dist_min) {
+      record.dist = margin;
+      record.point = r.at(record.dist);
+      vec3 out_normal = (record.point - center) / radius;
+      record.set_face_normal(r, out_normal);
+      record.mat_ptr = mat_ptr;
+      return true;
+    }
+  }
+  return false;
+}
+
+struct SceneObj {
+  uint type; // 1 sphere, 2, square, etc
+  Sphere s;
+};
+// ----------------------------------------
+// Camera
+struct Camera {
+
+  vec3 origin;
+  vec3 horizontal;
+  vec3 vertical;
+  vec3 lower_left_corner;
+  vec3 u, v, w;
+};
+
+void mk_camera(inout Camera cam, vec3 pos, vec3 target, vec3 up, float vfov,
+               float aspect_ratio, float aperture, float focus_dist) {
+  // make camera
+  cam.origin = pos;
+  cam.lens_radius = aperture / 2;
+  float theta = degree_to_radian(vfov);
+  float half_height = tan(theta / 2);
+  float half_width = aspect_ratio * half_height;
+
+  // w, v, u eksenleri
+  cam.w = normalize(pos - target);
+  cam.u = normalize(cross(up, w));
+  cam.v = cross(w, u);
+  cam.lower_left_corner = origin - half_width * focus_dist * u -
+                          half_height * focus_dist * v - w * focus_dist;
+  cam.horizontal = 2 * half_width * focus_dist * u;
+  cam.vertical = 2 * half_height * focus_dist * v;
+}
+
+Ray get_ray(in Camera cam, float t, float s) {
+  // get camera ray
+  vec3 rd = cam.lens_radius * random_in_unit_disk();
+  vec3 off = cam.u * rd.x + cam.v * rd.y;
+  return Ray(cam.origin + off, cam.lower_left_corner + t * cam.horizontal +
+                                   s * cam.vertical - cam.origin - off);
+}
+
+bool hitSceneObject(SceneObj obj, Ray r, float dist_min, float dist_max,
+                    HitRecord rec) {
+  switch (obj.type) {
+  case 1:
+    return hitSphere(obj.s, r, dist_min, dist_max, rec);
+    break;
+  default:
+    return hitSphere(obj.s, r, dist_min, dist_max, rec);
+    break;
+  }
+};
+uniform uint nb_scene_obj;
+
+struct Scene {
+  SceneObj objects[nb_scene_obj];
+};
+
+bool hitScene(in Scene scene, in Ray r, float dist_min, float dist_max,
+              out HitRecord rec) {
+  // scene holding objects
+  HitRecord temp;
+  bool hit_ = false;
+  float current_closest = dist_max;
+  for (int i = 0; i < nb_scene_obj; i++) {
+    SceneObj obj = Scene.objects[i];
+    if (hitSceneObject(obj, r, dist_min, dist_max, temp)) {
+      hit_ = true;
+      current_closest = temp.dist;
+      record = temp;
+    }
+  }
+  return hit_;
+}
+vec3 ray_color(in Ray r, in HittableList scene, int depth) {
+  // compute ray color
+
+  HitRecord record;
+
+  vec3 color = vec3(0);
+  Ray r_in = r;
+  for (int i = depth; i >= 0; i--) {
+    vec3 atten;
+    Ray r_out;
+    if (hitScene(scene, r_in, 0.001, INFINITY, record) == true) {
+      switch (record.mat.s) {
+      case 1:
+        if (scatterLambert(record.mat.la, r_in, record, atten, r_out)) {
+          r_in = r_out;
+          //
+          color *= atten;
+        }
+      case 2:
+        if (scatterMetal(record.mat.me, r_in, record, atten, r_out)) {
+          r_in = r_out;
+          color *= atten;
+        }
+      case 3:
+        if (scatterDielectric(record.mat.di, r_in, record, atten, r_out)) {
+          r_in = r_out;
+          color *= atten;
+        }
+      }
+    } else {
+      vec3 direction = normalize(r_in.direction);
+      float temp = 0.5 * (direction.y + 1.0);
+      color += (1.0 - temp) * vec3(1.0) + temp * vec3(0.5, 0.7, 1.0);
+    }
+  }
+  return color;
+}
+
+void main() {}

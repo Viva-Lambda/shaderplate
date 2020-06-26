@@ -1,0 +1,310 @@
+uniform vec3 r00;
+uniform vec3 r01;
+uniform vec3 r10;
+uniform vec3 r11;
+
+// end frustum corner rays
+
+float getAngleVerticesPoint(vec3 vert1, vec3 vert2, vec3 point) {
+  // get angle between vertices and point
+  vec3 vd1 = vert1 - point;
+  vec3 vd2 = vert2 - point;
+  return acos(dot(normalize(vd1), normalize(vd2)));
+}
+bool pi2check(float val) {
+  // check if given value is within the bounds of 2pi ± EPSILON
+  float upi = PI + EPSILON;
+  float bpi = PI - EPSILON;
+  if (val < upi && val >= bpi) {
+    return true;
+  } else {
+    return false;
+  }
+}
+#define IsPointInside(point, vs, size, rvar)                                   \
+  float total;                                                                 \
+  for (int mi = 0; mi < size - 1; mi += 1) {                                   \
+    total += getAngleVerticesPoint(vs[mi], vs[mi + 1], point);                 \
+  }                                                                            \
+  total += getAngleVerticesPoint(vs[size - 1], vs[0], point);                  \
+  rvar = pi2check(total)
+
+bool isPointInside3(vec3 point, vec3 vs[3]) {
+  // check if a point is inside shape with three vertices
+  bool check;
+  IsPointInside(point, vs, 3, check);
+  return check;
+}
+bool isPointInside4(vec3 point, vec3 vs[4]) {
+  // check if a point is inside shape with three vertices
+  bool check;
+  IsPointInside(point, vs, 4, check);
+  return check;
+}
+
+vec3 interpCoord(Segment s1, Segment s2, float coord) {
+  // interpolate coordinate between two rays
+  vec3 segment1 = s1.origin + s1.direction * s1.size;
+  vec3 segment2 = s2.origin + s2.direction * s2.size;
+  return mix(segment1, segment2, coord);
+}
+vec3 interpCoordVec(vec3 v1, vec3 v2, float coord) {
+  // interpolate coordinate between two rays
+  return mix(v1, v2, coord);
+}
+
+Segment getPixelSegment(vec2 pixelScreenPos) {
+  // implementation detail
+  // ------------------------------------------------------------------------
+  // pixel MUST be visible thus the ray that originates in camera and ends up
+  // hitting what is being visible at the pixel location MUST be within the
+  // range of rays that define the visible area, frustum.
+  // We obtain the ray corresponding to pixel by interpolation.
+  // First we interpolate using bottom rays to find out how far the pixel's y
+  // coordinate up with respect to bottom rays.
+  // Then we interpolate using top rays to find out how far the pixel's y
+  // coordinate down with respect to top rays.
+  // Then we interpolate using the obtained rays using pixel's x coordinate
+  //
+  // We can also understand this procedure as a mixing. We mix bottom rays
+  // with y measure. We mix the top rays with y measure. Then we mix the two
+  // with x measure. Then we mix all to obtain a
+
+  // vec3 pixelBottom = interpCoord(bottomLeftS, bottomRightS,
+  // pixelScreenPos.y);
+  // vec3 pixelTop = interpCoord(topLeftS, topRightS, pixelScreenPos.y);
+  // vec3 pixelVec = mix(pixelBottom, pixelTop, pixelScreenPos.x);
+  Segment pixelSegment;
+  // pixelSegment.origin = cam.pos;
+  // pixelSegment.direction = normalize(pixelVec);
+  // pixelSegment.size = length(pixelVec);
+  return pixelSegment;
+}
+Ray getPixelRay(vec2 pixelScreenPos) {
+  vec3 pixelBottom = mix(r00, r01, pixelScreenPos.y);
+  vec3 pixelTop = mix(r10, r11, pixelScreenPos.y);
+  vec3 pixelVec = mix(pixelBottom, pixelTop, pixelScreenPos.x);
+  Ray r;
+  r.origin = cam.pos;
+  r.direction = pixelVec;
+  return r;
+}
+
+vec3 planeMin = vec3(-10.0, -0.1, -10.0);
+vec3 planeMax = vec3(10.0, 0.0, 10.0);
+
+vec3 boxMin = vec3(-0.5, 0.0, -0.5);
+vec3 boxMax = vec3(0.5, 1.0, 0.5);
+
+struct Plane {
+  // parametric representation of a plane using 3 non collinear points
+  vec3 p1;
+  vec3 p2;
+  vec3 p3;
+  vec3 normal; // optional for testing quickly for intersections
+};
+bool hitPlane(Plane p, Ray r, out vec3 hitPoint) {
+  // test if ray hits plane
+  // The equation is the following
+  // plane := (point - pointOnPlane) \dot normalToPlane = 0
+  // ray := origin + direction * magnitude = pointOnRay
+  //
+  float dirdot = dot(r.direction, p.normal);
+  if (dirdot < EPSILON && dirdot > -1 * EPSILON) {
+    // assume ray is parallel to plane
+    return false;
+  }
+  float dist = dot(p.p1 - r.origin, p.normal) / dirdot;
+  if (dist < EPSILON && dist > -1 * EPSILON) {
+    // plane contains the ray
+    hitPoint = r.origin;
+    return true;
+  } else {
+    hitPoint = r.origin + r.direction * dist;
+    return true;
+  }
+}
+struct Triangle {
+  vec3 p1;
+  vec3 p2;
+  vec3 p3;
+  uint indx; // scene index
+};
+vec3 getNormalToTriangle(Triangle tri) {
+  // get normal to rectangle
+  vec3 diff1 = tri.p3 - tri.p1;
+  vec3 diff2 = tri.p2 - tri.p1;
+  return cross(diff1, diff2);
+}
+
+struct Rectangle {
+  vec3 topLeft;
+  vec3 topRight;
+  vec3 bottomRight;
+  vec3 bottomLeft;
+};
+uniform Rectangle r1;
+void rect2Triangles(Rectangle r, out Triangle tri[2]) {
+  // convert rectangle to triangles
+  tri[0].p1 = r.topLeft;
+  tri[0].p2 = r.bottomLeft;
+  tri[0].p3 = r.bottomRight;
+  tri[1].p1 = r.topLeft;
+  tri[1].p2 = r.topRight;
+  tri[1].p3 = r.bottomRight;
+}
+
+vec3 getNormalToRectangle(Rectangle rect) {
+  // get normal to rectangle using triangles
+  Triangle tris[2];
+  rect2Triangles(rect, tris);
+  return getNormalToTriangle(tris[0]);
+}
+
+bool hitRectangle(Rectangle rect, Ray r, out vec3 hitPoint) {
+  // check if ray hits rectangle
+  // transform to plane
+  Plane p;
+  p.p1 = rect.topLeft;
+  p.p2 = rect.topRight;
+  p.p3 = rect.bottomLeft;
+  vec3 diff1 = p.p3 - p.p1;
+  vec3 diff2 = p.p2 - p.p1;
+  p.normal = cross(diff1, diff2);
+  vec3 hPoint;
+  bool check = hitPlane(p, r, hPoint);
+  if (check == true) {
+    vec3 vs[] = {rect.topLeft, rect.topRight, rect.bottomRight,
+                 rect.bottomLeft};
+    bool inCheck = isPointInside4(hPoint, vs);
+    if (inCheck == true) {
+      hitPoint = hPoint;
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+}
+struct Box {
+  vec3 bmin;
+  vec3 bmax;
+  uint indx; // scene index
+};
+
+bool hitBox(Box b, Ray r, out vec3 hitPoint) {
+  // check if ray hits to box
+  // we consider as its already hitting to the box
+  vec3 tMin = (b.bmin - r.origin) / r.direction;
+  // line eq: P = O + tD
+  // t = (P - O) /  D
+  vec3 tMax = (b.bmax - r.origin) / r.direction;
+  vec3 t1 = min(tMin, tMax);
+  vec3 t2 = max(tMin, tMax);
+  float tNear = max(max(t1.x, t1.y), t1.z);
+  // float tNear = length(t1);
+  // float tFar = length(t2);
+  float tFar = min(min(t2.x, t2.y), t2.z);
+  if (tNear > 0.0 && tNear < tFar) {
+    // we have a hit
+    hitPoint = r.origin + r.direction * tNear;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+struct Sphere {
+  vec3 center;
+  float radius;
+  uint indx; // scene index
+};
+uniform Sphere s1;
+
+bool hitSphere(Sphere s, Ray r, out vec3 hitPoint) {
+
+  float dist = INFINITY;
+  // ray hits sphere or not
+  // ray interaction with sphere
+  // points on sphere ||Point - sphere_center|| - sphere_radius = 0
+
+  // || origin_of_ray + direction_of_ray * magnitude - sphere_center|| -
+  // sphere_radius = 0
+  // || origin_of_ray + direction_of_ray * magnitude - sphere_center|| =
+  // sphere_radius
+  // || origin_of_ray + direction_of_ray * magnitude - sphere_center||^2 =
+  // sphere_radius^2
+  // || o + d * m - c ||^2 = r^2
+  // (o+d*m-c) (o+d*m-c) = r^2
+  // d^2 * m^2 + 2d(m *(o-c)) + (o-c)^2 = r^2
+  // ax^2 + bx + c = 0
+  // a = d^2
+  // x = m
+  // b = 2*(d*(o-c))
+  // c = (o-c)^2 - r^2
+  // m = -b ± sqrt(b^2 - c)
+  //
+  // intersect hit on 2 points b^2 - c > 0
+  // miss case hit on 0 point b^2 - c < 0
+  // tangent hit on 1 point b^2 - c = 0
+
+  vec3 ray_to_sphere = r.origin - s.center;
+  float c = dot(ray_to_sphere, ray_to_sphere) - s.radius * s.radius;
+  float b = 2 * dot(r.direction, ray_to_sphere);
+  float b2_minus_c = b * b - c;
+  if (b2_minus_c > 0.0) {
+    float m1 = sqrt(b2_minus_c) - b;
+    float m2 = sqrt(b2_minus_c) + b;
+    if (m1 >= m2) {
+      dist = m2;
+    } else {
+      dist = m1;
+    }
+    hitPoint = getPointOnRay(r, dist);
+    return true;
+  } else if (b2_minus_c == 0) {
+    dist = -1.0 * b;
+    hitPoint = getPointOnRay(r, dist);
+  } else {
+    return false;
+  }
+}
+vec3 getNormalToSphere(vec3 pos, Sphere s) {
+  // normal to point on sphere
+  return normalize(pos - s.center);
+}
+struct Light {
+  vec3 pos;
+  vec3 color;
+};
+vec3 lambert(vec3 normal, Light light, vec3 point) {
+  // scatter with lambert
+  vec3 lightDir = normalize(light.pos - point);
+  float costheta = dot(lightDir, normal);
+  costheta = max(0.0, costheta);
+  return costheta * light.color;
+}
+
+/*https://github.com/LWJGL/lwjgl3-wiki/wiki/2.6.1.-Ray-tracing-with-OpenGL-Compute-Shaders-%28Part-I%29*/
+// ---------------------------------------------
+//
+struct box {
+  vec3 min;
+  vec3 max;
+};
+
+#define NUM_BOXES 2
+
+const box boxes[] = {
+    /* The ground */
+    {vec3(-5.0, -0.1, -5.0), vec3(5.0, 0.0, 5.0)},
+    /* Box in the middle */
+    {vec3(-0.5, 0.0, -0.5), vec3(0.5, 1.0, 0.5)}};
+
+struct hitinfo {
+  vec2 lambda;
+  int bi;
+};
+
+// ---------------------------------------------
