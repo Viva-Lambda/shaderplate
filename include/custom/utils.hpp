@@ -308,7 +308,8 @@ GLuint loadTexture2d(const char *fpath, bool igamma = false) {
 
   return tex;
 }
-GLuint loadTexture2d(const char*parent, const char *fpath, bool igamma = false) {
+GLuint loadTexture2d(const char *parent, const char *fpath,
+                     bool igamma = false) {
   //
   GLuint tex;
   glGenTextures(1, &tex);
@@ -317,7 +318,6 @@ GLuint loadTexture2d(const char*parent, const char *fpath, bool igamma = false) 
 
   return tex;
 }
-
 
 GLuint loadTexture2d(const char *texturePath, GLuint tex, unsigned int i,
                      bool isGamma = false) {
@@ -372,9 +372,9 @@ void cubeShaderInit_proc(Shader myShader) {
   myShader.setFloatUni("ambientCoeff", ambientCoeff);
   myShader.setFloatUni("shininess", shininess);
   myShader.setVec3Uni("attC", attc);
-  myShader.setIntUni("diffuseMap", 0);
-  myShader.setIntUni("specularMap", 1);
-  myShader.setIntUni("normalMap", 2);
+  myShader.setIntUni("diffuseMap1", 0);
+  myShader.setIntUni("specularMap1", 1);
+  myShader.setIntUni("normalMap1", 2);
 }
 
 #endif

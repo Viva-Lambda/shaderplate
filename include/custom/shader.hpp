@@ -2,15 +2,8 @@
 #define SHADER_HPP
 
 // includes
-#include <fstream>
-//
-#include <glad/glad.h>
-//
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <iostream>
-#include <sstream>
-#include <string>
+#include <custom/external.hpp>
+namespace fs = std::filesystem;
 
 void checkShaderCompilation(GLuint shader, const char *shaderType) {
   // check the shader compilation
@@ -55,6 +48,8 @@ public:
   Shader(const GLchar *computePath);
   Shader(const GLchar *vertexPath, const GLchar *fragmentPath,
          const GLchar *computePath);
+  Shader(std::vector<fs::path> shaderPaths,
+         std::vector<std::string> shaderTypes);
 
   void useProgram();
 
@@ -128,7 +123,7 @@ public:
 };
 
 GLuint Shader::loadShader(const GLchar *shaderFilePath,
-                          const char *shaderType) {
+                          const GLchar *shaderType) {
   // load shader file from system
   GLuint shader;
   std::string stype(shaderType);
@@ -138,6 +133,8 @@ GLuint Shader::loadShader(const GLchar *shaderFilePath,
     shader = glCreateShader(GL_VERTEX_SHADER);
   } else if (stype == "COMPUTE") {
     shader = glCreateShader(GL_COMPUTE_SHADER);
+  } else if (stype == "GEOMETRY") {
+    shader = glCreateShader(GL_GEOMETRY_SHADER);
   } else {
     std::cout << "Unknown shader type:\n" << shaderType << std::endl;
   }
@@ -206,6 +203,30 @@ Shader::Shader(const GLchar *vertexPath, const GLchar *fragmentPath,
   glDeleteShader(vshader);
   glDeleteShader(fshader);
   glDeleteShader(cshader);
+}
+
+// fourth more general constructor
+Shader::Shader(std::vector<fs::path> shaderPaths,
+               std::vector<std::string> shaderTypes) {
+  if (shaderPaths.size() != shaderTypes.size()) {
+    throw std::invalid_argument(
+        "shaderPath vector has different size than shaderTypes vector");
+  }
+  this->programId = glCreateProgram();
+  std::vector<GLuint> shaderIds;
+  for (unsigned int i = 0; i < shaderTypes.size(); i++) {
+    //
+    GLuint shdrId =
+        this->loadShader(shaderPaths[i].c_str(), shaderTypes[i].c_str());
+    glAttachShader(this->programId, shdrId);
+    shaderIds.push_back(shdrId);
+  }
+  glLinkProgram(this->programId);
+  checkShaderProgramCompilation(this->programId);
+  for (unsigned int i = 0; i < shaderTypes.size(); i++) {
+    //
+    glDeleteShader(shaderIds[i]);
+  }
 }
 
 void Shader::useProgram() { glUseProgram(this->programId); }

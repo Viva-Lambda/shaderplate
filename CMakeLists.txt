@@ -119,6 +119,15 @@ add_executable(pbr2.out
 #    "src/glad.c"
 #    "src/raytrace/compute02.cpp"
 #    )
+add_executable(geometry.out 
+    "src/glad.c"
+    "src/geometry/geometry.cpp"
+    )
+add_executable(argparse.out 
+    "src/glad.c"
+    "src/argparse/model.cpp"
+    )
+
 add_executable(skybox.out 
     "src/glad.c"
     "src/skybox/sky.cpp"
@@ -151,9 +160,11 @@ target_link_libraries(phong2MovingLight.out ${ALL_LIBS})
 target_link_libraries(heightmap.out ${ALL_LIBS})
 target_link_libraries(model.out ${ALL_LIBS})
 target_link_libraries(modelNormalMap.out ${ALL_LIBS})
+target_link_libraries(geometry.out ${ALL_LIBS})
 target_link_libraries(skybox.out ${ALL_LIBS})
 target_link_libraries(fbo.out ${ALL_LIBS})
 target_link_libraries(bloom.out ${ALL_LIBS})
+target_link_libraries(argparse.out ${ALL_LIBS})
 # 
 ## using pbr based models
 target_link_libraries(modelPbr.out ${ALL_LIBS})
@@ -180,9 +191,11 @@ install(TARGETS phongNoSpec.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS heightmap.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS model.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS modelNormalMap.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+install(TARGETS geometry.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS skybox.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS fbo.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS bloom.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+install(TARGETS argparse.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 # 
 install(TARGETS modelPbr.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS pbr.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")

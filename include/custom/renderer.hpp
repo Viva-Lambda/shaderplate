@@ -127,6 +127,9 @@ void renderTriangle(float vert[15], float normal[3]) {
   glDeleteVertexArrays(1, &triVAO);
   glDeleteBuffers(1, &triVBO);
 }
+void renderTriangle(float vert[15], float normal[3], bool inTangent) {
+  //
+}
 void renderLamp() {
   GLuint vbo, lightVao;
   glGenBuffers(1, &vbo);
@@ -319,6 +322,7 @@ void renderCube(bool asTriangles = true) {
   renderTriangle(tt6, s6n);
 }
 void renderCubeD() {
+  // from learnopengl.com
   //
   float vertices[] = {
       //  position         // normal         // texture coord
@@ -394,6 +398,7 @@ void renderCubeD() {
 }
 
 void renderQuad() {
+  // from learnopengl.com
   GLuint quadVAO;
   GLuint quadVBO;
 
@@ -425,6 +430,7 @@ void renderQuad() {
 // renders (and builds at first invocation) a sphere
 // -------------------------------------------------
 void renderSphere() {
+  // from learnopengl.com
   unsigned int sphereVAO;
   glGenVertexArrays(1, &sphereVAO);
   unsigned int indexCount;
@@ -508,8 +514,10 @@ void renderSphere() {
   glBindVertexArray(sphereVAO);
   glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
-  glDeleteVertexArrays(1,&sphereVAO);
-  glDeleteBuffers(1,&vbo);
+  glDeleteVertexArrays(1, &sphereVAO);
+  glDeleteBuffers(1, &vbo);
 }
+
+void renderPyramid() {}
 
 #endif
