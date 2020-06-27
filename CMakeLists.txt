@@ -83,6 +83,10 @@ add_executable(heightmap.out
     "src/glad.c"
     "src/heightmap/phong.cpp"
     )
+add_executable(shadowmap.out
+    "src/glad.c"
+    "src/shadowmap/shadowmap.cpp"
+    )
 add_executable(model.out
     "src/glad.c"
     "src/model/phong.cpp"
@@ -163,6 +167,7 @@ target_link_libraries(modelNormalMap.out ${ALL_LIBS})
 target_link_libraries(geometry.out ${ALL_LIBS})
 target_link_libraries(skybox.out ${ALL_LIBS})
 target_link_libraries(fbo.out ${ALL_LIBS})
+target_link_libraries(shadowmap.out ${ALL_LIBS})
 target_link_libraries(bloom.out ${ALL_LIBS})
 target_link_libraries(argparse.out ${ALL_LIBS})
 # 
@@ -194,6 +199,7 @@ install(TARGETS modelNormalMap.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS geometry.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS skybox.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS fbo.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+install(TARGETS shadowmap.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS bloom.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS argparse.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 # 

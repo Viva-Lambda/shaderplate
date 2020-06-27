@@ -18,7 +18,6 @@ void initializeGLFWMajorMinor(unsigned int maj, unsigned int min);
 void framebuffer_size_callback(GLFWwindow *window, int newWidth, int newHeight);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void mouse_scroll_callback(GLFWwindow *window, double xpos, double ypos);
-GLuint loadTexture2d_proc(const char *texturePath, GLuint tex, bool igamma);
 void saveImage(const char *fpath, GLFWwindow *window);
 void processInput_proc(GLFWwindow *window);
 void cubeShaderInit_proc(Shader myShader);
