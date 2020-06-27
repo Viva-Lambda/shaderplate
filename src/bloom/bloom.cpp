@@ -16,7 +16,6 @@ void configureBlurFbo(GLuint fbos[2], GLuint colorbs[2],
   //
 }
 
-
 int main() {
   //
   initializeGLFWMajorMinor(4, 3);
@@ -54,32 +53,32 @@ int main() {
 
   //--------------- shaders -----------------
   // cube & plane shader
-  fs::path cubeVertPath = shaderDirPath / "bloomCube.vert";
-  fs::path cubeFragPath = shaderDirPath / "bloomCube.frag";
+  fs::path cubeVertPath = shaderDirPath / "bloom" / "bloomCube.vert";
+  fs::path cubeFragPath = shaderDirPath / "bloom" / "bloomCube.frag";
   Shader cubeShader(cubeVertPath.c_str(), cubeFragPath.c_str());
 
   // light shader
-  fs::path lightFragPath = shaderDirPath / "bloomLight.frag";
+  fs::path lightFragPath = shaderDirPath / "bloom" / "bloomLight.frag";
   Shader lightShader(cubeVertPath.c_str(), lightFragPath.c_str());
 
   // blur shader
-  fs::path blurVertPath = shaderDirPath / "bloomBlur.vert";
-  fs::path blurFragPath = shaderDirPath / "bloomBlur.frag";
+  fs::path blurVertPath = shaderDirPath / "bloom" / "bloomBlur.vert";
+  fs::path blurFragPath = shaderDirPath / "bloom" / "bloomBlur.frag";
   Shader blurShader(blurVertPath.c_str(), blurFragPath.c_str());
 
   // quad shader
-  fs::path quadVertPath = shaderDirPath / "bloomQuad.vert";
-  fs::path quadFragPath = shaderDirPath / "bloomQuad.frag";
+  fs::path quadVertPath = shaderDirPath / "bloom" / "bloomQuad.vert";
+  fs::path quadFragPath = shaderDirPath / "bloom" / "bloomQuad.frag";
   Shader quadShader(quadVertPath.c_str(), quadFragPath.c_str());
 
   // ------------- textures -----------------
-  fs::path stoneTexturePath = textureDirPath / "layered" / "layered-cliff-albedo.png";
+  fs::path stoneTexturePath =
+      textureDirPath / "layered" / "layered-cliff-albedo.png";
   fs::path rustedPath = textureDirPath / "rusted" / "rustediron2_basecolor.png";
   GLuint stoneTexture, rustedTexture;
   glGenTextures(1, &stoneTexture);
   glGenTextures(1, &rustedTexture);
-  stoneTexture =
-      loadTexture2d(stoneTexturePath.c_str(), stoneTexture, false);
+  stoneTexture = loadTexture2d(stoneTexturePath.c_str(), stoneTexture, false);
   rustedTexture = loadTexture2d(rustedPath.c_str(), rustedTexture, false);
 
   // ------------- fbo config ---------------

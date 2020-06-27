@@ -4,8 +4,8 @@
 
 Shader loadPbrShader() {
   // load pbr shader
-  fs::path pbrVertPath = shaderDirPath / "iblPbr.vert";
-  fs::path pbrFragPath = shaderDirPath / "iblPbr.frag";
+  fs::path pbrVertPath = shaderDirPath / "ibl" / "iblPbr.vert";
+  fs::path pbrFragPath = shaderDirPath / "ibl" / "iblPbr.frag";
   Shader pbrShader(pbrVertPath.c_str(), pbrFragPath.c_str());
 
   pbrShader.useProgram();
@@ -20,8 +20,8 @@ Shader loadPbrShader() {
   return pbrShader;
 }
 Shader loadCubemapShader() {
-  fs::path cubemapVertPath = shaderDirPath / "iblCubemap.vert";
-  fs::path cubemapEnvFragPath = shaderDirPath / "iblCubemapEnv.frag";
+  fs::path cubemapVertPath = shaderDirPath / "ibl" / "iblCubemap.vert";
+  fs::path cubemapEnvFragPath = shaderDirPath / "ibl" / "iblCubemapEnv.frag";
   Shader envToCubeMapShader(cubemapVertPath.c_str(),
                             cubemapEnvFragPath.c_str());
 
@@ -29,27 +29,27 @@ Shader loadCubemapShader() {
 }
 Shader loadIrradianceShader() {
   // irradiance shader
-  fs::path cubemapVertPath = shaderDirPath / "iblCubemap.vert";
-  fs::path convIrFragPath = shaderDirPath / "iblConvolution.frag";
+  fs::path cubemapVertPath = shaderDirPath / "ibl" / "iblCubemap.vert";
+  fs::path convIrFragPath = shaderDirPath / "ibl" / "iblConvolution.frag";
   Shader irradianceShader(cubemapVertPath.c_str(), convIrFragPath.c_str());
   return irradianceShader;
 }
 
 Shader loadPrefilterShader() {
-  fs::path cubemapVertPath = shaderDirPath / "iblCubemap.vert";
-  fs::path prefilterFragPath = shaderDirPath / "iblPrefilter.frag";
+  fs::path cubemapVertPath = shaderDirPath / "ibl" / "iblCubemap.vert";
+  fs::path prefilterFragPath = shaderDirPath / "ibl" / "iblPrefilter.frag";
   Shader prefilterShader(cubemapVertPath.c_str(), prefilterFragPath.c_str());
   return prefilterShader;
 }
 Shader loadBrdfShader() {
-  fs::path brdfVertPath = shaderDirPath / "iblBrdf.vert";
-  fs::path brdfFragPath = shaderDirPath / "iblBrdf.frag";
+  fs::path brdfVertPath = shaderDirPath / "ibl" / "iblBrdf.vert";
+  fs::path brdfFragPath = shaderDirPath / "ibl" / "iblBrdf.frag";
   Shader brdfShader(brdfVertPath.c_str(), brdfFragPath.c_str());
   return brdfShader;
 }
 Shader loadBackgroundShader() {
-  fs::path bgVertPath = shaderDirPath / "iblBackground.vert";
-  fs::path bgFragPath = shaderDirPath / "iblBackground.frag";
+  fs::path bgVertPath = shaderDirPath / "ibl" / "iblBackground.vert";
+  fs::path bgFragPath = shaderDirPath / "ibl" / "iblBackground.frag";
   Shader backgroundShader(bgVertPath.c_str(), bgFragPath.c_str());
   backgroundShader.useProgram();
   backgroundShader.setIntUni("environmentMap", 0);
@@ -145,7 +145,6 @@ void renderCubeToFbo(Shader shdr, GLuint texture,
     renderCube();
   }
 }
-
 
 int main() {
   initializeGLFWMajorMinor(4, 3);

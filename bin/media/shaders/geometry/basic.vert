@@ -6,16 +6,15 @@ layout(location = 3) in vec3 aTan;
 layout(location = 4) in vec3 aBiTan;
 
 out vec2 TexCoord;
+out mat3 TBN;
 out vec3 FragPos;
 out vec3 Normal;
-out mat3 TBN;
 
 uniform mat4 projection;
 uniform mat4 model;
 uniform mat4 view;
 
 void main() {
-  TexCoord = aTexCoord;
   FragPos = vec3(model * vec4(aPos, 1.0));
   TexCoord = aTexCoord;
   Normal = vec3(model * vec4(aNormal, 1.0));

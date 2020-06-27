@@ -57,6 +57,8 @@ Here is a list of covered topics roughly ordered from simple to advanced:
 
 - Rendering a model with PBR materials: `model/pbr.cpp`
 
+- Rendering a model with Geometry Shader: `geometry/geometry.cpp`
+
 - Simple Image Processing using Frame Buffer Object:
   `fbo/fbo.cpp`
 
