@@ -3,6 +3,7 @@
 in vec3 Normal;
 in vec3 FragPos;
 in vec2 TexCoord;
+in mat3 TBN;
 
 out vec4 FragColor;
 
@@ -14,6 +15,8 @@ uniform float lightIntensity = 1.0;
 // textures
 uniform sampler2D diffuseMap1;
 uniform sampler2D specularMap1;
+uniform sampler2D heightMap1;
+uniform sampler2D normalMap1;
 uniform vec3 viewPos;
 uniform vec3 lightPos;
 
@@ -26,8 +29,8 @@ vec3 getSpecColor(vec3 lightDir, vec3 normal);
 
 void main() {
 
-  // vec3 color = texture(diffuseMap1, TexCoord).rgb;
-  vec3 color = vec3(0.6, 0, 0.1);
+  vec3 color = texture(diffuseMap1, TexCoord).rgb;
+  // vec3 color = vec3(0.6, 0, 0.1);
   // ambient term I_a × O_d × k_a
   vec3 ambient = color * ambientCoeff;
 
@@ -59,7 +62,12 @@ float computeAttenuation(vec3 att) {
   float result = att.x + att2 + att1;
   return min(1 / result, 1.0);
 }
-vec3 getSurfaceNormal() { return normalize(Normal); }
+vec3 getSurfaceNormal() {
+  // return normalize(Normal);
+  vec3 normal1 = texture(heightMap1, TexCoord).rgb;
+  normal1 = normal1 * 2.0 - 1.0;
+  return normalize(TBN * normal1);
+}
 
 vec3 getLightDir() { return normalize(lightPos - FragPos); }
 vec3 getViewDir() { return normalize(viewPos - FragPos); }
