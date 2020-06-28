@@ -1,0 +1,11 @@
+#version 430 core
+layout(location = 0) in vec2 aPos;
+layout(location = 1) in vec2 aTexCoord;
+
+out vec2 TexCoords;
+
+void main() {
+  TexCoords = aTexCoord;
+  vec2 screenPos = aPos.xy;
+  gl_Position = vec4(screenPos.x, screenPos.y, 0.0, 1.0);
+}
