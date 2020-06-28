@@ -74,22 +74,22 @@ void moveCamera(GLFWwindow *window) {
 void moveLight(GLFWwindow *window) {
   // move light
   if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-    lightPos.y += 0.05f;
+    lightPos.y += deltaTime;
   }
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-    lightPos.y -= 0.05f;
+    lightPos.y -= deltaTime;
   }
   if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-    lightPos.x += 0.05f;
+    lightPos.x += deltaTime;
   }
   if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-    lightPos.x -= 0.05f;
+    lightPos.x -= deltaTime;
   }
   if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-    lightPos.z -= 0.05f; // the axis are inverse
+    lightPos.z -= deltaTime; // the axis are inverse
   }
   if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-    lightPos.z += 0.05f;
+    lightPos.z += deltaTime;
   }
 }
 void rotateScaleLight(GLFWwindow *window) {
@@ -98,34 +98,34 @@ void rotateScaleLight(GLFWwindow *window) {
 void moveObject(GLFWwindow *window) {
   //
   if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-    transVec.x = 0.05f;
+    transVec.x = deltaTime;
     transVec.y = 0.0f;
     transVec.z = 0.0f;
     modelMat = glm::translate(modelMat, transVec);
   }
   if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-    transVec.x = -0.05f;
+    transVec.x = -deltaTime;
     transVec.y = 0.0f;
     transVec.z = 0.0f;
 
     modelMat = glm::translate(modelMat, transVec);
   }
   if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
-    transVec.y = 0.05f;
+    transVec.y = deltaTime;
     transVec.x = 0.0f;
     transVec.z = 0.0f;
 
     modelMat = glm::translate(modelMat, transVec);
   }
   if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) {
-    transVec.y = -0.05f;
+    transVec.y = -deltaTime;
     transVec.x = 0.0f;
     transVec.z = 0.0f;
 
     modelMat = glm::translate(modelMat, transVec);
   }
   if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) {
-    transVec.z = 0.05f;
+    transVec.z = deltaTime;
     transVec.y = 0.0f;
     transVec.x = 0.0f;
 
@@ -264,7 +264,6 @@ GLuint loadTexture2d(const char *texturePath, GLuint tex,
     if (nbChannels == 1) {
       informat = format = GL_RED;
     } else if (nbChannels == 3) {
-      format = GL_RGB;
       format = GL_RGB;
       informat = isGamma ? GL_SRGB : GL_RGB;
 

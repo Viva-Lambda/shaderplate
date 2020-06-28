@@ -3,6 +3,7 @@
 
 // includes
 #include <custom/external.hpp>
+#include <stdexcept>
 namespace fs = std::filesystem;
 
 void checkShaderCompilation(GLuint shader, const char *shaderType) {
@@ -50,6 +51,8 @@ public:
          const GLchar *computePath);
   Shader(std::vector<fs::path> shaderPaths,
          std::vector<std::string> shaderTypes);
+  Shader(const GLchar *vertexSource, const GLchar *fragmentSource,
+         bool fromSource);
 
   void useProgram();
 
@@ -203,6 +206,32 @@ Shader::Shader(const GLchar *vertexPath, const GLchar *fragmentPath,
   glDeleteShader(vshader);
   glDeleteShader(fshader);
   glDeleteShader(cshader);
+}
+
+Shader::Shader(const GLchar *vertexSource, const GLchar *fragmentSource,
+               bool fromSource) {
+  if (!fromSource) {
+    std::invalid_argument("if passed source to args, check must be true");
+  }
+  this->programId = glCreateProgram();
+  GLuint vshader;
+  glShaderSource(vshader, 1, &vertexSource, NULL);
+  glCompileShader(vshader);
+
+  // a sanity check for unsuccessful compilations
+  checkShaderCompilation(vshader, "VERTEX");
+  glAttachShader(this->programId, vshader);
+  GLuint fshader;
+  glShaderSource(fshader, 1, &fragmentSource, NULL);
+  glCompileShader(fshader);
+
+  // a sanity check for unsuccessful compilations
+  checkShaderCompilation(fshader, "FRAGMENT");
+  glAttachShader(this->programId, fshader);
+  glLinkProgram(this->programId);
+  checkShaderProgramCompilation(this->programId);
+  glDeleteShader(vshader);
+  glDeleteShader(fshader);
 }
 
 // fourth more general constructor

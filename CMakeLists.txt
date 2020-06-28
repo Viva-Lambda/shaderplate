@@ -151,6 +151,7 @@ add_executable(ibl.out
     )
 add_executable(vct.out 
     "src/glad.c"
+    "src/vct/vctutils.hpp"
     "src/vct/vct.cpp"
     )
 #target_link_libraries(myWin.out ${ALL_LIBS})

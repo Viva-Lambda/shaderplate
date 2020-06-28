@@ -184,8 +184,10 @@ int main() {
     }
     lightV = glm::lookAt(lightPos, glm::vec3(0), glm::vec3(0, 1, 0));
     lightSpaceMat = lightP * lightV;
+
     depthShader.useProgram();
     depthShader.setMat4Uni("lightSpaceMat", lightSpaceMat);
+
     glViewport(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -201,6 +203,7 @@ int main() {
     // render the scene normally with the generated shadowmap
     glViewport(0, 0, WINWIDTH, WINHEIGHT);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     shadowShader.useProgram();
     glm::mat4 view = camera.getViewMatrix();
     glm::mat4 projection = glm::perspective(
