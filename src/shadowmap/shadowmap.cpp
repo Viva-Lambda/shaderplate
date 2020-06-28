@@ -35,6 +35,13 @@ Shader loadLampShader() {
   return lampShader;
 }
 
+GLuint loadStoneTexture() {
+  //
+  fs::path stonePath = textureDirPath / "Stone_001_Diffuse.png";
+  GLuint stone_texture = loadTexture2d(stonePath.c_str());
+  return stone_texture;
+}
+
 bool isPerspective = false;
 
 int main() {
@@ -109,8 +116,7 @@ int main() {
   glBindVertexArray(0);
 
   // --------------- load textures ------------------
-  fs::path stonePath = textureDirPath / "Stone_001_Diffuse.png";
-  GLuint stone_texture = loadTexture2d(stonePath.c_str());
+  GLuint stone_texture = loadA2DTexture();
 
   // --------------- setup FBO ----------------------
   const unsigned int SHADOW_MAP_WIDTH = 1024;

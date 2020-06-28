@@ -376,4 +376,14 @@ void cubeShaderInit_proc(Shader myShader) {
   myShader.setIntUni("normalMap1", 2);
 }
 
+/**
+  A convenience function for loading a 2D texture
+ */
+GLuint loadA2DTexture() {
+  //
+  fs::path stonePath = textureDirPath / "Stone_001_Diffuse.png";
+  GLuint stone_texture = loadTexture2d(stonePath.c_str());
+  return stone_texture;
+}
+
 #endif

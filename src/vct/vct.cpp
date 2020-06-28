@@ -24,6 +24,7 @@ GLuint voxel3DTexture; // for storing voxel values
 // ---------------------- shadow map related ------------------------------
 GLuint shadowFBO, shadowMap;
 int depthResolution = 512;
+GLuint planeVAO;
 
 // ---------------------- end shadow map related --------------------------
 
@@ -40,6 +41,7 @@ glm::mat4 lightP =
 // --------------------- end of Global variables ---------------------------
 
 // ----------------------- Textures ---------------------------------------
+GLuint stoneTexture;
 
 /**
   Create a debugging texture
@@ -193,6 +195,24 @@ Shader loadLampShader() {
   return modelShader;
 }
 
+/**
+  A plane shader to show shadows
+ */
+Shader loadPlaneShader() {
+  fs::path vpath = shaderDirPath / "vct" / "plane.vert";
+  fs::path fpath = shaderDirPath / "vct" / "plane.frag";
+  Shader planeShader(vpath.c_str(), fpath.c_str());
+  return planeShader;
+}
+
+void initPlaneShader(Shader planeShader, glm::mat4 viewMat, glm::mat4 modelMat,
+                     glm::mat4 projection) {
+  planeShader.useProgram();
+  planeShader.setMat4Uni("view", viewMat);
+  planeShader.setMat4Uni("model", modelMat);
+  planeShader.setMat4Uni("projection", projection);
+}
+
 void initLampShader(Shader lampShader, glm::mat4 lampModel,
                     glm::mat4 projection, glm::mat4 viewMat,
                     float lightIntensity) {
@@ -225,6 +245,9 @@ Shader loadShadowShader() {
 
 void initShadowShader(Shader shadowShader) {
   // shadowShader.setMat4Uni("lightSpaceMat", )
+  shadowShader.useProgram();
+  shadowShader.setIntUni("diffuseMap1", 0);
+  shadowShader.setIntUni("shadowMap", 1);
 }
 
 Shader loadQuadShader() {
@@ -271,7 +294,8 @@ void renderVoxel();
 void renderShadowMap();
 void debugRender();
 void renderNormalScene(Model backpack, Model lamp, Shader modelShader,
-                       Shader lampShader);
+                       Shader lampShader, Shader planeShader);
+void renderPlaneWithTexture();
 
 // ------------------------ end drawing procedures -----------------------
 
@@ -332,9 +356,11 @@ int main() {
 
   Shader modelShader = loadModelShader();
   Shader lampShader = loadLampShader();
-  Shader shadowShader = loadShadowShader();
   Shader quadShader = loadQuadShader();
+  Shader planeShader = loadPlaneShader();
+  Shader shadowShader = loadShadowShader();
   // cubeShaderInit_proc(lampShader);
+  GLuint stoneTexture = loadA2DTexture();
 
   while (glfwWindowShouldClose(window) == 0) {
     float currentTime = (float)glfwGetTime();
@@ -345,8 +371,10 @@ int main() {
     glClearColor(0.0f, 0.1f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // 1. draw shadow maps = render scene from light's perspective
+
     //
-    renderNormalScene(backpack, lamp, modelShader, lampShader);
+    renderNormalScene(backpack, lamp, modelShader, lampShader, planeShader);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -363,18 +391,22 @@ void debugRender() {
 }
 
 void renderNormalScene(Model backpack, Model lamp, Shader modelShader,
-                       Shader lampShader) {
+                       Shader lampShader, Shader planeShader) {
   // render normal scene
   glm::mat4 projection =
       glm::perspective(glm::radians(camera.zoom),
                        (float)WINWIDTH / (float)WINHEIGHT, 0.1f, 100.0f);
   glm::mat4 viewMat = camera.getViewMatrix();
   glm::vec3 viewPos = camera.pos;
+  glm::mat4 modelMat(1.0f);
+  initPlaneShader(planeShader, viewMat, modelMat, projection);
+  renderPlane();
 
   // set uniforms to model shader
+  modelMat = glm::mat4(1);
+  modelMat = glm::translate(modelMat, glm::vec3(0, 2.0, 0.0));
   initModelShader(modelShader, viewMat, modelMat, projection, viewPos,
                   lightPos);
-  modelShader.useProgram();
 
   // draw model
   backpack.Draw(modelShader);
