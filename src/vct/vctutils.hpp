@@ -520,11 +520,12 @@ void renderShadowMap(Shader shadowShader, Model sponza, Model lamp) {
   glm::mat4 modelMat(1.0f);
   shadowShader.setMat4Uni("model", modelMat);
 
-  sponza.Draw(shadowShader);
-  lamp.Draw(shadowShader);
+  sponza.Draw(shadowShader, shadowFBO);
+  lamp.Draw(shadowShader, shadowFBO);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   glViewport(currentViewport[0], currentViewport[1], width, height);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void renderDebugDepth(Shader debugDepthShader) {

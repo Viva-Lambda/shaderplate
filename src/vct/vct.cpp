@@ -77,17 +77,16 @@ int main() {
     // 1. draw shadow maps = render scene from light's perspective
 
     // consider back face of objects when computing limits
-    // glCullFace(GL_FRONT);
-    // renderShadowMap(shadowShader, sponza, lamp);
-    // glCullFace(GL_BACK);
+    glCullFace(GL_FRONT);
+    renderShadowMap(shadowShader, sponza, lamp);
+    glCullFace(GL_BACK);
 
     // 1.5 render debug information of depth buffer
     // renderDebugDepth(debugDepthShader);
-    renderDebugShadow(shadowShader, debugDepthShader, sponza, lamp);
-    // glCullFace(GL_FALSE);
+    // renderDebugShadow(shadowShader, debugDepthShader, sponza, lamp);
 
     // 2. render normal scene
-    // renderNormalScene(sponza, lamp, modelShader, lampShader, quadShader);
+    renderNormalScene(sponza, lamp, modelShader, lampShader, quadShader);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
