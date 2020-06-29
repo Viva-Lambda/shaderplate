@@ -6,8 +6,9 @@
 
 #include <custom/camera.hpp>
 #include <custom/image.hpp>
-#include <custom/shader.hpp>
+#include <custom/light.hpp>
 #include <custom/model.hpp>
+#include <custom/shader.hpp>
 //
 
 //
@@ -53,5 +54,8 @@ glm::vec3 zaxis(0, 0, 1);
 glm::vec3 lightPos = glm::vec3(0.2f, 1.0f, 0.5f);
 float lightIntensity = 1.0f;
 bool inTangent = false;
+DirectionalLight dirLight(glm::vec3(lightIntensity), glm::vec3(0, 1, 0));
+PointLight pointLight(glm::vec3(lightIntensity), lightPos);
+SpotLight spotLight(glm::vec3(lightIntensity), lightPos, glm::vec3(0, 1, 0));
 
 #endif

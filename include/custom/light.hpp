@@ -1,115 +1,123 @@
-// author: Kaan Eraslan
-
-// includes
-
 #ifndef LIGHT_HPP
 #define LIGHT_HPP
+#include <custom/external.hpp>
 
-class LightSource {
+using vec3 = glm::vec3;
+using point3 = vec3;
+using color = vec3;
+
+// default values for the camera
+const float LYAW = -90.0f;
+const float LPITCH = 0.0f;
+const float LSPEED = 2.5f;
+
+//
+
+enum LightMovement { L_FORWARD, L_BACKWARD, L_LEFT, L_RIGHT };
+
+class Light {
 public:
-  void setIntensity(glm::vec3 intensity);
-  void setIntensity(float red, float, green, float blue);
-  void setCoeff(glm::vec3 coefficient);
-  void setCoeff(float redc, float greenc, float bluec);
-  glm::vec3 getIntensity(void);
-  glm::vec3 getCoeff(void);
-  glm::vec3 getColor(void);
-  LightSource(glm::vec3 intensity, glm::vec3 coeff) {
-    this->intensity = intensity;
-    this->coefficient = coeff;
-    this->updateColor();
+  color emitColor;
+
+  virtual bool emitted(color &emits) const {
+    emits = emitColor;
+    return true;
   }
-  LightSource(float red, float redc, float green, float greenc, float blue,
-              float bluec) {
-    this->intensity = glm::vec3(red, green, blue);
-    this->coefficient = glm::vec3(redc, greenc, bluec);
-    this->updateColor();
+  Light(color lightColor) : emitColor(lightColor) {}
+};
+
+class DirectionalLight : public Light {
+public:
+  vec3 front;
+  vec3 up;
+  vec3 right;
+  vec3 worldUp;
+  float yaw, pitch;
+  DirectionalLight(color lightColor, vec3 wup, float y = LYAW, float p = LPITCH)
+      : Light(lightColor), yaw(y), pitch(p), worldUp(wup) {
+    updateDirection();
   }
-  ~LightSource();
+  void setYaw(float val) {
+    yaw = val;
+    updateDirection();
+  }
+  void setPitch(float val) {
+    pitch = val;
+    updateDirection();
+  }
 
 protected:
-  glm::vec3 intensity;
-  glm::vec3 coefficient;
-  glm::vec3 color;
-
-private:
-  void updateColor(void);
+  void updateDirection() {
+    //
+    front.x = cos(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
+    front.y = sin(glm::radians(this->pitch));
+    front.z = sin(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
+    front = glm::normalize(front);
+    right = glm::normalize(glm::cross(front, worldUp));
+    up = glm::normalize(glm::cross(right, front));
+  }
 };
-
-// method declarations
-
-void LightSource::updateColor() {
-  // update color of the light source
-  this->color.x = this->intensity.x * this->coefficient.x;
-  this->color.y = this->intensity.y * this->coefficient.y;
-  this->color.z = this->intensity.z * this->coefficient.z;
-}
-
-void LightSource::setIntensty(glm::vec3 intensity) {
-  /* Set intensity vector to light source
-     and update the color afterwards
-   */
-  this->intensity = intensity;
-  this->updateColor();
-}
-void LightSource::setIntensty(float red, float green, float blue) {
-  /* Set intensity values to light source
-     and update the color afterwards
-   */
-  glm::vec3 intensity(red, green, blue);
-  this->intensity = intensity;
-  this->updateColor();
-}
-
-void LightSource::setCoeff(glm::vec3 coeff) {
-  /* Set coefficient vector to light source
-     and update the color afterwards
-   */
-  this->coefficient = coeff;
-  this->updateColor();
-}
-void LightSource::setCoeff(float redc, float greenc, float bluec) {
-  /* Set intensity values to light source
-     and update the color afterwards
-   */
-  glm::vec3 coeff(redc, greenc, bluec);
-  this->coefficient = coeff;
-  this->updateColor();
-}
-glm::vec3 LightSource::getCoeff() { return this->coefficient; }
-glm::vec3 LightSource::getColor() { return this->color; }
-glm::vec3 LightSource::getIntensity() { return this->intensity; }
-
-class DirectionalLight : public LightSource {
+class PointLight : public Light {
 public:
-    glm::vec3 direction;
-    DirectionalLight(glm::vec3 dir, glm::vec3 intval, glm::vec3 coeff)
-    {
-        direction = dir;
-        coefficient = coeff;
-        setIntensty(intval);
-    }
-    DirectionalLight(float dirx, float diry, float dirz, float intx,
-            float inty, float intz, float coeffx, float coeffy,
-            float coeffz)
-    {
-        direction = glm::vec3(dirx, diry, dirz);
-        coefficient = glm::vec3(coeffx, coeffy, coeffz);
-        setIntensty(intx, inty, intz);
-
-    }
-    void setDirection(float dirx, float diry, float dirz)
-    {
-        direction = glm::vec3(dirx, diry, dirz);
-    }
+  point3 position;
+  PointLight(color lightColor, point3 pos) : Light(lightColor), position(pos) {}
 };
 
-class PointLight : public DirectionalLight{
-    public:
-        glm::vec3 position;
-        float attenuationConstant;
-        float attenuationLinear;
-        float attenuationQuadratic;
+class SpotLight : public DirectionalLight, public PointLight {
+public:
+  float cutOff;
+  float outerCutoff;
+  float movementSpeed;
+  SpotLight(color lightColor, point3 pos, vec3 wup, float y = LYAW,
+            float p = LPITCH, float cutOffAngleDegree = 0.91,
+            float outerCut = 0.82, float mspeed = LSPEED)
+
+      : DirectionalLight(lightColor, wup, y, p), PointLight(lightColor, pos),
+        cutOff(glm::radians(cutOffAngleDegree)), outerCutoff(outerCut),
+        movementSpeed(mspeed) {}
+  glm::mat4 getViewMatrix() {
+    vec3 target = position - front;
+    vec3 lightDir = glm::normalize(position - target);
+    vec3 rightDir = glm::normalize(glm::cross(up, lightDir));
+    glm::vec3 realUp = glm::normalize(glm::cross(lightDir, rightDir));
+    //
+    glm::mat4 trans(1.0f);
+    trans[3][0] = -position.x;
+    trans[3][1] = -position.y;
+    trans[3][2] = -position.z;
+
+    //
+    glm::mat4 rotation(1.0f);
+    rotation[0][0] = rightDir.x;
+    rotation[1][0] = rightDir.y;
+    rotation[2][0] = rightDir.z;
+    rotation[0][1] = realUp.x;
+    rotation[1][1] = realUp.y;
+    rotation[2][1] = realUp.z;
+    rotation[0][2] = lightDir.x;
+    rotation[1][2] = lightDir.y;
+    rotation[2][2] = lightDir.z;
+    return rotation * trans;
+  }
+  void processKeyBoardRotate(LightMovement direction, float deltaTime) {
+
+    deltaTime *= movementSpeed;
+    switch (direction) {
+    case L_FORWARD:
+      pitch += deltaTime;
+      break;
+    case L_BACKWARD:
+      pitch -= deltaTime;
+      break;
+    case L_RIGHT:
+      yaw += deltaTime;
+      break;
+    case L_LEFT:
+      yaw -= deltaTime;
+      break;
+    }
+    updateDirection();
+  }
 };
 
 #endif

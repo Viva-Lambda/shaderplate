@@ -1,7 +1,3 @@
-// Author: Kaan Eraslan
-
-// includes
-
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 

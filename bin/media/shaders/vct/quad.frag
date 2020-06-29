@@ -12,7 +12,7 @@ void main() {
 
   // gamma correction
   float gamma = 2.2;
-  hdrColor = pow(hdrColor, vec3(1.0 / gamma));
+  // hdrColor = pow(hdrColor, vec3(1.0 / gamma));
   FragColor = vec4(hdrColor, 1.0);
   // FragColor = vec4(1.0);
 }

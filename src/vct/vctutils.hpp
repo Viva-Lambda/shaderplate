@@ -35,7 +35,7 @@ GLuint planeVAO;
 float light_near_plane = 0.01f;
 float light_far_plane = 1000.0f;
 glm::mat4 lightSpaceMat;
-glm::mat4 lightV = glm::lookAt(lightPos2, glm::vec3(0), glm::vec3(0, 1, 0));
+glm::mat4 lightV = spotLight.getViewMatrix();
 glm::mat4 lightP = glm::ortho(-1000.0f, 1000.0f, -1000.0f, 1000.0f,
                               light_near_plane, light_far_plane);
 
@@ -89,22 +89,38 @@ void moveCamera2(GLFWwindow *window) {
 void moveLight2(GLFWwindow *window) {
   // move light
   if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-    lightPos2.y += deltaTime2;
+    spotLight.position.y += deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-    lightPos2.y -= deltaTime2;
+    spotLight.position.y -= deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-    lightPos2.x += deltaTime2;
+    spotLight.position.x += deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-    lightPos2.x -= deltaTime2;
+    spotLight.position.x -= deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-    lightPos2.z -= deltaTime2; // the axis are inverse
+    spotLight.position.z -= deltaTime2; // the axis are inverse
   }
   if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-    lightPos2.z += deltaTime2;
+    spotLight.position.z += deltaTime2;
+  }
+}
+
+void rotateLight2(GLFWwindow *window) {
+  // move light
+  if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_LEFT, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_RIGHT, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_FORWARD, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_BACKWARD, 0.7f);
   }
 }
 void processInput_proc2(GLFWwindow *window) {
@@ -113,6 +129,7 @@ void processInput_proc2(GLFWwindow *window) {
   }
   moveCamera2(window);
   moveLight2(window);
+  rotateLight2(window);
   captureScreen(window);
 }
 
@@ -356,7 +373,7 @@ void loadDefaultFboTexture() {
 
 void cubeShaderInit_proc2(Shader myShader) {
   myShader.useProgram();
-  float ambientCoeff = 0.1f;
+  float ambientCoeff = 0.01f;
   float shininess = 20.0f;
   glm::vec3 attc(1.0f, 0.0f, 0.0f);
   myShader.setFloatUni("ambientCoeff", ambientCoeff);
@@ -367,26 +384,27 @@ void cubeShaderInit_proc2(Shader myShader) {
 
 Shader loadModelShader() {
   //
-  fs::path vpath = shaderDirPath / "highPolyModel.vert";
-  fs::path fpath = shaderDirPath / "highPolyModelSimple.frag";
+  fs::path vpath = shaderDirPath / "vct" / "highPolyModel.vert";
+  fs::path fpath = shaderDirPath / "vct" / "highPolyModelSimple.frag";
   Shader modelShader(vpath.c_str(), fpath.c_str());
   cubeShaderInit_proc2(modelShader);
   return modelShader;
 }
 void initModelShader(Shader modelShader, glm::mat4 viewMat, glm::mat4 modelMat,
                      glm::mat4 projection, glm::vec3 viewPos,
-                     glm::vec3 lightPos2) {
+                     glm::vec3 lightPos2, glm::vec3 camFront) {
   modelShader.useProgram();
   modelShader.setMat4Uni("view", viewMat);
   modelShader.setMat4Uni("model", modelMat);
   modelShader.setMat4Uni("projection", projection);
   modelShader.setVec3Uni("viewPos", viewPos);
-  modelShader.setVec3Uni("lightPos", lightPos2);
+  modelShader.setVec3Uni("lightPos", spotLight.position);
+  modelShader.setVec3Uni("inLightDir", spotLight.front);
 }
 
 Shader loadLampShader() {
-  fs::path vpath = shaderDirPath / "highPolyModel.vert";
-  fs::path fpath = shaderDirPath / "basic_color_light.frag";
+  fs::path vpath = shaderDirPath / "vct" / "sphere.vert";
+  fs::path fpath = shaderDirPath / "vct" / "sphere.frag";
   Shader modelShader(vpath.c_str(), fpath.c_str());
   return modelShader;
 }
@@ -399,7 +417,7 @@ void initLampShader(Shader lampShader, glm::mat4 lampModel,
   lampShader.setMat4Uni("model", lampModel);
   lampShader.setMat4Uni("projection", projection);
   lampShader.setMat4Uni("view", viewMat);
-  lampShader.setVec3Uni("lightColor", glm::vec3(lightIntensity));
+  lampShader.setFloatUni("lightIntensity", 100.0f);
 }
 
 Shader loadVoxelizationShader() {
@@ -452,7 +470,7 @@ Shader loadQuadShader() {
 
 Model loadSponzaModel() {
   fs::path modPath = modelPath / "sponza" / "sponza.obj";
-  // stbi_set_flip_vertically_on_load(true);
+  stbi_set_flip_vertically_on_load(true);
   Model modelB(modPath, flags, true, false, true);
   return modelB;
 }
@@ -526,6 +544,94 @@ void renderNormalScene(Model sponza, Model lamp, Shader modelShader,
 void renderPlaneWithTexture();
 
 // ------------------------ end drawing procedures -----------------------
+unsigned int sphereVAO2 = 0;
+unsigned int indexCount2;
+void renderSphere2(GLuint &fbo) {
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  if (sphereVAO2 == 0) {
+    glGenVertexArrays(1, &sphereVAO2);
+
+    unsigned int vbo, ebo;
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec2> uv;
+    std::vector<glm::vec3> normals;
+    std::vector<unsigned int> indices;
+
+    const unsigned int X_SEGMENTS = 64;
+    const unsigned int Y_SEGMENTS = 64;
+    const float PI = 3.14159265359;
+    for (unsigned int y = 0; y <= Y_SEGMENTS; ++y) {
+      for (unsigned int x = 0; x <= X_SEGMENTS; ++x) {
+        float xSegment = (float)x / (float)X_SEGMENTS;
+        float ySegment = (float)y / (float)Y_SEGMENTS;
+        float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+        float yPos = std::cos(ySegment * PI);
+        float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+        positions.push_back(glm::vec3(xPos, yPos, zPos));
+        uv.push_back(glm::vec2(xSegment, ySegment));
+        normals.push_back(glm::vec3(xPos, yPos, zPos));
+      }
+    }
+
+    bool oddRow = false;
+    for (unsigned int y = 0; y < Y_SEGMENTS; ++y) {
+      if (!oddRow) // even rows: y == 0, y == 2; and so on
+      {
+        for (unsigned int x = 0; x <= X_SEGMENTS; ++x) {
+          indices.push_back(y * (X_SEGMENTS + 1) + x);
+          indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+        }
+      } else {
+        for (int x = X_SEGMENTS; x >= 0; --x) {
+          indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+          indices.push_back(y * (X_SEGMENTS + 1) + x);
+        }
+      }
+      oddRow = !oddRow;
+    }
+    indexCount2 = indices.size();
+
+    std::vector<float> data;
+    for (std::size_t i = 0; i < positions.size(); ++i) {
+      data.push_back(positions[i].x);
+      data.push_back(positions[i].y);
+      data.push_back(positions[i].z);
+      if (uv.size() > 0) {
+        data.push_back(uv[i].x);
+        data.push_back(uv[i].y);
+      }
+      if (normals.size() > 0) {
+        data.push_back(normals[i].x);
+        data.push_back(normals[i].y);
+        data.push_back(normals[i].z);
+      }
+    }
+    glBindVertexArray(sphereVAO2);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0],
+                 GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint),
+                 &indices[0], GL_STATIC_DRAW);
+    float stride = (3 + 2 + 3) * sizeof(float);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
+                          (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+                          (void *)(6 * sizeof(float)));
+  }
+
+  glBindVertexArray(sphereVAO2);
+  glDrawElements(GL_TRIANGLE_STRIP, indexCount2, GL_UNSIGNED_INT, 0);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
 
 void renderNormalScene(Model &sponza, Model &lamp, Shader &modelShader,
                        Shader &lampShader, Shader &quadShader) {
@@ -547,7 +653,7 @@ void renderNormalScene(Model &sponza, Model &lamp, Shader &modelShader,
 
   // set uniforms to model shader
   initModelShader(modelShader, viewMat, modelMat, projection, viewPos,
-                  lightPos2);
+                  lightPos2, camera.front);
 
   // draw model
   sponza.Draw(modelShader, defaultFBO);
@@ -555,12 +661,14 @@ void renderNormalScene(Model &sponza, Model &lamp, Shader &modelShader,
   // draw the lamp
   // unbind the light vertex array object
   glm::mat4 lampModel(1.0f);
-  lampModel = glm::translate(lampModel, lightPos2);
-  lampModel = glm::scale(lampModel, glm::vec3(0.5f));
+  lampModel = glm::translate(lampModel, spotLight.position);
+  lampModel = glm::scale(lampModel, glm::vec3(2.0f));
 
   initLampShader(lampShader, lampModel, projection, viewMat, lightIntensity);
   // render lamp
-  lamp.Draw(lampShader, defaultFBO);
+  lampShader.useProgram();
+  renderSphere2(defaultFBO);
+  // lamp.Draw(lampShader);
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
