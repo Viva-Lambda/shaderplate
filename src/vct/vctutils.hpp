@@ -27,7 +27,7 @@ GLuint mipmapLevels = static_cast<GLuint>(glm::log2((float)voxelResolution));
 GLuint voxel3DTexture; // for storing voxel values
 
 // ---------------------- shadow map related ------------------------------
-GLuint shadowFBO, shadowMap;
+GLuint shadowFBO, shadowMap = 0;
 int depthResolution = 512;
 GLuint planeVAO;
 
@@ -296,10 +296,10 @@ void loadShadowTexture() {
   glGenTextures(1, &shadowMap);
 
   glBindTexture(GL_TEXTURE_2D, shadowMap);
-  glTexStorage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, depthResolution,
-                 depthResolution);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, depthResolution,
+               depthResolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   //
@@ -447,7 +447,7 @@ void initShadowShader(Shader shadowShader) {
 }
 
 Shader loadDebugDepthShader() {
-  fs::path vpath = shaderDirPath / "vct" / "debug_depth.vert";
+  fs::path vpath = shaderDirPath / "vct" / "quad.vert";
   fs::path fpath = shaderDirPath / "vct" / "debug_depth.frag";
   Shader depthShader(vpath.c_str(), fpath.c_str());
   depthShader.useProgram();
@@ -534,8 +534,6 @@ void renderDebugDepth(Shader debugDepthShader) {
   renderQuad();
 }
 
-void renderDebugShadow(Shader shadowShader, Shader debugDepthShader,
-                       Model sponza, Model lamp);
 void renderVoxel();
 void renderShadowMap();
 void debugRender();
@@ -681,15 +679,14 @@ void renderNormalScene(Model &sponza, Model &lamp, Shader &modelShader,
 
   // glEnable(GL_DEPTH_TEST);
 }
-void renderDebugShadow(Shader shadowShader, Shader debugDepthShader,
-                       Model sponza, Model lamp) {
+void renderDebugShadow(Shader &shadowShader, Shader &debugDepthShader,
+                       Model &sponza, Model &lamp) {
   float near_plane = 1.0f, far_plane = 7.5f;
 
   bool isPerspective = false;
   glm::mat4 lightProjection =
       glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-  glm::mat4 lightView =
-      glm::lookAt(lightPos2, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+  glm::mat4 lightView = spotLight.getViewMatrix();
   glm::mat4 lightSpaceMatrix = lightProjection * lightView;
   // lightSpaceMat = lightP * lightV; // create lightspace matrix to render
   // scene with respect to light
@@ -707,6 +704,7 @@ void renderDebugShadow(Shader shadowShader, Shader debugDepthShader,
 
   // clear the content of the previous framebuffer
   glClear(GL_DEPTH_BUFFER_BIT);
+  glActiveTexture(GL_TEXTURE0);
 
   // drawing pass with shadow shader
   shadowShader.useProgram();
@@ -715,12 +713,14 @@ void renderDebugShadow(Shader shadowShader, Shader debugDepthShader,
   glm::mat4 modelMat(1.0f);
   shadowShader.setMat4Uni("model", modelMat);
 
-  sponza.Draw(shadowShader);
-  lamp.Draw(shadowShader);
+  sponza.Draw(shadowShader, shadowFBO);
+  lamp.Draw(shadowShader, shadowFBO);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   glViewport(currentViewport[0], currentViewport[1], width, height);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // render to depth
   debugDepthShader.useProgram();
   debugDepthShader.setFloatUni("nearPlane", near_plane);
   debugDepthShader.setFloatUni("farPlane", far_plane);

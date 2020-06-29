@@ -83,11 +83,11 @@ int main() {
 
     // 1.5 render debug information of depth buffer
     // renderDebugDepth(debugDepthShader);
-    // renderDebugShadow(shadowShader, debugDepthShader, sponza, lamp);
+    renderDebugShadow(shadowShader, debugDepthShader, sponza, lamp);
     // glCullFace(GL_FALSE);
 
     // 2. render normal scene
-    renderNormalScene(sponza, lamp, modelShader, lampShader, quadShader);
+    // renderNormalScene(sponza, lamp, modelShader, lampShader, quadShader);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
