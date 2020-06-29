@@ -1,6 +1,6 @@
 #version 330
 
-in vec2 TexCoord;
+in vec2 TexCoords;
 out vec4 FragColor;
 
 uniform sampler2D depthMap;
@@ -16,12 +16,15 @@ float get_linear_depth(float depth) {
 }
 
 void main() {
-  float depth = texture2D(depthMap, TexCoord).r;
+  float depth = texture2D(depthMap, TexCoords).r;
   // debugging part
   if (isPerspective) {
     FragColor = vec4(vec3(get_linear_depth(depth) / farPlane), 1.0); //
+    // FragColor = vec4(1.0); //
+
     // perspective projection
   } else {
     FragColor = vec4(vec3(depth), 1.0); // ortographic projection
+    // FragColor = vec4(depth); //
   }
 }

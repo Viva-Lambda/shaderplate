@@ -3,7 +3,6 @@
 #define MODEL_HPP
 
 // declare libs
-#include <GL/glext.h>
 #include <cmath>
 #include <custom/external.hpp>
 
@@ -13,6 +12,7 @@
 #include <custom/image.hpp>
 #include <custom/mesh.hpp>
 #include <custom/shader.hpp>
+#include <sstream>
 
 //
 namespace fs = std::filesystem;
@@ -46,6 +46,7 @@ public:
         bool vertex_only = false, bool hdr_only = false)
       : isGammaCorrected(gamma), postProcessFlags(flags),
         isVertexOnly(vertex_only), isHdr(hdr_only) {
+
     load_model(fpath);
     std::cout << "Some statistics about model:" << std::endl;
     std::cout << "maximum number of ambient occlusion maps: " << max_ao_nb
@@ -76,20 +77,11 @@ public:
       meshes[i].draw(shdr);
     }
   }
-  void Draw(Shader shdr, unsigned int mcount) {
-    if (mcount >= meshes.size()) {
-      throw std::invalid_argument(
-          "given mesh count is bigger than available meshes: ");
-    }
-    for (int i = 0; i < mcount; i++) {
-      //
-      meshes[i].draw(shdr);
-    }
-  }
   /**
-    draw some of the meshes not all
-   */
-  void Draw(Shader shdr, unsigned int mstart, unsigned int mend, bool isSlice) {
+  draw some of the meshes not all
+ */
+  void Draw(Shader shdr, const unsigned int &mstart, const unsigned int &mend,
+            bool isSlice) {
     if (mend >= meshes.size()) {
       throw std::invalid_argument(
           "given end mesh count is bigger than available meshes: ");
@@ -102,77 +94,16 @@ public:
   /**
     Drawing to hdr fbo then to a quad shader
    */
-  void Draw(Shader meshShader, unsigned int screenWidth,
-            unsigned int screenHeight) {
-    setupHdrFbo(screenWidth, screenHeight);
-    glBindFramebuffer(GL_FRAMEBUFFER, hdrFbo);
+  void Draw(Shader meshShader, const GLuint &fbo) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     for (int i = 0; i < meshes.size(); i++) {
       //
       meshes[i].draw(meshShader);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // clean up
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // activate quad shader
-    Shader quadShader(quadVertSource, quadFragSource, true);
-    quadShader.useProgram();
-
-    // activate previous fbo texture
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, hdrColor);
-    renderQuad();
   }
 
 private:
-  GLuint hdrFbo;
-  GLuint hdrRbo;
-  GLuint hdrColor;
-  GLchar const *quadVertSource = R"(#version 330
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aTexCoord;
-
-out vec2 TexCoord;
-
-void main() {
-  TexCoord = aTexCoord;
-  gl_Position = vec4(aPos, 1);
-}
-          )";
-  GLchar const *quadFragSource = R"(#version 330
-in vec2 TexCoord;
-out vec4 FragColor;
-
-uniform sampler2D screenTexture;
-
-void main() { FragColor = vec4(texture2D(screenTexture, TexCoord).rgb, 1);
-})";
-
-private:
-  void setupHdrFbo(unsigned int w, unsigned int h) {
-    glGenFramebuffers(1, &hdrFbo);
-    // create floating point color buffer
-    glGenTextures(1, &hdrColor);
-    glBindTexture(GL_TEXTURE_2D, hdrColor);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT,
-                 NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // create depth buffer (renderbuffer)
-    glGenRenderbuffers(1, &hdrRbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, hdrRbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
-    // attach buffers
-    glBindFramebuffer(GL_FRAMEBUFFER, hdrFbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           hdrColor, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                              GL_RENDERBUFFER, hdrRbo);
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-      std::cout << "Framebuffer not complete!" << std::endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  }
   void load_model(fs::path model_path) {
     //
     Assimp::Importer import;

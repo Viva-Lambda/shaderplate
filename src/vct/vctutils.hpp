@@ -4,6 +4,8 @@
 #include <custom/utils.hpp>
 // --------------------- Global variables ---------------------------------
 float deltaTime2 = 1;
+
+glm::vec3 lightPos2 = glm::vec3(0.2f, 5.0f, 6.5f);
 // --------------------- Debug Related ------------------------------------
 GLuint debugTexture;
 
@@ -12,6 +14,10 @@ GLuint debugTexture;
 // the other for having 2d storage
 GLuint sceneTextureArray, sceneTexture;
 GLuint sceneFBO; // fbo of the scene
+
+GLuint defaultFBO; // default hdr rendering frame buffer
+GLuint defaultTex; // default hdr texture
+GLuint defaultRbo; // default hdr rbo
 
 // voxel related
 GLuint voxel2DTexture; // used for debugging purposes
@@ -25,20 +31,33 @@ GLuint shadowFBO, shadowMap;
 int depthResolution = 512;
 GLuint planeVAO;
 
-// ---------------------- end shadow map related --------------------------
-
 // -------------------------- light space ---------------------------------
 float light_near_plane = 0.01f;
 float light_far_plane = 1000.0f;
 glm::mat4 lightSpaceMat;
-glm::mat4 lightV = glm::lookAt(lightPos, glm::vec3(0), glm::vec3(0, 1, 0));
+glm::mat4 lightV = glm::lookAt(lightPos2, glm::vec3(0), glm::vec3(0, 1, 0));
 glm::mat4 lightP = glm::ortho(-1000.0f, 1000.0f, -1000.0f, 1000.0f,
                               light_near_plane, light_far_plane);
 
 // ----------------------- end light space --------------------------------
 
+// ------------------------ model related ------------------------------
+
+unsigned int flags = aiProcessPreset_TargetRealtime_MaxQuality;
+
 // --------------------- end of Global variables ---------------------------
 // --------------------- utils ----------------------
+
+/**
+ Get width and height of current viewport
+ */
+void getWidthHeightViewpor(int &w, int &h) {
+  //
+  GLint currentViewport[4];
+  glGetIntegerv(GL_VIEWPORT, currentViewport);
+  w = currentViewport[2];
+  h = currentViewport[3];
+}
 
 void moveCamera2(GLFWwindow *window) {
   //
@@ -70,22 +89,22 @@ void moveCamera2(GLFWwindow *window) {
 void moveLight2(GLFWwindow *window) {
   // move light
   if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-    lightPos.y += deltaTime2;
+    lightPos2.y += deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-    lightPos.y -= deltaTime2;
+    lightPos2.y -= deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-    lightPos.x += deltaTime2;
+    lightPos2.x += deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-    lightPos.x -= deltaTime2;
+    lightPos2.x -= deltaTime2;
   }
   if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-    lightPos.z -= deltaTime2; // the axis are inverse
+    lightPos2.z -= deltaTime2; // the axis are inverse
   }
   if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-    lightPos.z += deltaTime2;
+    lightPos2.z += deltaTime2;
   }
 }
 void processInput_proc2(GLFWwindow *window) {
@@ -97,7 +116,7 @@ void processInput_proc2(GLFWwindow *window) {
   captureScreen(window);
 }
 
-// ----------------------- Textures ---------------------------------------
+// ----------------------- Textures & FBO -----------------------------------
 /**
   Create a debugging texture
  */
@@ -173,10 +192,8 @@ void loadScene2DTextureArray() {
     glDeleteTextures(1, &sceneTextureArray);
   }
   // get current viewport size in order to set it back after loading
-  GLint currentViewport[4];
-  glGetIntegerv(GL_VIEWPORT, currentViewport);
-  int width = currentViewport[2];
-  int height = currentViewport[3];
+  int width, height;
+  getWidthHeightViewpor(width, height);
 
   glGenTextures(1, &sceneTextureArray);
   glBindTexture(GL_TEXTURE_2D_ARRAY, sceneTextureArray);
@@ -203,10 +220,8 @@ void loadScene2DTexture() {
     glDeleteTextures(1, &sceneTexture);
   }
   // get current viewport size in order to set it back after loading
-  GLint currentViewport[4];
-  glGetIntegerv(GL_VIEWPORT, currentViewport);
-  int width = currentViewport[2];
-  int height = currentViewport[3];
+  int width, height;
+  getWidthHeightViewpor(width, height);
 
   glGenTextures(1, &sceneTexture);
   glBindTexture(GL_TEXTURE_2D, sceneTexture);
@@ -264,16 +279,13 @@ void loadShadowTexture() {
   glGenTextures(1, &shadowMap);
 
   glBindTexture(GL_TEXTURE_2D, shadowMap);
-  glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, depthResolution,
+  glTexStorage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, depthResolution,
                  depthResolution);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   //
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_GEQUAL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
-                  GL_COMPARE_REF_TO_TEXTURE);
 }
 void loadShadowFbo() {
   // -------------------------- FBO ----------------------------------
@@ -307,6 +319,37 @@ void bindShadowFboToDebugTexture() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void loadDefaultFboTexture() {
+
+  int width, height;
+  getWidthHeightViewpor(width, height);
+
+  glGenFramebuffers(1, &defaultFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, defaultFBO);
+  // create a color attachment texture
+  glGenTextures(1, &defaultTex);
+  glBindTexture(GL_TEXTURE_2D, defaultTex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA,
+               GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         defaultTex, 0);
+  // create a renderbuffer object for depth and stencil attachment (we won't be
+  // sampling these)
+  glGenRenderbuffers(1, &defaultRbo);
+  glBindRenderbuffer(GL_RENDERBUFFER, defaultRbo);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, defaultRbo);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!"
+              << std::endl;
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 // ------------------ end of Textures --------------------------------------
 
 // ------------------------ shaders ----------------------------------------
@@ -332,13 +375,13 @@ Shader loadModelShader() {
 }
 void initModelShader(Shader modelShader, glm::mat4 viewMat, glm::mat4 modelMat,
                      glm::mat4 projection, glm::vec3 viewPos,
-                     glm::vec3 lightPos) {
+                     glm::vec3 lightPos2) {
   modelShader.useProgram();
   modelShader.setMat4Uni("view", viewMat);
   modelShader.setMat4Uni("model", modelMat);
   modelShader.setMat4Uni("projection", projection);
   modelShader.setVec3Uni("viewPos", viewPos);
-  modelShader.setVec3Uni("lightPos", lightPos);
+  modelShader.setVec3Uni("lightPos", lightPos2);
 }
 
 Shader loadLampShader() {
@@ -389,10 +432,45 @@ Shader loadDebugDepthShader() {
   fs::path vpath = shaderDirPath / "vct" / "debug_depth.vert";
   fs::path fpath = shaderDirPath / "vct" / "debug_depth.frag";
   Shader depthShader(vpath.c_str(), fpath.c_str());
+  depthShader.useProgram();
+  depthShader.setIntUni("depthMap", 0);
   return depthShader;
 }
 
+Shader loadQuadShader() {
+  //
+  fs::path vpath = shaderDirPath / "vct" / "quad.vert";
+  fs::path fpath = shaderDirPath / "vct" / "quad.frag";
+  Shader quadShader(vpath.c_str(), fpath.c_str());
+  quadShader.setIntUni("hdrQuad", 0);
+  return quadShader;
+}
+
 // ------------------------ end of shader ----------------------------------
+
+// ------------------------ start of model ----------------------------------
+
+Model loadSponzaModel() {
+  fs::path modPath = modelPath / "sponza" / "sponza.obj";
+  // stbi_set_flip_vertically_on_load(true);
+  Model modelB(modPath, flags, true, false, true);
+  return modelB;
+}
+Model loadLightModel() {
+  Model modelLight(modelPath / "sphere/scene.gltf", flags, true, false, true);
+  return modelLight;
+}
+
+// ------------------------ end of model ----------------------------------
+
+// ------------------------ set up ressoruces ----------------------------
+
+void setAllUp() {
+  loadDefaultFboTexture();
+  setShadowUp();
+  setSceneUp();
+  setVoxelUp();
+}
 
 // ------------------------ start drawing procedures -----------------------
 
@@ -403,10 +481,10 @@ void renderShadowMap(Shader shadowShader, Model sponza, Model lamp) {
   lightSpaceMat = lightP * lightV; // create lightspace matrix to render
                                    // scene with respect to light
 
+  int width, height;
+  getWidthHeightViewpor(width, height);
   GLint currentViewport[4];
   glGetIntegerv(GL_VIEWPORT, currentViewport);
-  int width = currentViewport[2];
-  int height = currentViewport[3];
 
   // set viewport to the size of shadow resolution
   glViewport(0, 0, depthResolution, depthResolution);
@@ -416,9 +494,6 @@ void renderShadowMap(Shader shadowShader, Model sponza, Model lamp) {
 
   // clear the content of the previous framebuffer
   glClear(GL_DEPTH_BUFFER_BIT);
-
-  // consider back face of objects when computing limits
-  glCullFace(GL_FRONT);
 
   // drawing pass with shadow shader
   shadowShader.useProgram();
@@ -441,6 +516,8 @@ void renderDebugDepth(Shader debugDepthShader) {
   renderQuad();
 }
 
+void renderDebugShadow(Shader shadowShader, Shader debugDepthShader,
+                       Model sponza, Model lamp);
 void renderVoxel();
 void renderShadowMap();
 void debugRender();
@@ -450,21 +527,14 @@ void renderPlaneWithTexture();
 
 // ------------------------ end drawing procedures -----------------------
 
-unsigned int flags = aiProcessPreset_TargetRealtime_MaxQuality;
+void renderNormalScene(Model &sponza, Model &lamp, Shader &modelShader,
+                       Shader &lampShader, Shader &quadShader) {
 
-Model loadSponzaModel() {
-  fs::path modPath = modelPath / "sponza" / "sponza.obj";
-  // stbi_set_flip_vertically_on_load(true);
-  Model modelB(modPath, flags, true, false, true);
-  return modelB;
-}
-Model loadLightModel() {
-  Model modelLight(modelPath / "sphere/scene.gltf", flags, false);
-  return modelLight;
-}
+  int width, height;
+  getWidthHeightViewpor(width, height);
+  glBindFramebuffer(GL_FRAMEBUFFER, defaultFBO);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-void renderNormalScene(Model sponza, Model lamp, Shader modelShader,
-                       Shader lampShader) {
   // render normal scene
   glm::mat4 projection =
       glm::perspective(glm::radians(camera.zoom),
@@ -477,19 +547,79 @@ void renderNormalScene(Model sponza, Model lamp, Shader modelShader,
 
   // set uniforms to model shader
   initModelShader(modelShader, viewMat, modelMat, projection, viewPos,
-                  lightPos);
+                  lightPos2);
 
   // draw model
-  sponza.Draw(modelShader);
+  sponza.Draw(modelShader, defaultFBO);
 
   // draw the lamp
   // unbind the light vertex array object
   glm::mat4 lampModel(1.0f);
-  lampModel = glm::translate(lampModel, lightPos);
+  lampModel = glm::translate(lampModel, lightPos2);
   lampModel = glm::scale(lampModel, glm::vec3(0.5f));
 
   initLampShader(lampShader, lampModel, projection, viewMat, lightIntensity);
   // render lamp
-  lamp.Draw(lampShader);
+  lamp.Draw(lampShader, defaultFBO);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // glDisable(GL_DEPTH_TEST);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  quadShader.useProgram();
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, defaultTex);
+  renderQuad();
+
+  // glEnable(GL_DEPTH_TEST);
 }
+void renderDebugShadow(Shader shadowShader, Shader debugDepthShader,
+                       Model sponza, Model lamp) {
+  float near_plane = 1.0f, far_plane = 7.5f;
+
+  bool isPerspective = false;
+  glm::mat4 lightProjection =
+      glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+  glm::mat4 lightView =
+      glm::lookAt(lightPos2, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+  glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+  // lightSpaceMat = lightP * lightV; // create lightspace matrix to render
+  // scene with respect to light
+
+  int width, height;
+  getWidthHeightViewpor(width, height);
+  GLint currentViewport[4];
+  glGetIntegerv(GL_VIEWPORT, currentViewport);
+
+  // set viewport to the size of shadow resolution
+  glViewport(0, 0, depthResolution, depthResolution);
+
+  // bind the framebuffer to which we will draw the shadow map
+  glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+
+  // clear the content of the previous framebuffer
+  glClear(GL_DEPTH_BUFFER_BIT);
+
+  // drawing pass with shadow shader
+  shadowShader.useProgram();
+  shadowShader.setMat4Uni("lightSpaceMat", lightSpaceMatrix);
+
+  glm::mat4 modelMat(1.0f);
+  shadowShader.setMat4Uni("model", modelMat);
+
+  sponza.Draw(shadowShader);
+  lamp.Draw(shadowShader);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  glViewport(currentViewport[0], currentViewport[1], width, height);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  debugDepthShader.useProgram();
+  debugDepthShader.setFloatUni("nearPlane", near_plane);
+  debugDepthShader.setFloatUni("farPlane", far_plane);
+  debugDepthShader.setBoolUni("isPerspective", isPerspective);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, shadowMap);
+  renderQuad();
+}
+
 #endif

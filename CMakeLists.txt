@@ -10,7 +10,7 @@ include_directories(
 
 
 set( GLFW_SHARED_LIB
-    "${PROJECT_SOURCE_DIR}/libs/glfw/src/libglfw.so")
+    "${PROJECT_SOURCE_DIR}/libs/glfw/src/libglfw.so.3.4")
 
 #set( ASSIMP_SHARED_LIB1
 #    "${PROJECT_SOURCE_DIR}/libs/assimp/libassimp.so")

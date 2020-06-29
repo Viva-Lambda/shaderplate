@@ -48,6 +48,8 @@ int main() {
   glEnable(GL_DEPTH_TEST);
 
   // load models
+  int w, h;
+  getWidthHeightViewpor(w, h);
   Model sponza = loadSponzaModel();
   Model lamp = loadLightModel();
   showKeys();
@@ -56,13 +58,12 @@ int main() {
   Shader lampShader = loadLampShader();
   Shader debugDepthShader = loadDebugDepthShader();
   Shader shadowShader = loadShadowShader();
+  Shader quadShader = loadQuadShader();
   // cubeShaderInit_proc(lampShader);
   GLuint stoneTexture = loadA2DTexture();
 
   // setting up necessary opengl ressources in arbitrary order
-  setSceneUp();
-  setVoxelUp();
-  setShadowUp();
+  setAllUp();
 
   while (glfwWindowShouldClose(window) == 0) {
     float currentTime = (float)glfwGetTime();
@@ -74,13 +75,19 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // 1. draw shadow maps = render scene from light's perspective
-    renderShadowMap(shadowShader, sponza, lamp);
+
+    // consider back face of objects when computing limits
+    // glCullFace(GL_FRONT);
+    // renderShadowMap(shadowShader, sponza, lamp);
+    // glCullFace(GL_BACK);
 
     // 1.5 render debug information of depth buffer
-    renderDebugDepth(debugDepthShader);
+    // renderDebugDepth(debugDepthShader);
+    // renderDebugShadow(shadowShader, debugDepthShader, sponza, lamp);
+    // glCullFace(GL_FALSE);
 
     // 2. render normal scene
-    // renderNormalScene(sponza, lamp, modelShader, lampShader);
+    renderNormalScene(sponza, lamp, modelShader, lampShader, quadShader);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -88,12 +95,3 @@ int main() {
   glfwTerminate();
   return 0;
 }
-
-void debugRender() {
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, debugTexture);
-  renderQuad();
-}
-
-
