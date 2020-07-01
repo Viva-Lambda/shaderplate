@@ -62,7 +62,12 @@ Here is a list of covered topics roughly ordered from simple to advanced:
 - Simple Image Processing using Frame Buffer Object:
   `fbo/fbo.cpp`
 
+- Shadow mapping: `shadowmap/shadowmap.cpp`
+
 - Rendering a cube inside a skybox/cubemap: `skybox/sky.cpp`
+
+- Rendering 10 backpacks with spot light using defered shading:
+  `defered/defered.cpp`
 
 - Rendering bloom effect (buggy) : `bloom/bloom.cpp`
 
