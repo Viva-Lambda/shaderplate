@@ -87,7 +87,7 @@ Model loadLightModel() {
 }
 Model loadBackpackModel() {
   fs::path modPath = modelPath / "backpack" / "backpack.obj";
-  stbi_set_flip_vertically_on_load(true);
+  // stbi_set_flip_vertically_on_load(true);
   Model modelB(modPath, flags, true, false, false);
   return modelB;
 }
@@ -195,7 +195,6 @@ int main() {
   glEnable(GL_DEPTH_TEST);
 
   // load model
-  Model lamp = loadLightModel();
   Model backpack = loadBackpackModel();
 
   std::vector<glm::vec3> objectPos;
@@ -260,7 +259,7 @@ int main() {
       model = glm::translate(model, objectPos[i]);
       model = glm::scale(model, glm::vec3(0.5f));
       geometryShader.setMat4Uni("model", model);
-      backpack.Draw(geometryShader);
+      backpack.Draw(geometryShader, gbufferFbo);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -325,10 +324,8 @@ int main() {
     basicLightShader.setMat4Uni("model", model);
     basicLightShader.setVec3Uni("lightColor", glm::vec3(lightIntensity));
 
-    lamp.Draw(basicLightShader);
-
     //
-    // renderSphere();
+    renderSphere();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
