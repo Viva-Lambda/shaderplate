@@ -26,7 +26,6 @@ uniform vec3 inLightDir;
 
 float computeAttenuation(vec3 att);
 vec3 getSurfaceNormal();
-vec3 getLightDir();
 vec3 getViewDir();
 vec3 getDiffuseColor(vec3 ldir, vec3 normal, vec3 color);
 vec3 getSpecColor(vec3 lightDir, vec3 normal);

@@ -154,6 +154,11 @@ add_executable(vct.out
     "src/vct/vctutils.hpp"
     "src/vct/vct.cpp"
     )
+add_executable(defered.out 
+    "src/glad.c"
+    "src/defered/defered.cpp"
+    )
+
 #target_link_libraries(myWin.out ${ALL_LIBS})
 target_link_libraries(texture.out ${ALL_LIBS})
 # 
@@ -181,6 +186,7 @@ target_link_libraries(pbr.out ${ALL_LIBS})
 target_link_libraries(pbr2.out ${ALL_LIBS})
 target_link_libraries(ibl.out ${ALL_LIBS})
 target_link_libraries(vct.out ${ALL_LIBS})
+target_link_libraries(defered.out ${ALL_LIBS})
 #target_link_libraries(simpleCompute.out ${ALL_LIBS})
 #target_link_libraries(compute3d.out ${ALL_LIBS})
 #target_link_libraries(compute01.out ${ALL_LIBS})
@@ -213,6 +219,7 @@ install(TARGETS pbr.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS pbr2.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS ibl.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS vct.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+install(TARGETS defered.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 #install(TARGETS simpleCompute.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 #install(TARGETS compute3d.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 #install(TARGETS compute01.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
