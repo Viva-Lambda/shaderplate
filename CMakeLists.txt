@@ -154,6 +154,11 @@ add_executable(vct.out
     "src/vct/vctutils.hpp"
     "src/vct/vct.cpp"
     )
+add_executable(lightprobs.out 
+    "src/glad.c"
+    "src/lightprobs/lightprobs2.cpp"
+    )
+
 add_executable(defered.out 
     "src/glad.c"
     "src/defered/defered.cpp"
@@ -179,6 +184,7 @@ target_link_libraries(fbo.out ${ALL_LIBS})
 target_link_libraries(shadowmap.out ${ALL_LIBS})
 target_link_libraries(bloom.out ${ALL_LIBS})
 target_link_libraries(argparse.out ${ALL_LIBS})
+target_link_libraries(lightprobs.out ${ALL_LIBS})
 # 
 ## using pbr based models
 target_link_libraries(modelPbr.out ${ALL_LIBS})
@@ -213,6 +219,7 @@ install(TARGETS fbo.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS shadowmap.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS bloom.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS argparse.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+install(TARGETS lightprobs.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 # 
 install(TARGETS modelPbr.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS pbr.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
