@@ -290,12 +290,6 @@ int main() {
     glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
     renderCubeD();
 
-    /*    equirectangularToCubemapShader.Use();
-    equirectangularToCubemapShader.setMat4("view", view");
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, hdrTexture);
-    renderCube();*/
-
     // -----------------------------------------------------------
     // At every frame, we follow a multi - step process to up - date probe
     // information in order to incorporate the effects of dynamic geometry
