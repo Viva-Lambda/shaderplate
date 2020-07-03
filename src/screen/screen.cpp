@@ -255,7 +255,7 @@ void genIrradianceCubeMap(GLuint lmapResolutionWidth,
 
 void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
                           GLuint &envCubemap, GLuint lmapResolutionWidth,
-                          GLuint lmapResolutionHeight,GLuint &captureFBO,
+                          GLuint lmapResolutionHeight, GLuint &captureFBO,
                           std::vector<glm::mat4> captureViews,
                           GLuint &irradianceCubemap) {
 
@@ -274,6 +274,66 @@ void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     renderCubeD();
+  }
+}
+
+void genPrefilterMap(GLuint &prefilterMap, GLuint prefilterMapWidth,
+                     GLuint prefilterMapHeight) {
+  glGenTextures(1, &prefilterMap);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+  for (unsigned int i = 0; i < 6; ++i) {
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
+                 prefilterMapWidth, prefilterMapHeight, 0, GL_RGB, GL_FLOAT,
+                 nullptr);
+  }
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR); // be sure to set minifcation filter
+                                            // to mip_linear
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  // generate mipmaps for the cubemap so OpenGL automatically allocates the
+  // required memory.
+  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+}
+
+void computePrefilterMap(Shader prefilterShader, Shader pbrShader, glm::mat4 captureProjection,
+                         GLuint captureWidth, GLuint &envCubemap,
+                         GLuint &captureFBO, GLuint &captureRBO,
+                         std::vector<glm::mat4> captureViews,
+                         GLuint &prefilterMap, GLuint prefilterMapWidth,
+                         GLuint prefilterMapHeight) {
+  prefilterShader.useProgram();
+  prefilterShader.setMat4Uni("projection", captureProjection);
+  prefilterShader.setFloatUni("cubemapResolution", (float)captureWidth);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  int maxMipLevels = 5;
+  pbrShader.useProgram();
+  pbrShader.setFloatUni("maxMipLevels", (float)maxMipLevels);
+  for (unsigned int mip = 0; mip < maxMipLevels; ++mip) {
+    // reisze framebuffer according to mip-level size.
+    GLuint mipWidth = prefilterMapWidth * std::pow(0.5, mip);
+    GLuint mipHeight = prefilterMapHeight * std::pow(0.5, mip);
+    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth,
+                          mipHeight);
+    glViewport(0, 0, mipWidth, mipHeight);
+
+    float roughness = (float)mip / (float)(maxMipLevels - 1);
+    prefilterShader.setFloatUni("roughness", roughness);
+    for (unsigned int i = 0; i < 6; ++i) {
+      prefilterShader.setMat4Uni("view", captureViews[i]);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap,
+                             mip);
+
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      renderCubeD();
+    }
   }
 }
 
@@ -408,59 +468,15 @@ int main() {
   // --------------------------------------------------------------------------------
   GLuint prefilterMap;
   GLuint prefilterMapWidth = 128, prefilterMapHeight = 128;
-  glGenTextures(1, &prefilterMap);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-  for (unsigned int i = 0; i < 6; ++i) {
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
-                 prefilterMapWidth, prefilterMapHeight, 0, GL_RGB, GL_FLOAT,
-                 nullptr);
-  }
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR_MIPMAP_LINEAR); // be sure to set minifcation filter
-                                            // to mip_linear
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  // generate mipmaps for the cubemap so OpenGL automatically allocates the
-  // required memory.
-  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+  genPrefilterMap(prefilterMap, prefilterMapWidth, prefilterMapHeight);
 
   // pbr: run a quasi monte-carlo simulation on the environment lighting to
   // create a prefilter (cube)map.
   // ----------------------------------------------------------------------------------------------------
   Shader prefilterShader = loadPrefilterShader();
-  prefilterShader.useProgram();
-  prefilterShader.setMat4Uni("projection", captureProjection);
-  prefilterShader.setFloatUni("cubemapResolution", 512.0);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-  int maxMipLevels = 5;
-  pbrShader.useProgram();
-  pbrShader.setFloatUni("maxMipLevels", (float)maxMipLevels);
-  for (unsigned int mip = 0; mip < maxMipLevels; ++mip) {
-    // reisze framebuffer according to mip-level size.
-    GLuint mipWidth = prefilterMapWidth * std::pow(0.5, mip);
-    GLuint mipHeight = prefilterMapHeight * std::pow(0.5, mip);
-    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth,
-                          mipHeight);
-    glViewport(0, 0, mipWidth, mipHeight);
-
-    float roughness = (float)mip / (float)(maxMipLevels - 1);
-    prefilterShader.setFloatUni("roughness", roughness);
-    for (unsigned int i = 0; i < 6; ++i) {
-      prefilterShader.setMat4Uni("view", captureViews[i]);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap,
-                             mip);
-
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      renderCubeD();
-    }
-  }
+  computePrefilterMap(prefilterShader, pbrShader, captureProjection, captureWidth,
+                      envCubemap, captureFBO, captureRBO, captureViews,
+                      prefilterMap, prefilterMapWidth, prefilterMapHeight);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // pbr: generate a 2D LUT from the BRDF equations used.
