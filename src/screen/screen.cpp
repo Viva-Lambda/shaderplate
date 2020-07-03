@@ -241,6 +241,42 @@ void equirectToCubemapTransform(Shader equirectangularToCubemapShader,
   }
 }
 
+void genIrradianceCubeMap(GLuint lmapResolutionWidth,
+                          GLuint lmapResolutionHeight,
+                          GLuint &irradianceCubemap, GLuint &captureFBO,
+                          GLuint &captureRBO) {
+  loadEnvironmentCubemap(irradianceCubemap, lmapResolutionWidth,
+                         lmapResolutionHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                        lmapResolutionWidth, lmapResolutionHeight);
+}
+
+void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
+                          GLuint &envCubemap, GLuint lmapResolutionWidth,
+                          GLuint lmapResolutionHeight,GLuint &captureFBO,
+                          std::vector<glm::mat4> captureViews,
+                          GLuint &irradianceCubemap) {
+
+  irradianceShader.useProgram();
+  irradianceShader.setMat4Uni("projection", captureProjection);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+  glViewport(0, 0, lmapResolutionWidth, lmapResolutionHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  for (unsigned int i = 0; i < 6; ++i) {
+    irradianceShader.setMat4Uni("view", captureViews[i]);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                           irradianceCubemap, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    renderCubeD();
+  }
+}
+
 int main() {
   initializeGLFWMajorMinor(4, 3);
   GLFWwindow *window = glfwCreateWindow(
@@ -354,33 +390,17 @@ int main() {
 
   unsigned int lmapResolutionWidth = 32, lmapResolutionHeight = 32;
   GLuint irradianceCubemap;
-  loadEnvironmentCubemap(irradianceCubemap, lmapResolutionWidth,
-                         lmapResolutionHeight);
-  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
-                        lmapResolutionWidth, lmapResolutionHeight);
+  genIrradianceCubeMap(lmapResolutionWidth, lmapResolutionHeight,
+                       irradianceCubemap, captureFBO, captureRBO);
 
   // pbr: solve diffuse integral by convolution to create an irradiance
   // (cube)map.
   // -----------------------------------------------------------------------------
   Shader irradianceShader = loadIrradianceShader();
-  irradianceShader.useProgram();
-  irradianceShader.setMat4Uni("projection", captureProjection);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+  computeIrradianceMap(irradianceShader, captureProjection, envCubemap,
+                       lmapResolutionWidth, lmapResolutionHeight, captureFBO,
+                       captureViews, irradianceCubemap);
 
-  glViewport(0, 0, lmapResolutionWidth, lmapResolutionHeight);
-  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-  for (unsigned int i = 0; i < 6; ++i) {
-    irradianceShader.setMat4Uni("view", captureViews[i]);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                           irradianceCubemap, 0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    renderCubeD();
-  }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // pbr: create a pre-filter cubemap, and re-scale capture FBO to pre-filter
