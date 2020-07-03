@@ -7,6 +7,8 @@ uniform sampler2D envMap;
 
 const float PI = 3.14159265358979;
 
+/**
+ * adapted from raytracing in one weekend*/
 void get_sphere_uv(in vec3 outNormal, out float u, out float v) {
   float phi = atan(outNormal.z, outNormal.x);
   float theta = asin(outNormal.y);

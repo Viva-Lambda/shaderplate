@@ -88,62 +88,58 @@ Model loadBackpackModel() {
 
 // ---------------------- load textures --------------------------------
 
-Shader loadGeometryShader() {
-  fs::path vpath = shaderDirPath / "ssao" / "geometry.vert";
-  fs::path fpath = shaderDirPath / "ssao" / "geometry.frag";
-  Shader geometryShader(vpath.c_str(), fpath.c_str());
-  return geometryShader;
-}
-Shader loadLightShader() {
-  fs::path vpath = shaderDirPath / "ssao" / "light.vert";
-  fs::path fpath = shaderDirPath / "ssao" / "light.frag";
-  Shader lightShader(vpath.c_str(), fpath.c_str());
-  return lightShader;
-}
-Shader loadSsaoShader() {
-  fs::path vpath = shaderDirPath / "ssao" / "light.vert";
-  fs::path fpath = shaderDirPath / "ssao" / "ssao.frag";
-  Shader ssaoShader(vpath.c_str(), fpath.c_str());
-  return ssaoShader;
-};
-Shader loadSsaoBlurShader() {
-  fs::path vpath = shaderDirPath / "ssao" / "light.vert";
-  fs::path fpath = shaderDirPath / "ssao" / "ssaoblur.frag";
-  Shader blurShader(vpath.c_str(), fpath.c_str());
-  return blurShader;
-}
-
 Shader loadEquirectangulareToCubemapShader() {
-  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
-  fs::path fpath = shaderDirPath / "screen" / "env2cube.frag";
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert"; // DONE
+  fs::path fpath = shaderDirPath / "screen" / "env2cube.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.setIntUni("envMap", 0);
   return envShader;
 }
 Shader loadIrradianceShader() {
-  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
-  fs::path fpath = shaderDirPath / "screen" / "irradiance.frag";
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";   // DONE
+  fs::path fpath = shaderDirPath / "screen" / "irradiance.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.setIntUni("envMap", 0);
   return envShader;
 }
 Shader loadPrefilterShader() {
-  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
-  fs::path fpath = shaderDirPath / "screen" / "prefilter.frag";
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";  // DONE
+  fs::path fpath = shaderDirPath / "screen" / "prefilter.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.setIntUni("envMap", 0);
   return envShader;
 }
 Shader loadBrdfShader() {
-  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
-  fs::path fpath = shaderDirPath / "screen" / "prefilter.frag";
+  fs::path vpath = shaderDirPath / "screen" / "brdf.vert"; // DONE
+  fs::path fpath = shaderDirPath / "screen" / "brdf.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.setIntUni("envMap", 0);
   return envShader;
+}
+Shader loadPbrShader() {
+  fs::path vpath = shaderDirPath / "screen" / "pbr.vert"; // DONE
+  fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.useProgram();
+  envShader.setIntUni("albedoMap", 0);
+  envShader.setIntUni("normalMap", 1);
+  envShader.setIntUni("metallicMap", 2);
+  envShader.setIntUni("roughnessMap", 3);
+  envShader.setIntUni("aoMap", 4);
+  envShader.setIntUni("irradianceMap", 5);
+  envShader.setIntUni("prefilterMap", 6);
+  envShader.setIntUni("brdfLUT", 7);
+  return envShader;
+}
+Shader loadLampShader() {
+  fs::path vpath = shaderDirPath / "screen" / "basic_light.vert";
+  fs::path fpath = shaderDirPath / "screen" / "basic_color_light.frag";
+  Shader lightShader(vpath.c_str(), fpath.c_str());
+  return lightShader;
 }
 
 Shader loadBackgroundShader() {
@@ -245,6 +241,9 @@ int main() {
   GLuint roughnessMap = 0;
   roughnessMap = loadTexture2d("rusted", "rustediron2_roughness.png");
 
+  GLuint aoMap = 0;
+  aoMap = loadTexture2d("rusted", "rustediron2_roughness.png");
+
   GLuint environmentHdrMap = 0;
   loadHdrTexture("newport", "Newport_Loft_Ref.hdr", environmentHdrMap);
 
@@ -288,6 +287,7 @@ int main() {
   loadEnvironmentCubemap(envCubemap, captureWidth, captureHeight);
 
   // pbr: set up projection and view matrices for capturing data onto the 6
+  Shader pbrShader = loadPbrShader();
   // cubemap face directions
   // ----------------------------------------------------------------------------------------------
   glm::mat4 captureProjection =
@@ -392,12 +392,14 @@ int main() {
   Shader prefilterShader = loadPrefilterShader();
   prefilterShader.useProgram();
   prefilterShader.setMat4Uni("projection", captureProjection);
+  prefilterShader.setFloatUni("cubemapResolution", 512.0);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 
   glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
   int maxMipLevels = 5;
-  prefilterShader.setIntUni("maxMipLevels", maxMipLevels);
+  pbrShader.useProgram();
+  pbrShader.setFloatUni("maxMipLevels", (float)maxMipLevels);
   for (unsigned int mip = 0; mip < maxMipLevels; ++mip) {
     // reisze framebuffer according to mip-level size.
     GLuint mipWidth = prefilterMapWidth * std::pow(0.5, mip);
@@ -433,7 +435,7 @@ int main() {
   glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
                         captureHeight);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         brdfLUTTexture, 0);
+                         brdfLutTexture, 0);
 
   glViewport(0, 0, captureWidth, captureHeight);
   Shader brdfShader = loadBrdfShader();
@@ -450,7 +452,8 @@ int main() {
   glGenFramebuffers(1, &geometry_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
   setGBufferDepthRbo(depthRbo);
-  attachmentNb = 0;
+
+  GLuint attachmentNb = 0;
 
   // stores normal of value of vertex in view space
   GLuint normalBuffer = 0;
@@ -509,11 +512,11 @@ int main() {
   // setting color attachments
   GLuint attachments[attachmentNb];
   for (unsigned int i = 0; i < attachmentNb; i++) {
-    GLuint attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+    attachments[i] = GL_COLOR_ATTACHMENT0 + i;
   }
-  glDrawBuffers(attachmentNb, attachments)
+  glDrawBuffers(attachmentNb, attachments);
 
-      if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     std::cout << "Geometry Framebuffer is not complete!" << std::endl;
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -528,4 +531,100 @@ int main() {
   // screen blur shader
 
   // cone tracing shader
+
+  int srcw, srch;
+  glfwGetFramebufferSize(window, &srcw, &srch);
+  glViewport(0, 0, srcw, srch);
+  // initialize static shader uniforms before rendering
+  // --------------------------------------------------
+  glm::mat4 projection =
+      glm::perspective(glm::radians(camera.zoom),
+                       (float)WINWIDTH / (float)WINHEIGHT, 0.1f, 100.0f);
+  pbrShader.useProgram();
+  pbrShader.setMat4Uni("projection", projection);
+
+  Shader lampShader = loadLampShader();
+  lampShader.useProgram();
+  lampShader.setMat4Uni("projection", projection);
+
+  Shader backgroundShader = loadBackgroundShader();
+  backgroundShader.useProgram();
+  backgroundShader.setMat4Uni("projection", projection);
+
+  while (!glfwWindowShouldClose(window)) {
+
+    //
+    float currentTime = glfwGetTime();
+    deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    processInput_proc2(window);
+
+    //
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    pbrShader.useProgram();
+    glm::mat4 model = glm::mat4(1);
+    glm::mat4 view = camera.getViewMatrix();
+    pbrShader.setMat4Uni("model", model);
+    pbrShader.setMat4Uni("view", view);
+    pbrShader.setVec3Uni("camPos", camera.pos);
+
+    // bind textures
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, baseColorMap);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, normalMap);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, metallicMap);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, roughnessMap);
+
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, aoMap);
+
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
+
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
+    pbrShader.setMat4Uni("model", model);
+    renderCubeInTangentSpace();
+
+    // render light
+    glBindTexture(GL_TEXTURE_2D, 0);
+    pbrShader.useProgram();
+    pbrShader.setVec3Uni("lightPosition", spotLight.position);
+    pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
+    lampShader.useProgram();
+    lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
+
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, spotLight.position);
+    model = glm::scale(model, glm::vec3(0.2f));
+    lampShader.setMat4Uni("model", model);
+    lampShader.setMat4Uni("view", view);
+    renderSphere();
+
+    backgroundShader.useProgram();
+    backgroundShader.setMat4Uni("view", view);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    renderCubeD();
+    // swap buffer vs
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
+  glfwTerminate();
+  return 0;
 }
