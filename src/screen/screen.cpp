@@ -217,6 +217,30 @@ std::vector<glm::mat4> getCaptureView() {
   return captureViews;
 }
 
+void equirectToCubemapTransform(Shader equirectangularToCubemapShader,
+                                glm::mat4 captureProjection,
+                                GLuint &environmentHdrMap, GLuint captureWidth,
+                                GLuint captureHeight,
+                                std::vector<glm::mat4> captureViews,
+                                GLuint &envCubemap, GLuint &captureFBO) {
+  //
+  equirectangularToCubemapShader.useProgram();
+  equirectangularToCubemapShader.setMat4Uni("projection", captureProjection);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, environmentHdrMap);
+
+  glViewport(0, 0, captureWidth, captureHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  for (unsigned int i = 0; i < 6; ++i) {
+    equirectangularToCubemapShader.setMat4Uni("view", captureViews[i]);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    renderCubeD();
+  }
+}
+
 int main() {
   initializeGLFWMajorMinor(4, 3);
   GLFWwindow *window = glfwCreateWindow(
@@ -318,22 +342,9 @@ int main() {
   // pbr: convert HDR equirectangular environment map to cubemap equivalent
   // ----------------------------------------------------------------------
   Shader equirectangularToCubemapShader = loadEquirectangulareToCubemapShader();
-  equirectangularToCubemapShader.useProgram();
-  equirectangularToCubemapShader.setIntUni("envMap", 0);
-  equirectangularToCubemapShader.setMat4Uni("projection", captureProjection);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, environmentHdrMap);
-
-  glViewport(0, 0, captureWidth, captureHeight);
-  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-  for (unsigned int i = 0; i < 6; ++i) {
-    equirectangularToCubemapShader.setMat4Uni("view", captureViews[i]);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    renderCubeD();
-  }
+  equirectToCubemapTransform(equirectangularToCubemapShader, captureProjection,
+                             environmentHdrMap, captureWidth, captureHeight,
+                             captureViews, envCubemap, captureFBO);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // generate mipmaps from first mip face (combatting visible
