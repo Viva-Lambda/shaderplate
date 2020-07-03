@@ -337,6 +337,17 @@ void computePrefilterMap(Shader prefilterShader, Shader pbrShader, glm::mat4 cap
   }
 }
 
+void attachBrdfToCapture(GLuint &captureFBO, GLuint &captureRBO,
+                         GLuint &brdfLutTexture, GLuint captureWidth,
+                         GLuint captureHeight) {
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
+                        captureHeight);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         brdfLutTexture, 0);
+}
+
 int main() {
   initializeGLFWMajorMinor(4, 3);
   GLFWwindow *window = glfwCreateWindow(
@@ -486,12 +497,8 @@ int main() {
 
   // then re-configure capture framebuffer object and render screen-space quad
   // with BRDF shader.
-  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
-                        captureHeight);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         brdfLutTexture, 0);
+  attachBrdfToCapture(captureFBO, captureRBO, brdfLutTexture, captureWidth,
+                      captureHeight);
 
   glViewport(0, 0, captureWidth, captureHeight);
   Shader brdfShader = loadBrdfShader();
