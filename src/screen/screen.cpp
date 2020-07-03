@@ -188,8 +188,8 @@ void setGBufferDepthRbo(GLuint &rbo) {
 
 float lerp(float n, float n2, float f) { return n + f * (n2 - n); }
 
-void genCaptureFboRbo(GLuint &captureFBO, GLuint &captureRBO, GLuint captureWidth,
-                      GLuint captureHeight) {
+void genCaptureFboRbo(GLuint &captureFBO, GLuint &captureRBO,
+                      GLuint captureWidth, GLuint captureHeight) {
   glGenFramebuffers(1, &captureFBO);
   glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
   glGenRenderbuffers(1, &captureRBO);
@@ -198,6 +198,23 @@ void genCaptureFboRbo(GLuint &captureFBO, GLuint &captureRBO, GLuint captureWidt
                         captureHeight);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                             GL_RENDERBUFFER, captureRBO);
+}
+
+std::vector<glm::mat4> getCaptureView() {
+  std::vector<glm::mat4> captureViews{
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, -1.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f))};
+  return captureViews;
 }
 
 int main() {
@@ -296,19 +313,7 @@ int main() {
   // ----------------------------------------------------------------------------------------------
   glm::mat4 captureProjection =
       glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-  std::vector<glm::mat4> captureViews{
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
-                  glm::vec3(0.0f, -1.0f, 0.0f)),
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
-                  glm::vec3(0.0f, -1.0f, 0.0f)),
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
-                  glm::vec3(0.0f, 0.0f, 1.0f)),
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
-                  glm::vec3(0.0f, 0.0f, -1.0f)),
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
-                  glm::vec3(0.0f, -1.0f, 0.0f)),
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                  glm::vec3(0.0f, -1.0f, 0.0f))};
+  std::vector<glm::mat4> captureViews = getCaptureView();
 
   // pbr: convert HDR equirectangular environment map to cubemap equivalent
   // ----------------------------------------------------------------------
