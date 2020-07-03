@@ -188,6 +188,18 @@ void setGBufferDepthRbo(GLuint &rbo) {
 
 float lerp(float n, float n2, float f) { return n + f * (n2 - n); }
 
+void genCaptureFboRbo(GLuint &captureFBO, GLuint &captureRBO, GLuint captureWidth,
+                      GLuint captureHeight) {
+  glGenFramebuffers(1, &captureFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  glGenRenderbuffers(1, &captureRBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
+                        captureHeight);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, captureRBO);
+}
+
 int main() {
   initializeGLFWMajorMinor(4, 3);
   GLFWwindow *window = glfwCreateWindow(
@@ -270,17 +282,9 @@ int main() {
   // set up required buffers for prefiltering environment map
 
   GLuint captureFBO, captureRBO;
-  glGenFramebuffers(1, &captureFBO);
-  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-  setGBufferDepthRbo(captureFBO);
   unsigned int captureWidth = 512, captureHeight = 512; // usually good values
 
-  glGenRenderbuffers(1, &captureRBO);
-  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
-                        captureHeight);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                            GL_RENDERBUFFER, captureRBO);
+  genCaptureFboRbo(captureFBO, captureRBO, captureWidth, captureHeight);
 
   // load environment map
   GLuint envCubemap;
