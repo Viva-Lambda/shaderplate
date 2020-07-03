@@ -86,6 +86,8 @@ Model loadBackpackModel() {
   return modelB;
 }
 
+// ---------------------- load textures --------------------------------
+
 Shader loadGeometryShader() {
   fs::path vpath = shaderDirPath / "ssao" / "geometry.vert";
   fs::path fpath = shaderDirPath / "ssao" / "geometry.frag";
@@ -149,33 +151,6 @@ void setGBufferDepthRbo(GLuint &rbo) {
                         WINHEIGHT);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                             GL_RENDERBUFFER, rbo);
-}
-
-void setGBuffer(GLuint &gbufferFbo, GLuint &normalTexture,
-                GLuint &fallbackTexture, GLuint &fresnelTexture,
-                GLuint &linearDepthTexture, GLuint &lighteningTexture,
-                GLuint &roughnessTexture, GLuint &depthRbo) {
-  //
-  glGenFramebuffers(1, &gbufferFbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, gbufferFbo);
-  setGBufferTexture(normalTexture, GL_RGBA16F, GL_FLOAT, 0);
-
-  // fall back is a cubemap
-  loadEnvironmentCubemap(fallbackTexture, GL_RGBA16F, WINWIDTH, WINHEIGHT, 1);
-
-  //
-  setGBufferTexture(fresnelTexture, GL_RGBA16F, GL_FLOAT, 2);
-  setGBufferTexture(linearDepthTexture, GL_RGBA32F, GL_FLOAT, 3);
-  setGBufferTexture(lighteningTexture, GL_RGBA16F, GL_FLOAT, 4);
-  setGBufferTexture(roughnessTexture, GL_RGBA16F, GL_FLOAT, 5);
-  GLuint attachments[6] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
-                           GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
-                           GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
-  glDrawBuffers(6, attachments);
-  setGBufferDepthRbo(depthRbo);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    std::cout << "Framebuffer is not complete!" << std::endl;
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 float lerp(float n, float n2, float f) { return n + f * (n2 - n); }
@@ -272,6 +247,11 @@ int main() {
 
   GLuint envCubemapFallbackTexture = 0;
 
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    std::cout << "Geometry Framebuffer is not complete!" << std::endl;
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
   // ----------------- needed shaders are ------------------------------
   // geometry shader
 
@@ -282,4 +262,20 @@ int main() {
   // screen blur shader
 
   // cone tracing shader
+
+  // scene description:
+  // rusted metal sphere on a mirror like platform
+  GLuint metallicMap = 0;
+  metallicMap = loadTexture2d("rusted", "rustediron2_metallic.png");
+
+  GLuint baseColorMap = 0;
+  baseColorMap = loadTexture2d("rusted", "rustediron2_basecolor.png");
+
+  GLuint normalMap = 0;
+  normalMap = loadTexture2d("rusted", "rustediron2_normal.png");
+
+  GLuint roughnessMap = 0;
+  roughnessMap = loadTexture2d("rusted", "rustediron2_roughness.png");
+
+  // with a sphere controllable spotlight
 }
