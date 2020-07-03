@@ -56,41 +56,6 @@ Shader loadBackgroundShader() {
   return backgroundShader;
 }
 
-GLuint loadHdrTexture(const char *parent, const char *tpath) {
-  // load hdr environment map
-  stbi_set_flip_vertically_on_load(true);
-  fs::path fpath = textureDirPath / parent / tpath;
-  int width, height, nbComponents;
-  float *data = stbi_loadf(fpath.c_str(), &width, &height, &nbComponents, 0);
-  GLuint hdrTexture;
-  if (data) {
-    glGenTextures(1, &hdrTexture);
-    glBindTexture(GL_TEXTURE_2D, hdrTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB,
-                 GL_FLOAT, data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  } else {
-    std::cout << "hdr image not loaded" << std::endl;
-  }
-  stbi_image_free(data);
-  return hdrTexture;
-}
-GLuint loadHdrTexture(int w, int h) {
-  // load hdr environment map
-  GLuint hdrTexture;
-  glGenTextures(1, &hdrTexture);
-  glBindTexture(GL_TEXTURE_2D, hdrTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RG, GL_FLOAT, 0);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  return hdrTexture;
-}
 GLuint loadEnvironmentMap() {
   GLuint envCMap;
   glGenTextures(1, &envCMap);

@@ -113,6 +113,47 @@ Shader loadSsaoBlurShader() {
   return blurShader;
 }
 
+Shader loadEquirectangulareToCubemapShader() {
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
+  fs::path fpath = shaderDirPath / "screen" / "env2cube.frag";
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.useProgram();
+  envShader.setIntUni("envMap", 0);
+  return envShader;
+}
+Shader loadIrradianceShader() {
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
+  fs::path fpath = shaderDirPath / "screen" / "irradiance.frag";
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.useProgram();
+  envShader.setIntUni("envMap", 0);
+  return envShader;
+}
+Shader loadPrefilterShader() {
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
+  fs::path fpath = shaderDirPath / "screen" / "prefilter.frag";
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.useProgram();
+  envShader.setIntUni("envMap", 0);
+  return envShader;
+}
+Shader loadBrdfShader() {
+  fs::path vpath = shaderDirPath / "screen" / "env2cube.vert";
+  fs::path fpath = shaderDirPath / "screen" / "prefilter.frag";
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.useProgram();
+  envShader.setIntUni("envMap", 0);
+  return envShader;
+}
+
+Shader loadBackgroundShader() {
+  fs::path vpath = shaderDirPath / "screen" / "background.vert";
+  fs::path fpath = shaderDirPath / "screen" / "background.frag";
+  Shader backgroundShader(vpath.c_str(), fpath.c_str());
+  backgroundShader.setIntUni("envMap", 0);
+  return backgroundShader;
+}
+
 void setGBufferTexture(GLuint &tex, GLenum informat, GLenum bufferType,
                        unsigned int attachmentNb) {
   glGenTextures(1, &tex);
@@ -124,14 +165,12 @@ void setGBufferTexture(GLuint &tex, GLenum informat, GLenum bufferType,
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNb,
                          GL_TEXTURE_2D, tex, 0);
 }
-void loadEnvironmentCubemap(GLuint &envCubemap, GLenum informat,
-                            unsigned int captureWidth,
-                            unsigned int captureHeight,
-                            unsigned int attachmentNb) {
+void loadEnvironmentCubemap(GLuint &envCubemap, unsigned int captureWidth,
+                            unsigned int captureHeight) {
   glGenTextures(1, &envCubemap);
   glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
   for (unsigned int i = 0; i < 6; ++i) {
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, informat, captureWidth,
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, captureWidth,
                  captureHeight, 0, GL_RGB, GL_FLOAT, nullptr);
   }
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -139,8 +178,6 @@ void loadEnvironmentCubemap(GLuint &envCubemap, GLenum informat,
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNb,
-                         GL_TEXTURE_2D, tex, 0);
 }
 
 void setGBufferDepthRbo(GLuint &rbo) {
@@ -194,75 +231,6 @@ int main() {
   // map.
   glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-  // set up required buffers
-  GLuint geometry_fbo, depthRbo; // required for g buffer pass
-  glGenFramebuffers(1, &geometry_fbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
-  setGBufferDepthRbo(depthRbo);
-
-  // stores normal of value of vertex in view space
-  GLuint normalBuffer = 0;
-  setGBufferTexture(normalBuffer, // buffer id
-                    GL_RGBA16F,   // buffer stored value precision
-                    GL_FLOAT,     // buffer stored value type
-                    0             // attachment index
-                    );
-
-  // stores material parameters of the vertex
-  // such as roughness, reflectance value at zero incidence, maybe pdf value
-  // etc
-  GLuint materialBuffer = 0;
-  setGBufferTexture(materialBuffer, // buffer id
-                    GL_RGBA16F,     // buffer stored value precision
-                    GL_FLOAT,       // buffer stored value type
-                    1               // attachment index
-                    );
-
-  // stores color values for the given vertex such as diffuse/albedo values
-  GLuint albedoBuffer = 0;
-  setGBufferTexture(albedoBuffer,     // buffer id
-                    GL_RGBA,          // buffer stored value precision
-                    GL_UNSIGNED_BYTE, // buffer stored value type
-                    1                 // attachment index
-                    );
-
-  // stores depth values for given vertex, ie the distance between the camera
-  // and the vertex
-  GLuint linearDepthTexture = 0;
-  setGBufferTexture(linearDepthTexture, // buffer id
-                    GL_RGBA16F,         // buffer stored value precision
-                    GL_FLOAT,           // buffer stored value type
-                    1                   // attachment index
-                    );
-
-  // a fall back texture with precomputed brdf and environment cubemap
-  // the values inside this cubemap is captured using a captureFBO
-  // then rendered with a shader
-  // the values inside this texture is provided using the following pipeline
-
-  // float lod             = getMipLevelFromRoughness(roughness);
-  // vec3 prefilteredColor = textureCubeLod(PrefilteredEnvMap, refVec, lod);
-  // vec2 envBRDF = texture2D(BRDFIntegrationMap, vec2(NdotV, roughness)).xy;
-  // vec3 indirectSpecular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-  GLuint envCubemapFallbackTexture = 0;
-
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    std::cout << "Geometry Framebuffer is not complete!" << std::endl;
-  }
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // ----------------- needed shaders are ------------------------------
-  // geometry shader
-
-  // lightening shader
-
-  // screen space tracing shader
-
-  // screen blur shader
-
-  // cone tracing shader
-
   // scene description:
   // rusted metal sphere on a mirror like platform
   GLuint metallicMap = 0;
@@ -277,5 +245,287 @@ int main() {
   GLuint roughnessMap = 0;
   roughnessMap = loadTexture2d("rusted", "rustediron2_roughness.png");
 
-  // with a sphere controllable spotlight
+  GLuint environmentHdrMap = 0;
+  loadHdrTexture("newport", "Newport_Loft_Ref.hdr", environmentHdrMap);
+
+  // with a sphere controllable spotlight inside a newport environment map
+
+  // High level overview of the pipeline
+
+  // 1. generate a prefiltered cubemap to be used as a fallback texture before
+  // rendering
+
+  // start rendering
+
+  // 2. geometry buffer pass
+
+  // 3. lightening buffer pass
+
+  // 4. screen space tracing pass
+
+  // 5. screen blur pass
+
+  // 6. cone tracing pass
+
+  // ------------------------- A. set up  -----------------------------------
+  // set up required buffers for prefiltering environment map
+
+  GLuint captureFBO, captureRBO;
+  glGenFramebuffers(1, &captureFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  setGBufferDepthRbo(captureFBO);
+  unsigned int captureWidth = 512, captureHeight = 512; // usually good values
+
+  glGenRenderbuffers(1, &captureRBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
+                        captureHeight);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, captureRBO);
+
+  // load environment map
+  GLuint envCubemap;
+  loadEnvironmentCubemap(envCubemap, captureWidth, captureHeight);
+
+  // pbr: set up projection and view matrices for capturing data onto the 6
+  // cubemap face directions
+  // ----------------------------------------------------------------------------------------------
+  glm::mat4 captureProjection =
+      glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+  std::vector<glm::mat4> captureViews{
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, -1.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f)),
+      glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+                  glm::vec3(0.0f, -1.0f, 0.0f))};
+
+  // pbr: convert HDR equirectangular environment map to cubemap equivalent
+  // ----------------------------------------------------------------------
+  Shader equirectangularToCubemapShader = loadEquirectangulareToCubemapShader();
+  equirectangularToCubemapShader.useProgram();
+  equirectangularToCubemapShader.setIntUni("envMap", 0);
+  equirectangularToCubemapShader.setMat4Uni("projection", captureProjection);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, environmentHdrMap);
+
+  glViewport(0, 0, captureWidth, captureHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  for (unsigned int i = 0; i < 6; ++i) {
+    equirectangularToCubemapShader.setMat4Uni("view", captureViews[i]);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    renderCubeD();
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // generate mipmaps from first mip face (combatting visible
+  // dots artifact)
+  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+  unsigned int lmapResolutionWidth = 32, lmapResolutionHeight = 32;
+  GLuint irradianceCubemap;
+  loadEnvironmentCubemap(irradianceCubemap, lmapResolutionWidth,
+                         lmapResolutionHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                        lmapResolutionWidth, lmapResolutionHeight);
+
+  // pbr: solve diffuse integral by convolution to create an irradiance
+  // (cube)map.
+  // -----------------------------------------------------------------------------
+  Shader irradianceShader = loadIrradianceShader();
+  irradianceShader.useProgram();
+  irradianceShader.setMat4Uni("projection", captureProjection);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+  glViewport(0, 0, lmapResolutionWidth, lmapResolutionHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  for (unsigned int i = 0; i < 6; ++i) {
+    irradianceShader.setMat4Uni("view", captureViews[i]);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                           irradianceCubemap, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    renderCubeD();
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // pbr: create a pre-filter cubemap, and re-scale capture FBO to pre-filter
+  // scale.
+  // --------------------------------------------------------------------------------
+  GLuint prefilterMap;
+  GLuint prefilterMapWidth = 128, prefilterMapHeight = 128;
+  glGenTextures(1, &prefilterMap);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+  for (unsigned int i = 0; i < 6; ++i) {
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
+                 prefilterMapWidth, prefilterMapHeight, 0, GL_RGB, GL_FLOAT,
+                 nullptr);
+  }
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR); // be sure to set minifcation filter
+                                            // to mip_linear
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  // generate mipmaps for the cubemap so OpenGL automatically allocates the
+  // required memory.
+  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+  // pbr: run a quasi monte-carlo simulation on the environment lighting to
+  // create a prefilter (cube)map.
+  // ----------------------------------------------------------------------------------------------------
+  Shader prefilterShader = loadPrefilterShader();
+  prefilterShader.useProgram();
+  prefilterShader.setMat4Uni("projection", captureProjection);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  int maxMipLevels = 5;
+  prefilterShader.setIntUni("maxMipLevels", maxMipLevels);
+  for (unsigned int mip = 0; mip < maxMipLevels; ++mip) {
+    // reisze framebuffer according to mip-level size.
+    GLuint mipWidth = prefilterMapWidth * std::pow(0.5, mip);
+    GLuint mipHeight = prefilterMapHeight * std::pow(0.5, mip);
+    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth,
+                          mipHeight);
+    glViewport(0, 0, mipWidth, mipHeight);
+
+    float roughness = (float)mip / (float)(maxMipLevels - 1);
+    prefilterShader.setFloatUni("roughness", roughness);
+    for (unsigned int i = 0; i < 6; ++i) {
+      prefilterShader.setMat4Uni("view", captureViews[i]);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap,
+                             mip);
+
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      renderCubeD();
+    }
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // pbr: generate a 2D LUT from the BRDF equations used.
+  // ----------------------------------------------------
+  GLuint brdfLutTexture =
+      loadHdrTexture(captureWidth, captureHeight, GL_RG16F, GL_RG);
+
+  // then re-configure capture framebuffer object and render screen-space quad
+  // with BRDF shader.
+  glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, captureWidth,
+                        captureHeight);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         brdfLUTTexture, 0);
+
+  glViewport(0, 0, captureWidth, captureHeight);
+  Shader brdfShader = loadBrdfShader();
+  brdfShader.useProgram();
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  renderQuad();
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  // -------------------------------------------------------------------------
+
+  //--------------------------------- B. rendering ---------------------------
+  // set up required buffers for rendering
+  GLuint geometry_fbo, depthRbo; // required for g buffer pass
+  glGenFramebuffers(1, &geometry_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
+  setGBufferDepthRbo(depthRbo);
+  attachmentNb = 0;
+
+  // stores normal of value of vertex in view space
+  GLuint normalBuffer = 0;
+  setGBufferTexture(normalBuffer, // buffer id
+                    GL_RGBA16F,   // buffer stored value precision
+                    GL_FLOAT,     // buffer stored value type
+                    attachmentNb  // attachment index
+                    );
+  attachmentNb += 1;
+
+  // stores material parameters of the vertex
+  // such as roughness, reflectance value at zero incidence, maybe pdf value
+  // etc
+  GLuint materialBuffer = 0;
+  setGBufferTexture(materialBuffer, // buffer id
+                    GL_RGBA16F,     // buffer stored value precision
+                    GL_FLOAT,       // buffer stored value type
+                    attachmentNb    // attachment index
+                    );
+  attachmentNb += 1;
+
+  // stores color values for the given vertex such as diffuse/albedo values
+  GLuint albedoBuffer = 0;
+  setGBufferTexture(albedoBuffer,     // buffer id
+                    GL_RGBA,          // buffer stored value precision
+                    GL_UNSIGNED_BYTE, // buffer stored value type
+                    attachmentNb      // attachment index
+                    );
+  attachmentNb += 1;
+
+  // stores depth values for given vertex, ie the distance between the camera
+  // and the vertex
+  GLuint linearDepthTexture = 0;
+  setGBufferTexture(linearDepthTexture, // buffer id
+                    GL_RGBA16F,         // buffer stored value precision
+                    GL_FLOAT,           // buffer stored value type
+                    attachmentNb        // attachment index
+                    );
+  attachmentNb += 1;
+
+  // a fall back texture with precomputed brdf and environment cubemap
+  // the values inside this cubemap is captured using a captureFBO
+  // then rendered with a shader before drawing starts
+  // the values inside this texture is provided using the following pipeline
+
+  // float lod             = getMipLevelFromRoughness(roughness);
+  // vec3 prefilteredColor = textureCubeLod(PrefilteredEnvMap, refVec, lod);
+  // vec2 envBRDF = texture2D(BRDFIntegrationMap, vec2(NdotV, roughness)).xy;
+  // vec3 indirectSpecular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+  GLuint envCubemapFallbackTexture = envCubemap;
+  GLuint irradianceCubemapFallbackTexture = irradianceCubemap;
+  GLuint prefilteredCubemapFallbackTexture = prefilterMap;
+  GLuint brdfLutFallbackTexture = brdfLutTexture;
+
+  // setting color attachments
+  GLuint attachments[attachmentNb];
+  for (unsigned int i = 0; i < attachmentNb; i++) {
+    GLuint attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+  }
+  glDrawBuffers(attachmentNb, attachments)
+
+      if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    std::cout << "Geometry Framebuffer is not complete!" << std::endl;
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // ----------------- needed shaders are ------------------------------
+  // geometry shader
+
+  // lightening shader
+
+  // screen space tracing shader
+
+  // screen blur shader
+
+  // cone tracing shader
 }

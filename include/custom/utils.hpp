@@ -317,6 +317,64 @@ GLuint loadTexture2d(const char *parent, const char *fpath,
   return tex;
 }
 
+void loadHdrTexture(const char *parent, const char *tpath, GLuint &hdrTexture) {
+  // load hdr environment map
+  stbi_set_flip_vertically_on_load(true);
+
+  fs::path fpath = textureDirPath / parent / tpath;
+  int width, height, nrComponents;
+  float *data = stbi_loadf(fpath.c_str(), &width, &height, &nrComponents, 0);
+  if (data) {
+    glGenTextures(1, &hdrTexture);
+    glBindTexture(GL_TEXTURE_2D, hdrTexture);
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT,
+        data); // note how we specify the texture's data value to be float
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(data);
+  } else {
+    std::cout << "Failed to load HDR image." << std::endl;
+  }
+}
+GLuint loadHdrTexture(const char *parent, const char *tpath) {
+  // load hdr environment map
+  GLuint tex;
+  loadHdrTexture(parent, tpath, tex);
+  return tex;
+}
+GLuint loadHdrTexture(int w, int h) {
+  // load hdr environment map
+  GLuint hdrTexture;
+  glGenTextures(1, &hdrTexture);
+  glBindTexture(GL_TEXTURE_2D, hdrTexture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RG, GL_FLOAT, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  return hdrTexture;
+}
+
+GLuint loadHdrTexture(int w, int h, GLenum informat, GLenum outformat) {
+  // load hdr environment map
+  GLuint hdrTexture;
+  glGenTextures(1, &hdrTexture);
+  glBindTexture(GL_TEXTURE_2D, hdrTexture);
+  glTexImage2D(GL_TEXTURE_2D, 0, informat, w, h, 0, outformat, GL_FLOAT, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  return hdrTexture;
+}
+
 GLuint loadTexture2d(const char *texturePath, GLuint tex, unsigned int i,
                      bool isGamma = false) {
   //
