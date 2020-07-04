@@ -298,9 +298,10 @@ void genPrefilterMap(GLuint &prefilterMap, GLuint prefilterMapWidth,
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 }
 
-void computePrefilterMap(Shader prefilterShader, Shader pbrShader, glm::mat4 captureProjection,
-                         GLuint captureWidth, GLuint &envCubemap,
-                         GLuint &captureFBO, GLuint &captureRBO,
+void computePrefilterMap(Shader prefilterShader, Shader pbrShader,
+                         glm::mat4 captureProjection, GLuint captureWidth,
+                         GLuint &envCubemap, GLuint &captureFBO,
+                         GLuint &captureRBO,
                          std::vector<glm::mat4> captureViews,
                          GLuint &prefilterMap, GLuint prefilterMapWidth,
                          GLuint prefilterMapHeight) {
@@ -412,7 +413,7 @@ int main() {
   // High level overview of the pipeline
 
   // 1. generate a prefiltered cubemap to be used as a fallback texture before
-  // rendering
+  // rendering DONE
 
   // start rendering
 
@@ -485,9 +486,10 @@ int main() {
   // create a prefilter (cube)map.
   // ----------------------------------------------------------------------------------------------------
   Shader prefilterShader = loadPrefilterShader();
-  computePrefilterMap(prefilterShader, pbrShader, captureProjection, captureWidth,
-                      envCubemap, captureFBO, captureRBO, captureViews,
-                      prefilterMap, prefilterMapWidth, prefilterMapHeight);
+  computePrefilterMap(prefilterShader, pbrShader, captureProjection,
+                      captureWidth, envCubemap, captureFBO, captureRBO,
+                      captureViews, prefilterMap, prefilterMapWidth,
+                      prefilterMapHeight);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // pbr: generate a 2D LUT from the BRDF equations used.
@@ -549,8 +551,8 @@ int main() {
 
   // stores depth values for given vertex, ie the distance between the camera
   // and the vertex
-  GLuint linearDepthTexture = 0;
-  setGBufferTexture(linearDepthTexture, // buffer id
+  GLuint linearDepthBuffer = 0;
+  setGBufferTexture(linearDepthBuffer, // buffer id
                     GL_RGBA16F,         // buffer stored value precision
                     GL_FLOAT,           // buffer stored value type
                     attachmentNb        // attachment index

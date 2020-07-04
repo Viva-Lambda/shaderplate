@@ -16,10 +16,10 @@ uniform float shininess = 32.0;
 uniform float ambientCoeff = 0.2;
 
 void main() {
-  vec3 FragPos = texture2D(gPosition, TexCoords).rgb;
-  vec3 Normal = texture2D(gNormal, TexCoords).rgb;
-  vec3 Diffuse = texture2D(gAlbedo, TexCoords).rgb;
-  float ao = texture2D(ssao, TexCoords).r; // this is the
+  vec3 FragPos = texture(gPosition, TexCoords).rgb;
+  vec3 Normal = texture(gNormal, TexCoords).rgb;
+  vec3 Diffuse = texture(gAlbedo, TexCoords).rgb;
+  float ao = texture(ssao, TexCoords).r; // this is the
   // whole point to calculate this automatically with no map etc
   // and blinn phong
   vec3 ambient = vec3(ambientCoeff * Diffuse * ao);

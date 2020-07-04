@@ -13,7 +13,7 @@ void main() {
     for (int y = -2; y < 2; y++) {
       //
       vec2 offs = vec2(float(x), float(y)) * texelSize;
-      result += texture2D(ssaoInput, TexCoords + offs).r;
+      result += texture(ssaoInput, TexCoords + offs).r;
     }
   }
   FragColor = result / (4.0 * 4.0); // making the relation more explicit
