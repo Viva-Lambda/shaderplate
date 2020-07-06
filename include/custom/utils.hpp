@@ -443,4 +443,38 @@ GLuint loadA2DTexture() {
   return stone_texture;
 }
 
+// debug function
+void gerr() {
+  if (DEBUG) {
+    GLenum err = glGetError();
+    if (err != 0) {
+      std::cout << err << std::endl;
+    }
+  }
+}
+void printDebug(const char *mes, float arg) {
+  std::cout << mes << " " << arg << std::endl;
+}
+void printDebug(const char *mes, glm::vec3 arg) {
+  std::cout << mes << " x: " << arg.x << "  y: " << arg.y << "  z: " << arg.z
+            << std::endl;
+}
+void printDebug(const char *mes, glm::vec4 arg) {
+  std::cout << mes << " x: " << arg.x << "  y: " << arg.y << "  z: " << arg.z
+            << "  w:" << arg.w << std::endl;
+}
+void printDebug(const char *mes, glm::mat3 arg) {
+  std::cout << mes << std::endl;
+  printDebug("col1: ", arg[0]);
+  printDebug("col2: ", arg[1]);
+  printDebug("col3: ", arg[2]);
+}
+void printDebug(const char *mes, glm::mat4 arg) {
+  std::cout << mes << std::endl;
+  printDebug("col1: ", arg[0]);
+  printDebug("col2: ", arg[1]);
+  printDebug("col3: ", arg[2]);
+  printDebug("col3: ", arg[3]);
+}
+
 #endif

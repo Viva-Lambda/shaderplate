@@ -10,9 +10,9 @@ layout(location = 0) out vec4 gNormal;
 layout(location = 1) out vec4 gMaterial;
 layout(location = 2) out vec4 gDepth;
 
-uniform sampler2D normalMap;
-uniform sampler2D roughnessMap;
-uniform sampler2D metallicMap;
+layout(binding = 3) uniform sampler2D normalMap;
+layout(binding = 4) uniform sampler2D roughnessMap;
+layout(binding = 5) uniform sampler2D metallicMap;
 uniform float fresnel = 0.04; // reflectance at zero incidence
 uniform mat4 view;
 
@@ -24,8 +24,8 @@ vec3 getSurfaceNormal() {
 
 void main() {
   // set depth in view space
-  gDepth.xyz = normalize(FragPosInView);
-  gDepth.w = length(FragPosInView);
+  // gDepth.xyz = normalize(FragPosInView);
+  gDepth.r = length(FragPosInView);
 
   // set values to material buffer
   gMaterial.x = fresnel;

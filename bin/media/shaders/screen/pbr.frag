@@ -1,21 +1,21 @@
 #version 430
-in vec3 FragPos;
 in vec2 TexCoord;
-in vec3 Normal;
-in mat3 TBN;
 
 out vec4 FragColor;
 
 // learnopengl.com
 // material parameters
-uniform sampler2D albedoMap;
-uniform sampler2D materialBuffer;
-uniform sampler2D aoMap;
+layout(binding = 1) uniform sampler2D albedoMap;
+// layout(binding = 2) uniform sampler2D normalMapGBuffer; // from GBuffer
+layout(binding = 3) uniform sampler2D materialBuffer;
+layout(binding = 4) uniform sampler2D aoMap;
 
 // IBL
-uniform samplerCube irradianceMap;
-uniform samplerCube prefilterMap;
-uniform sampler2D brdfLUT;
+layout(binding = 5) uniform samplerCube irradianceMap;
+layout(binding = 6) uniform samplerCube prefilterMap;
+layout(binding = 7) uniform sampler2D brdfLUT;
+
+// layout(binding = 8) uniform sampler2D linearDepthMap; // from GBuffer
 
 uniform float maxMipLevels = 5.0;
 
@@ -27,7 +27,12 @@ uniform vec3 camPos;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
-vec3 getNormalFromMap() { return normalize(Normal); }
+// vec3 getNormalFromMap() {
+// vec3 normalRayViewSpace = texture(normalMapGBuffer, TexCoord).xyz;
+// float normalDist = texture(normalMapGBuffer, TexCoord).a;
+// vec3 Normal = normalRayViewSpace * normalDist + camPos;
+// return normalize(Normal);
+//}
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
   float a = roughness * roughness;
@@ -69,6 +74,11 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 void main() {
+  // vec3 viewRay = texture(linearDepthMap, TexCoord).xyz;
+  // float viewDist = texture(linearDepthMap, TexCoord).a;
+  // vec3 FragPos = viewRay * viewDist + camPos;
+  vec3 FragPos = vec3(1);
+
   // material properties
   vec3 albedo = pow(texture(albedoMap, TexCoord).rgb, vec3(2.2));
   vec4 material = texture(materialBuffer, TexCoord);
@@ -77,7 +87,8 @@ void main() {
   float ao = texture(aoMap, TexCoord).r;
 
   // input lighting data
-  vec3 N = getNormalFromMap();
+  // vec3 N = getNormalFromMap();
+  vec3 N = vec3(0, 1, 0);
   vec3 V = normalize(camPos - FragPos);
   vec3 R = reflect(-V, N);
 
@@ -145,5 +156,5 @@ void main() {
   color = pow(color, vec3(1.0 / 2.2));
 
   // FragColor = vec4(color, 1.0);
-   FragColor = vec4(material);
+  FragColor = vec4(material);
 }

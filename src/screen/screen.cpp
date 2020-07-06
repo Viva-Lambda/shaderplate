@@ -125,9 +125,9 @@ Shader loadPbrShader() {
   fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
-  pbrShader.setIntUni("albedoMap", 0);
-  pbrShader.setIntUni("normalMapGBuffer", 1);
-  pbrShader.setIntUni("materialBuffer", 2);
+  pbrShader.setIntUni("albedoMap", 1);
+  pbrShader.setIntUni("normalMapGBuffer", 2);
+  pbrShader.setIntUni("materialBuffer", 3);
   pbrShader.setIntUni("aoMap", 4);
   pbrShader.setIntUni("irradianceMap", 5);
   pbrShader.setIntUni("prefilterMap", 6);
@@ -156,9 +156,9 @@ Shader loadGeometryShader() {
   fs::path fpath = shaderDirPath / "screen" / "geobuffer.frag";
   Shader gShader(vpath.c_str(), fpath.c_str());
   gShader.useProgram();
-  gShader.setIntUni("normalMap", 0);
-  gShader.setIntUni("roughnessMap", 1);
-  gShader.setIntUni("metallicMap", 2);
+  gShader.setIntUni("normalMap", 3);
+  gShader.setIntUni("roughnessMap", 4);
+  gShader.setIntUni("metallicMap", 5);
   return gShader;
 }
 
@@ -371,7 +371,7 @@ void attachBrdfToCapture(GLuint &captureFBO, GLuint &captureRBO,
 int main() {
   initializeGLFWMajorMinor(4, 3);
   GLFWwindow *window = glfwCreateWindow(
-      WINWIDTH, WINHEIGHT, "Lightprobs Shading Example", NULL, NULL);
+      WINWIDTH, WINHEIGHT, "Screen Space Shading Example", NULL, NULL);
 
   if (window == NULL) {
     std::cout << "Loading GLFW window had failed" << std::endl;
@@ -411,21 +411,27 @@ int main() {
   // rusted metal sphere on a mirror like platform
   GLuint metallicMap = 0;
   metallicMap = loadTexture2d("rusted", "rustediron2_metallic.png");
+  gerr();
 
   GLuint baseColorMap = 0;
   baseColorMap = loadTexture2d("rusted", "rustediron2_basecolor.png");
+  gerr();
 
   GLuint normalMap = 0;
   normalMap = loadTexture2d("rusted", "rustediron2_normal.png");
+  gerr();
 
   GLuint roughnessMap = 0;
   roughnessMap = loadTexture2d("rusted", "rustediron2_roughness.png");
+  gerr();
 
   GLuint aoMap = 0;
   aoMap = loadTexture2d("rusted", "rustediron2_roughness.png");
+  gerr();
 
   GLuint environmentHdrMap = 0;
   loadHdrTexture("newport", "Newport_Loft_Ref.hdr", environmentHdrMap);
+  gerr();
 
   // with a sphere controllable spotlight inside a newport environment map
 
@@ -453,44 +459,54 @@ int main() {
   unsigned int captureWidth = 512, captureHeight = 512; // usually good values
 
   genCaptureFboRbo(captureFBO, captureRBO, captureWidth, captureHeight);
+  gerr();
 
   // load environment map
   GLuint envCubemap;
   loadEnvironmentCubemap(envCubemap, captureWidth, captureHeight);
+  gerr();
 
   // pbr: set up projection and view matrices for capturing data onto the 6
   Shader pbrShader = loadPbrShader();
+  gerr();
   // cubemap face directions
   // ----------------------------------------------------------------------------------------------
   glm::mat4 captureProjection =
       glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
   std::vector<glm::mat4> captureViews = getCaptureView();
+  gerr();
 
   // pbr: convert HDR equirectangular environment map to cubemap equivalent
   // ----------------------------------------------------------------------
   Shader equirectangularToCubemapShader = loadEquirectangulareToCubemapShader();
+  gerr();
   equirectToCubemapTransform(equirectangularToCubemapShader, captureProjection,
                              environmentHdrMap, captureWidth, captureHeight,
                              captureViews, envCubemap, captureFBO);
+  gerr();
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // generate mipmaps from first mip face (combatting visible
   // dots artifact)
   glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+  gerr();
 
   unsigned int lmapResolutionWidth = 32, lmapResolutionHeight = 32;
   GLuint irradianceCubemap;
   genIrradianceCubeMap(lmapResolutionWidth, lmapResolutionHeight,
                        irradianceCubemap, captureFBO, captureRBO);
+  gerr();
 
   // pbr: solve diffuse integral by convolution to create an irradiance
   // (cube)map.
   // -----------------------------------------------------------------------------
   Shader irradianceShader = loadIrradianceShader();
+  gerr();
   computeIrradianceMap(irradianceShader, captureProjection, envCubemap,
                        lmapResolutionWidth, lmapResolutionHeight, captureFBO,
                        captureViews, irradianceCubemap);
+  gerr();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -500,32 +516,39 @@ int main() {
   GLuint prefilterMap;
   GLuint prefilterMapWidth = 128, prefilterMapHeight = 128;
   genPrefilterMap(prefilterMap, prefilterMapWidth, prefilterMapHeight);
+  gerr();
 
   // pbr: run a quasi monte-carlo simulation on the environment lighting to
   // create a prefilter (cube)map.
   // ----------------------------------------------------------------------------------------------------
   Shader prefilterShader = loadPrefilterShader();
+  gerr();
   computePrefilterMap(prefilterShader, pbrShader, captureProjection,
                       captureWidth, envCubemap, captureFBO, captureRBO,
                       captureViews, prefilterMap, prefilterMapWidth,
                       prefilterMapHeight);
+  gerr();
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // pbr: generate a 2D LUT from the BRDF equations used.
   // ----------------------------------------------------
   GLuint brdfLutTexture =
       loadHdrTexture(captureWidth, captureHeight, GL_RG16F, GL_RG);
+  gerr();
 
   // then re-configure capture framebuffer object and render screen-space quad
   // with BRDF shader.
   attachBrdfToCapture(captureFBO, captureRBO, brdfLutTexture, captureWidth,
                       captureHeight);
+  gerr();
 
   glViewport(0, 0, captureWidth, captureHeight);
   Shader brdfShader = loadBrdfShader();
+  gerr();
   brdfShader.useProgram();
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   renderQuad();
+  gerr();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   // -------------------------------------------------------------------------
@@ -536,6 +559,7 @@ int main() {
   glGenFramebuffers(1, &geometry_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
   setGBufferDepthRbo(depthRbo);
+  gerr();
 
   GLuint attachmentNb = 0;
 
@@ -546,6 +570,7 @@ int main() {
                     GL_FLOAT,     // buffer stored value type
                     0             // attachment index
                     );
+  gerr();
 
   // stores material parameters of the vertex
   // such as roughness, reflectance value at zero incidence, maybe pdf value
@@ -556,6 +581,7 @@ int main() {
                     GL_FLOAT,       // buffer stored value type
                     1               // attachment index
                     );
+  gerr();
 
   // stores color values for the given vertex such as diffuse/albedo values
   // GLuint albedoBuffer = 0;
@@ -574,6 +600,7 @@ int main() {
                     GL_FLOAT,          // buffer stored value type
                     2                  // attachment index
                     );
+  gerr();
 
   // a fall back texture with precomputed brdf and environment cubemap
   // the values inside this cubemap is captured using a captureFBO
@@ -594,8 +621,10 @@ int main() {
   GLuint attachments[attachmentNb];
   for (unsigned int i = 0; i < 3; i++) {
     attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+    gerr();
   }
   glDrawBuffers(3, attachments);
+  gerr();
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     std::cout << "Geometry Framebuffer is not complete!" << std::endl;
@@ -605,14 +634,17 @@ int main() {
   // ----------------- needed shaders are ------------------------------
   // geometry shader
   Shader geometryShader = loadGeometryShader();
+  gerr();
 
   // lightening shader
 
   // screen space ray tracing + cone tracing shader
   Shader rayConeShader = loadRayConeShader();
+  gerr();
 
   int srcw, srch;
   glfwGetFramebufferSize(window, &srcw, &srch);
+  gerr();
   glViewport(0, 0, srcw, srch);
   // initialize static shader uniforms before rendering
   // --------------------------------------------------
@@ -623,6 +655,7 @@ int main() {
   pbrShader.setMat4Uni("projection", projection);
 
   Shader lampShader = loadLampShader();
+  gerr();
   lampShader.useProgram();
   lampShader.setMat4Uni("projection", projection);
 
@@ -663,15 +696,18 @@ int main() {
       geometryShader.setMat4Uni("model", model);
 
       // activate and bind textures
-      glActiveTexture(GL_TEXTURE0);
+      glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, normalMap);
+      gerr();
 
-      glActiveTexture(GL_TEXTURE1);
+      glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D, roughnessMap);
+      gerr();
 
-      glActiveTexture(GL_TEXTURE1);
+      glActiveTexture(GL_TEXTURE5);
       glBindTexture(GL_TEXTURE_2D, metallicMap);
       renderCubeInTangentSpace();
+      gerr();
 
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -688,27 +724,35 @@ int main() {
       // bind textures
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, baseColorMap);
+      gerr();
 
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_2D, normalBuffer);
+      gerr();
 
       glActiveTexture(GL_TEXTURE2);
       glBindTexture(GL_TEXTURE_2D, materialBuffer);
+      gerr();
 
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, roughnessMap);
+      gerr();
 
       glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D, aoMap);
+      gerr();
 
       glActiveTexture(GL_TEXTURE5);
       glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+      gerr();
 
       glActiveTexture(GL_TEXTURE6);
       glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+      gerr();
 
       glActiveTexture(GL_TEXTURE7);
       glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
+      gerr();
 
       glActiveTexture(GL_TEXTURE8);
       glBindTexture(GL_TEXTURE_2D, linearDepthBuffer);
@@ -717,6 +761,7 @@ int main() {
       // model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
       // pbrShader.setMat4Uni("model", model);
       renderQuad();
+      gerr();
 
       // render light
       // glBindTexture(GL_TEXTURE_2D, 0);
@@ -731,7 +776,8 @@ int main() {
       model = glm::scale(model, glm::vec3(0.2f));
       lampShader.setMat4Uni("model", model);
       lampShader.setMat4Uni("view", view);
-      renderSphere();
+      // renderSphere();
+      gerr();
     }
 
     // 3. raytrace, cone trace scene
@@ -739,11 +785,13 @@ int main() {
 
     // 4. background
 
-    // backgroundShader.useProgram();
-    // backgroundShader.setMat4Uni("view", view);
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    // renderCubeD();
+    //  glm::mat4 view = camera.getViewMatrix();
+    //  backgroundShader.useProgram();
+    //  backgroundShader.setMat4Uni("view", view);
+    //  glActiveTexture(GL_TEXTURE0);
+    //  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    //  renderCubeD();
+    //  gerr();
     // swap buffer vs
     glfwSwapBuffers(window);
     glfwPollEvents();
