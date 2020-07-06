@@ -71,8 +71,9 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 void main() {
   // material properties
   vec3 albedo = pow(texture(albedoMap, TexCoord).rgb, vec3(2.2));
-  float metallic = texture(materialBuffer, TexCoord).y;
-  float roughness = texture(materialBuffer, TexCoord).z;
+  vec4 material = texture(materialBuffer, TexCoord);
+  float metallic = material.y;
+  float roughness = material.z;
   float ao = texture(aoMap, TexCoord).r;
 
   // input lighting data
@@ -143,6 +144,6 @@ void main() {
   // gamma correct
   color = pow(color, vec3(1.0 / 2.2));
 
-  FragColor = vec4(Lo, 1.0);
-  // FragColor = vec4(colo, 1);
+  // FragColor = vec4(color, 1.0);
+   FragColor = vec4(material);
 }
