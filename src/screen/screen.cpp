@@ -125,14 +125,14 @@ Shader loadPbrShader() {
   fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
-  pbrShader.setIntUni("albedoMap", 1);
-  pbrShader.setIntUni("normalMapGBuffer", 2);
-  pbrShader.setIntUni("materialBuffer", 3);
-  pbrShader.setIntUni("aoMap", 4);
-  pbrShader.setIntUni("irradianceMap", 5);
-  pbrShader.setIntUni("prefilterMap", 6);
-  pbrShader.setIntUni("brdfLUT", 7);
-  pbrShader.setIntUni("linearDepthMap", 8);
+  pbrShader.setIntUni("albedoMap", 0);
+  pbrShader.setIntUni("normalMapGBuffer", 1);
+  pbrShader.setIntUni("materialBuffer", 2);
+  pbrShader.setIntUni("aoMap", 3);
+  pbrShader.setIntUni("irradianceMap", 4);
+  pbrShader.setIntUni("prefilterMap", 5);
+  pbrShader.setIntUni("brdfLUT", 6);
+  pbrShader.setIntUni("linearDepthMap", 7);
   return pbrShader;
 }
 Shader loadLampShader() {
@@ -156,9 +156,9 @@ Shader loadGeometryShader() {
   fs::path fpath = shaderDirPath / "screen" / "geobuffer.frag";
   Shader gShader(vpath.c_str(), fpath.c_str());
   gShader.useProgram();
-  gShader.setIntUni("normalMap", 3);
-  gShader.setIntUni("roughnessMap", 4);
-  gShader.setIntUni("metallicMap", 5);
+  gShader.setIntUni("normalMap", 0);
+  gShader.setIntUni("roughnessMap", 1);
+  gShader.setIntUni("metallicMap", 2);
   return gShader;
 }
 
@@ -558,7 +558,6 @@ int main() {
   GLuint geometry_fbo, depthRbo; // required for g buffer pass
   glGenFramebuffers(1, &geometry_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
-  setGBufferDepthRbo(depthRbo);
   gerr();
 
   GLuint attachmentNb = 0;
@@ -625,6 +624,8 @@ int main() {
   }
   glDrawBuffers(3, attachments);
   gerr();
+
+  setGBufferDepthRbo(depthRbo);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     std::cout << "Geometry Framebuffer is not complete!" << std::endl;
@@ -696,7 +697,7 @@ int main() {
       geometryShader.setMat4Uni("model", model);
 
       // activate and bind textures
-      glActiveTexture(GL_TEXTURE3);
+      glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, normalMap);
       gerr();
 
@@ -735,26 +736,22 @@ int main() {
       gerr();
 
       glActiveTexture(GL_TEXTURE3);
-      glBindTexture(GL_TEXTURE_2D, roughnessMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D, aoMap);
       gerr();
 
-      glActiveTexture(GL_TEXTURE5);
+      glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
       gerr();
 
-      glActiveTexture(GL_TEXTURE6);
+      glActiveTexture(GL_TEXTURE5);
       glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
       gerr();
 
-      glActiveTexture(GL_TEXTURE7);
+      glActiveTexture(GL_TEXTURE6);
       glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
       gerr();
 
-      glActiveTexture(GL_TEXTURE8);
+      glActiveTexture(GL_TEXTURE7);
       glBindTexture(GL_TEXTURE_2D, linearDepthBuffer);
 
       // model = glm::mat4(1.0f);

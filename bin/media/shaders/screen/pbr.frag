@@ -5,15 +5,15 @@ out vec4 FragColor;
 
 // learnopengl.com
 // material parameters
-layout(binding = 1) uniform sampler2D albedoMap;
-// layout(binding = 2) uniform sampler2D normalMapGBuffer; // from GBuffer
-layout(binding = 3) uniform sampler2D materialBuffer;
-layout(binding = 4) uniform sampler2D aoMap;
+uniform sampler2D albedoMap;
+// uniform sampler2D normalMapGBuffer; // from GBuffer
+uniform sampler2D materialBuffer;
+uniform sampler2D aoMap;
 
 // IBL
-layout(binding = 5) uniform samplerCube irradianceMap;
-layout(binding = 6) uniform samplerCube prefilterMap;
-layout(binding = 7) uniform sampler2D brdfLUT;
+uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
 
 // layout(binding = 8) uniform sampler2D linearDepthMap; // from GBuffer
 
@@ -156,5 +156,5 @@ void main() {
   color = pow(color, vec3(1.0 / 2.2));
 
   // FragColor = vec4(color, 1.0);
-  FragColor = vec4(material);
+  FragColor = vec4(albedo,1);
 }

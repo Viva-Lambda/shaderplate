@@ -10,9 +10,9 @@ layout(location = 0) out vec4 gNormal;
 layout(location = 1) out vec4 gMaterial;
 layout(location = 2) out vec4 gDepth;
 
-layout(binding = 3) uniform sampler2D normalMap;
-layout(binding = 4) uniform sampler2D roughnessMap;
-layout(binding = 5) uniform sampler2D metallicMap;
+uniform sampler2D normalMap;
+uniform sampler2D roughnessMap;
+uniform sampler2D metallicMap;
 uniform float fresnel = 0.04; // reflectance at zero incidence
 uniform mat4 view;
 
@@ -29,8 +29,8 @@ void main() {
 
   // set values to material buffer
   gMaterial.x = fresnel;
-  gMaterial.z = texture(roughnessMap, TexCoord).r;
-  gMaterial.y = texture(metallicMap, TexCoord).r;
+  gMaterial.z = texture(roughnessMap, TexCoord).z;
+  gMaterial.y = texture(metallicMap, TexCoord).y;
 
   // set normal in view space
   vec3 normalWorldSpace = getSurfaceNormal();
