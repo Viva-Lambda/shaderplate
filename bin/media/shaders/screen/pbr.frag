@@ -3,27 +3,16 @@ in vec2 TexCoord;
 
 out vec4 FragColor;
 
-// learnopengl.com
 // material parameters
-uniform sampler2D albedoMap;
-uniform sampler2D normalMapGBuffer; // from GBuffer
-uniform sampler2D materialBuffer;
-uniform sampler2D aoMap;
-
-// IBL
-uniform samplerCube irradianceMap;
-uniform samplerCube prefilterMap;
-uniform sampler2D brdfLUT;
-
-uniform sampler2D linearDepthMap; // from GBuffer
-
-uniform float maxMipLevels = 5.0;
+uniform sampler2D depthBuffer;    // from GBuffer
+uniform sampler2D normalBuffer;   // from GBuffer
+uniform sampler2D materialBuffer; // from GBuffer
 
 // lights
-uniform vec3 lightPosition;
+uniform vec3 lightPosVS; // in view space
 uniform vec3 lightColor;
 
-uniform vec3 camPos;
+uniform vec3 camPosVS; // in view space
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -74,17 +63,16 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 void main() {
-  // vec3 viewRay = texture(linearDepthMap, TexCoord).xyz;
-  // float viewDist = texture(linearDepthMap, TexCoord).a;
-  // vec3 FragPos = viewRay * viewDist + camPos;
+  vec3 viewRay = texture(depthBuffer, TexCoord).xyz;
+  float viewDist = texture(depthBuffer, TexCoord).w;
+  vec3 FragPos = viewRay * viewDist + camPosVS;
   vec3 FragPos = vec3(1);
 
   // material properties
   vec3 albedo = pow(texture(albedoMap, TexCoord).rgb, vec3(2.2));
-  vec4 material = texture(materialBuffer, TexCoord);
-  float metallic = material.y;
-  float roughness = material.z;
-  float ao = texture(aoMap, TexCoord).r;
+  float metallic = texture(materialBuffer, TexCoord).r;
+  float roughness = texture(materialBuffer, TexCoord).g;
+  float ao = texture(materialBuffer, TexCoord).b;
 
   // input lighting data
   // vec3 N = getNormalFromMap();
@@ -95,7 +83,7 @@ void main() {
   // calculate reflectance at normal incidence; if dia-electric (like plastic)
   // use F0
   // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)
-  vec3 F0 = vec3(0.04);
+  vec3 F0 = vec3(texture(materialBuffer, TexCoord).a);
   F0 = mix(F0, albedo, metallic);
 
   // reflectance equation
@@ -128,36 +116,12 @@ void main() {
   // add to outgoing radiance Lo
   Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-  // ambient lighting (we now use IBL as the ambient term)
-  F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-
-  kS = F;
-  kD = 1.0 - kS;
-  kD *= 1.0 - metallic;
-
-  vec3 irradiance = texture(irradianceMap, N).rgb;
-  vec3 diffuse = irradiance * albedo;
-
-  // sample both the pre-filter map and the BRDF lut and combine them together
-  // as per the Split-Sum approximation to get the IBL specular part.
-  const float MAX_REFLECTION_LOD = maxMipLevels - 1.0;
-  vec3 prefilteredColor =
-      textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-  vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-  specular = prefilteredColor * (F * brdf.x + brdf.y);
-
-  vec3 ambient = (kD * diffuse + specular) * ao;
-
+  vec3 ambient = Lo * 0.2;
   vec3 color = ambient + Lo;
 
   // HDR tonemapping
   color = color / (color + vec3(1.0));
   // gamma correct
   color = pow(color, vec3(1.0 / 2.2));
-
-  // FragColor = vec4(color, 1.0);
-  metallic = metallic == 0.0 ? 1.0 : 0.0;
-  roughness = roughness == 0.0 ? 1.0 : 0.0;
-  // FragColor = vec4(metallic);
-  FragColor = vec4(material);
+  FragColor = vec4(color, 1);
 }

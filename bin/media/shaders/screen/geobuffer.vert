@@ -9,18 +9,18 @@ uniform mat4 view;
 uniform mat4 model;
 uniform mat4 projection;
 
+uniform float fresnel = 0.04; // reflectance at zero incidence
+
+out mat3 TBNInView;
 out vec3 FragPosInView;
-out vec3 FragPos;
 out vec2 TexCoord;
-out vec3 Normal;
-out mat3 TBN;
 
 void main() {
-  FragPos = vec3(view * model * vec4(aPos, 1.0));
+  FragPosInView = vec3(view * model * vec4(aPos, 1.0));
+  TBNInView = mat3(vec3(view * model * vec4(aTan, 0.0)),
+             vec3(view * model * vec4(aBiTan, 0.0)),
+             vec3(view * model * vec4(aNormal, 0.0)));
   TexCoord = aTexCoord;
-  Normal = vec3(model * vec4(aNormal, 1.0));
-  TBN = mat3(vec3(model * vec4(aTan, 0.0)), vec3(model * vec4(aBiTan, 0.0)),
-             vec3(model * vec4(aNormal, 0.0)));
 
   // classic gl pos
   gl_Position = projection * view * model * vec4(aPos, 1.0);

@@ -126,13 +126,14 @@ Shader loadPbrShader() {
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
   pbrShader.setIntUni("albedoMap", 0);
-  pbrShader.setIntUni("normalMapGBuffer", 1);
-  pbrShader.setIntUni("materialBuffer", 2);
-  pbrShader.setIntUni("aoMap", 3);
-  pbrShader.setIntUni("irradianceMap", 4);
-  pbrShader.setIntUni("prefilterMap", 5);
-  pbrShader.setIntUni("brdfLUT", 6);
-  pbrShader.setIntUni("linearDepthMap", 7);
+  pbrShader.setIntUni("normalMap", 1);
+  pbrShader.setIntUni("roughnessMap", 2);
+  pbrShader.setIntUni("metallicMap", 3);
+  pbrShader.setIntUni("aoMap", 4);
+  pbrShader.setIntUni("irradianceMap", 5);
+  pbrShader.setIntUni("prefilterMap", 6);
+  pbrShader.setIntUni("brdfLUT", 7);
+  pbrShader.setIntUni("linearDepthMap", 8);
   return pbrShader;
 }
 Shader loadLampShader() {
@@ -155,10 +156,6 @@ Shader loadGeometryShader() {
   fs::path vpath = shaderDirPath / "screen" / "geobuffer.vert";
   fs::path fpath = shaderDirPath / "screen" / "geobuffer.frag";
   Shader gShader(vpath.c_str(), fpath.c_str());
-  gShader.useProgram();
-  gShader.setIntUni("normalMap", 0);
-  gShader.setIntUni("roughnessMap", 1);
-  gShader.setIntUni("metallicMap", 2);
   return gShader;
 }
 
@@ -561,28 +558,52 @@ int main() {
   GLuint geometry_fbo, depthRbo; // required for g buffer pass
   glGenFramebuffers(1, &geometry_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
+
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   gerr();
 
   GLuint attachmentNb = 0;
 
   // stores normal of value of vertex in view space
   GLuint normalBuffer = 0;
-  setGBufferTexture(normalBuffer, // buffer id
-                    GL_RGBA16F,   // buffer stored value precision
-                    GL_FLOAT,     // buffer stored value type
-                    0             // attachment index
-                    );
+  // setGBufferTexture(normalBuffer, // buffer id
+  //                  GL_RGBA16F,   // buffer stored value precision
+  //                  GL_FLOAT,     // buffer stored value type
+  //                  0             // attachment index
+  //                  );
   gerr();
+  //
+  // glGenTextures(1, &normalBuffer);
+  // glBindTexture(GL_TEXTURE_2D, normalBuffer);
+  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WINWIDTH, WINHEIGHT, 0, GL_RGBA,
+  //             GL_FLOAT, NULL);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+  //                       normalBuffer, 0);
 
   // stores material parameters of the vertex
   // such as roughness, reflectance value at zero incidence, maybe pdf value
   // etc
   GLuint materialBuffer = 0;
-  setGBufferTexture(materialBuffer, // buffer id
-                    GL_RGBA16F,     // buffer stored value precision
-                    GL_FLOAT,       // buffer stored value type
-                    1               // attachment index
-                    );
+  // setGBufferTexture(materialBuffer, // buffer id
+  //                  GL_RGBA16F,     // buffer stored value precision
+  //                  GL_FLOAT,       // buffer stored value type
+  //                  1               // attachment index
+  //                  );
+  // glGenTextures(1, &materialBuffer);
+  // glBindTexture(GL_TEXTURE_2D, materialBuffer);
+  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WINWIDTH, WINHEIGHT, 0, GL_RGBA,
+  //             GL_FLOAT, NULL);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
+  //                       materialBuffer, 0);
+
   gerr();
 
   // stores color values for the given vertex such as diffuse/albedo values
@@ -597,11 +618,23 @@ int main() {
   // stores depth values for given vertex, ie the distance between the camera
   // and the vertex
   GLuint linearDepthBuffer = 0;
-  setGBufferTexture(linearDepthBuffer, // buffer id
-                    GL_RGBA16F,        // buffer stored value precision
-                    GL_FLOAT,          // buffer stored value type
-                    2                  // attachment index
-                    );
+  // setGBufferTexture(linearDepthBuffer, // buffer id
+  //                  GL_RGBA16F,        // buffer stored value precision
+  //                  GL_FLOAT,          // buffer stored value type
+  //                  2                  // attachment index
+  //                  );
+  glGenTextures(1, &linearDepthBuffer);
+  glBindTexture(GL_TEXTURE_2D, linearDepthBuffer);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WINWIDTH, WINHEIGHT, 0, GL_RGBA,
+               GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D,
+  //                       linearDepthBuffer, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         linearDepthBuffer, 0);
   gerr();
 
   // a fall back texture with precomputed brdf and environment cubemap
@@ -623,10 +656,18 @@ int main() {
   GLuint attachments[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
                            GL_COLOR_ATTACHMENT2};
 
-  glDrawBuffers(3, attachments);
+  // glDrawBuffers(3, attachments);
+  GLuint attachment[1] = {GL_COLOR_ATTACHMENT0};
+  glDrawBuffers(1, attachment);
   gerr();
+  glGenRenderbuffers(1, &depthRbo);
+  glBindRenderbuffer(GL_RENDERBUFFER, depthRbo);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WINWIDTH,
+                        WINHEIGHT);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, depthRbo);
 
-  setGBufferDepthRbo(depthRbo);
+  // setGBufferDepthRbo(depthRbo);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     std::cout << "Geometry Framebuffer is not complete!" << std::endl;
@@ -667,6 +708,7 @@ int main() {
 
   geometryShader.useProgram();
   geometryShader.setMat4Uni("projection", projection);
+  // geometryShader.setIntUni();
 
   while (!glfwWindowShouldClose(window)) {
 
@@ -697,22 +739,20 @@ int main() {
       model = glm::scale(model, glm::vec3(0.5f));
       geometryShader.setMat4Uni("model", model);
 
-      // activate and bind textures
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, normalMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE4);
-      glBindTexture(GL_TEXTURE_2D, roughnessMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE5);
-      glBindTexture(GL_TEXTURE_2D, metallicMap);
       renderCubeInTangentSpace();
       gerr();
+      lampShader.useProgram();
+      lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
 
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, spotLight.position);
+      model = glm::scale(model, glm::vec3(0.2f));
+      lampShader.setMat4Uni("model", model);
+      lampShader.setMat4Uni("view", view);
+      renderSphere();
+      gerr();
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // 2. lightening pass: render lightening to be refined later on
     {
@@ -729,35 +769,39 @@ int main() {
       gerr();
 
       glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, normalBuffer);
+      glBindTexture(GL_TEXTURE_2D, normalMap);
       gerr();
 
       glActiveTexture(GL_TEXTURE2);
-      glBindTexture(GL_TEXTURE_2D, materialBuffer);
+      glBindTexture(GL_TEXTURE_2D, roughnessMap);
       gerr();
 
       glActiveTexture(GL_TEXTURE3);
-      glBindTexture(GL_TEXTURE_2D, aoMap);
+      glBindTexture(GL_TEXTURE_2D, metallicMap);
       gerr();
 
       glActiveTexture(GL_TEXTURE4);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+      glBindTexture(GL_TEXTURE_2D, aoMap);
       gerr();
 
       glActiveTexture(GL_TEXTURE5);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
       gerr();
 
       glActiveTexture(GL_TEXTURE6);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
       gerr();
 
       glActiveTexture(GL_TEXTURE7);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
+      gerr();
+
+      glActiveTexture(GL_TEXTURE8);
       glBindTexture(GL_TEXTURE_2D, linearDepthBuffer);
 
-      // model = glm::mat4(1.0f);
-      // model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
-      // pbrShader.setMat4Uni("model", model);
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
+      pbrShader.setMat4Uni("model", model);
       renderQuad();
       gerr();
 
@@ -766,16 +810,6 @@ int main() {
       pbrShader.useProgram();
       pbrShader.setVec3Uni("lightPosition", spotLight.position);
       pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
-      lampShader.useProgram();
-      lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
-
-      model = glm::mat4(1.0f);
-      model = glm::translate(model, spotLight.position);
-      model = glm::scale(model, glm::vec3(0.2f));
-      lampShader.setMat4Uni("model", model);
-      lampShader.setMat4Uni("view", view);
-      // renderSphere();
-      gerr();
     }
 
     // 3. raytrace, cone trace scene
@@ -783,13 +817,13 @@ int main() {
 
     // 4. background
 
-    //  glm::mat4 view = camera.getViewMatrix();
-    //  backgroundShader.useProgram();
-    //  backgroundShader.setMat4Uni("view", view);
-    //  glActiveTexture(GL_TEXTURE0);
-    //  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    //  renderCubeD();
-    //  gerr();
+    glm::mat4 view = camera.getViewMatrix();
+    backgroundShader.useProgram();
+    backgroundShader.setMat4Uni("view", view);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    renderCubeD();
+    gerr();
     // swap buffer vs
     glfwSwapBuffers(window);
     glfwPollEvents();

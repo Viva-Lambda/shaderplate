@@ -1,41 +1,44 @@
-#version 330
+#version 430
 
-in vec3 FragPosInView;
-in vec3 FragPos;
+layout(location = 0) out vec3 gDepth;
+layout(location = 1) out vec3 gNormal;
+layout(location = 2) out vec3 gAlbedo;
+layout(location = 3) out vec4 gMaterial;
+
+in float FragDistInView;
+in vec3 NormalInView;
 in vec2 TexCoord;
-in vec3 Normal;
 in mat3 TBN;
 
-layout(location = 0) out vec3 gNormal;
-layout(location = 1) out vec3 gMaterial;
-layout(location = 2) out vec3 gDepth;
+uniform sampler2D albedoMap;    // 0
+uniform sampler2D normalMap;    // 1
+uniform sampler2D roughnessMap; // 2
+uniform sampler2D metallicMap;  // 3
+uniform sampler2D aoMap;        // 4
 
-uniform sampler2D normalMap;
-uniform sampler2D roughnessMap;
-uniform sampler2D metallicMap;
-uniform float fresnel = 0.04; // reflectance at zero incidence
-uniform mat4 view;
+uniform float fresnel = 0.04;
 
-vec3 getSurfaceNormal() {
-  vec3 normal1 = texture(normalMap, TexCoord).rgb;
-  normal1 = normal1 * 2.0 - 1.0;
-  return normalize(TBN * normal1);
+vec3 getNormalFromMap() {
+  vec3 normalRayViewSpace = texture(normalMap, TexCoord).xyz;
+  float normalDist = texture(normalMapGBuffer, TexCoord).a;
+  vec3 Normal = normalRayViewSpace * normalDist + camPos;
+  return normalize(Normal);
 }
 
 void main() {
   // set depth in view space
   // gDepth.xyz = normalize(FragPosInView);
-  gDepth.r = length(FragPosInView);
+  gDepth.w = DepthInView;
+  gDepth.xyz = NormalInView;
 
-  // set values to material buffer
-  gMaterial.x = fresnel;
-  // gMaterial.z = texture(roughnessMap, TexCoord).z;
-  gMaterial.z = 0.5;
-  gMaterial.y = texture(metallicMap, TexCoord).y;
-
-  // set normal in view space
-  vec3 normalWorldSpace = getSurfaceNormal();
-  vec3 normalView = vec3(view * vec4(normalWorldSpace, 1));
-  gNormal = normalize(normalView);
-  // gNormal.x = length(normalView);
+  //
+  gAlbedo.xyz = texture(albedoMap, TexCoord).xyz;
+  gNormal.xyz = texture(normalMap, TexCoord).xyz;
+  float metallic = texture(metallicMap, TexCoord).r;
+  float roughness = texture(roughnessMap, TexCoord).r;
+  float ao = texture(aoMap, TexCoord).r;
+  gMaterial.x = metallic;
+  gMaterial.y = roughness;
+  gMaterial.z = ao;
+  gMaterial.w = fresnel;
 }
