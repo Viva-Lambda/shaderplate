@@ -7,7 +7,7 @@ in vec3 Normal;
 in mat3 TBN;
 
 layout(location = 0) out vec4 gNormal;
-layout(location = 1) out vec3 gMaterial;
+layout(location = 1) out vec4 gMaterial;
 layout(location = 2) out vec4 gDepth;
 
 uniform sampler2D normalMap;

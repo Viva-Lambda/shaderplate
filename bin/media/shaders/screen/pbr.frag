@@ -9,8 +9,7 @@ out vec4 FragColor;
 // learnopengl.com
 // material parameters
 uniform sampler2D albedoMap;
-uniform sampler2D metallicMap;
-uniform sampler2D roughnessMap;
+uniform sampler2D materialBuffer;
 uniform sampler2D aoMap;
 
 // IBL
@@ -72,8 +71,8 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 void main() {
   // material properties
   vec3 albedo = pow(texture(albedoMap, TexCoord).rgb, vec3(2.2));
-  float metallic = texture(metallicMap, TexCoord).r;
-  float roughness = texture(roughnessMap, TexCoord).r;
+  float metallic = texture(materialBuffer, TexCoord).y;
+  float roughness = texture(materialBuffer, TexCoord).z;
   float ao = texture(aoMap, TexCoord).r;
 
   // input lighting data
@@ -144,5 +143,6 @@ void main() {
   // gamma correct
   color = pow(color, vec3(1.0 / 2.2));
 
-  FragColor = vec4(color, 1.0);
+  FragColor = vec4(Lo, 1.0);
+  // FragColor = vec4(colo, 1);
 }
