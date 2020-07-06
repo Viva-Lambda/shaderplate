@@ -410,23 +410,23 @@ int main() {
   // scene description:
   // rusted metal sphere on a mirror like platform
   GLuint metallicMap = 0;
-  metallicMap = loadTexture2d("rusted", "rustediron2_metallic.png");
+  metallicMap = loadTexture2d("paintedmetal", "paintedmetal_metallic.jpg");
   gerr();
 
   GLuint baseColorMap = 0;
-  baseColorMap = loadTexture2d("rusted", "rustediron2_basecolor.png");
+  baseColorMap = loadTexture2d("paintedmetal", "paintedmetal_basecolor.jpg");
   gerr();
 
   GLuint normalMap = 0;
-  normalMap = loadTexture2d("rusted", "rustediron2_normal.png");
+  normalMap = loadTexture2d("paintedmetal", "paintedmetal_normal.jpg");
   gerr();
 
   GLuint roughnessMap = 0;
-  roughnessMap = loadTexture2d("rusted", "rustediron2_roughness.png");
+  roughnessMap = loadTexture2d("paintedmetal", "paintedmetal_roughness.jpg");
   gerr();
 
   GLuint aoMap = 0;
-  aoMap = loadTexture2d("rusted", "rustediron2_roughness.png");
+  aoMap = loadTexture2d("paintedmetal", "paintedmetal_roughness.jpg");
   gerr();
 
   GLuint environmentHdrMap = 0;
