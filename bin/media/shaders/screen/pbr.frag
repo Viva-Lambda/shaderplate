@@ -9,7 +9,6 @@ out vec4 FragColor;
 // learnopengl.com
 // material parameters
 uniform sampler2D albedoMap;
-uniform sampler2D normalMap;
 uniform sampler2D metallicMap;
 uniform sampler2D roughnessMap;
 uniform sampler2D aoMap;
@@ -29,11 +28,7 @@ uniform vec3 camPos;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
-vec3 getNormalFromMap() {
-  vec3 normal = texture2D(normalMap, TexCoord).rgb * 2.0 - 1.0;
-  normal = normalize(TBN * normal);
-  return normal;
-}
+vec3 getNormalFromMap() { return normalize(Normal); }
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
   float a = roughness * roughness;

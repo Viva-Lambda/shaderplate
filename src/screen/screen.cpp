@@ -126,13 +126,14 @@ Shader loadPbrShader() {
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.setIntUni("albedoMap", 0);
-  envShader.setIntUni("normalMap", 1);
+  envShader.setIntUni("normalMapGBuffer", 1);
   envShader.setIntUni("metallicMap", 2);
   envShader.setIntUni("roughnessMap", 3);
   envShader.setIntUni("aoMap", 4);
   envShader.setIntUni("irradianceMap", 5);
   envShader.setIntUni("prefilterMap", 6);
   envShader.setIntUni("brdfLUT", 7);
+  envShader.setIntUni("linearDepthMap", 8);
   return envShader;
 }
 Shader loadLampShader() {
@@ -633,6 +634,9 @@ int main() {
   backgroundShader.useProgram();
   backgroundShader.setMat4Uni("projection", projection);
 
+  geometryShader.useProgram();
+  geometryShader.setMat4Uni("projection", projection);
+
   while (!glfwWindowShouldClose(window)) {
 
     //
@@ -650,15 +654,10 @@ int main() {
     glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glm::mat4 projection =
-        glm::perspective(glm::radians(camera.zoom),
-                         (float)WINWIDTH / (float)WINHEIGHT, 0.1f, 100.0f);
     glm::mat4 view = camera.getViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
 
     // set shader uniforms
-    geometryShader.useProgram();
-    geometryShader.setMat4Uni("projection", projection);
     geometryShader.setMat4Uni("view", view);
     model = glm::mat4(1.0f);
     glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
@@ -685,8 +684,6 @@ int main() {
     pbrShader.useProgram();
     model = glm::mat4(1);
     view = camera.getViewMatrix();
-    pbrShader.setMat4Uni("model", model);
-    pbrShader.setMat4Uni("view", view);
     pbrShader.setVec3Uni("camPos", camera.pos);
 
     // bind textures
@@ -694,7 +691,7 @@ int main() {
     glBindTexture(GL_TEXTURE_2D, baseColorMap);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, normalMap);
+    glBindTexture(GL_TEXTURE_2D, normalBuffer);
 
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, metallicMap);
@@ -714,10 +711,13 @@ int main() {
     glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
 
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
-    pbrShader.setMat4Uni("model", model);
-    renderCubeInTangentSpace();
+    glActiveTexture(GL_TEXTURE8);
+    glBindTexture(GL_TEXTURE_2D, linearDepthBuffer);
+
+    // model = glm::mat4(1.0f);
+    // model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
+    // pbrShader.setMat4Uni("model", model);
+    renderQuad();
 
     // render light
     glBindTexture(GL_TEXTURE_2D, 0);
