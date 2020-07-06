@@ -20,8 +20,8 @@ out vec3 viewDirInViewSpace;
 void main() {
   vec4 vpos = view * model * vec4(aPos, 1.0);
   FragInViewSpace = vec3(vpos);
-  FragInScreenSpace = projection * vpos;
-  viewDirInViewSpace vec3(view * model * vec4(viewDir, 1.0));
+  FragInScreenSpace = vec3(projection * vpos);
+  viewDirInViewSpace = vec3(view * model * vec4(viewDir, 1.0));
   invViewMat = inverse(view);
   TexCoord = aTexCoord;
   // classic gl pos

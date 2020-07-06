@@ -19,9 +19,9 @@
 #define Vector4 vec4
 
 in vec2 TexCoord;
-in vec3 FragInViewSpace;
-in vec3 FragInScreenSpace;
-in mat4 invViewMat;
+in vec3 FragInViewSpace;   // vertex
+in vec3 FragInScreenSpace; // vertex
+in mat4 invViewMat;        // vertex
 
 out vec4 FragColor;
 
@@ -79,10 +79,9 @@ vec3 vonmises_dir(vec3 bias_dir, float kappa) {
   return exp(kappa * cos(theta)) * normalization;
 }
 
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+vec3 fresnelSchlickRoughness(float costheta, vec3 F0, float roughness) {
 
-  float costheta = max(dot(normalInWorld.xyz, viewDirInWorld.xyz), 0.0);
-  return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+  return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - costheta, 5.0);
 }
 float lerp(float n, float n2, float f) { return n + f * (n2 - n); }
 
@@ -107,7 +106,7 @@ uniform sampler2D brdfLutFallback;
 * .URL : http : // jcgt.org/published/0003/04/04/., p. 73‑85.
 */
 
-void swap(in out float a, in out float b) {
+void swap(inout float a, inout float b) {
   float temp = a;
   a = b;
   b = temp;
@@ -124,11 +123,6 @@ float distanceSquared(vec2 a, vec2 b) {
     Tracing », Journal of Computer Graphics Techniques, vol. 3, nᵒ 4 (décembre
     2014). URL : http://jcgt.org/published/0003/04/04/., p. 73‑85.
  * */
-
-float distanceSquared(Point2 A, Point2 B) {
-  A -= B;
-  return dot(A, A);
-}
 
 uniform mat4 projection;
 in vec3 viewDirInViewSpace; // view direction, ie camera front
@@ -202,8 +196,7 @@ uniform float jitter = 0.2; // value [0, 1]
  */
 
 bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
-                          out Point2 hitPixel, out int which,
-                          out Point3 csHitPoint) {
+                          out Point2 hitPixel, out Point3 csHitPoint) {
 
   // Clip ray to a near plane in 3D (doesn't have to be *the* near plane,
   // although that would be a good idea)
@@ -237,7 +230,7 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
 
   // Initialize to off screen
   hitPixel = Point2(-1.0, -1.0);
-  which = 0; // Only one layer
+  int which = 0; // Only one layer
 
   // If the line is degenerate, make it cover at least one pixel
   // to avoid handling zero-pixel extent as a special case later
@@ -360,10 +353,10 @@ vec4 ray_trace_screen() {
   bool intersection =
       traceScreenSpaceRay1(normRayOrigInView, rayDirection, hitPixel, hitPoint);
 
-  depth = texture(linearDepthBuffer, ivec3(hitPixel, 0)).r;
+  float depth = texture(linearDepthBuffer, hitPixel).a;
 
   // move hit pixel from pixel position to UVs
-  ivec2 texSize = textureSize(linearDepthBuffer);
+  ivec2 texSize = textureSize(linearDepthBuffer, 0);
   float texelWidth = float(texSize.x);
   float texelHeight = float(texSize.y);
   hitPixel *= vec2(texelWidth, texelHeight);
@@ -397,12 +390,12 @@ vec3 get_fallback_color() {
   float roughness = materialProps.z;
   float refAtZero = materialProps.x;
   float metallic = materialProps.y;
-  vec3 F = fresnelSchlickRoughness(costheta, refAtZero, roughness);
+  vec3 F = fresnelSchlickRoughness(costheta, vec3(refAtZero), roughness);
   vec3 kS = F;
   vec3 kD = 1.0 - kS;
   kD *= 1.0 - metallic;
 
-  vec3 irradiance = texture(irradianceMapFallback, normalInWorld).rgb;
+  vec3 irradiance = texture(irradianceMapFallback, normalInWorld.xyz).rgb;
 
   vec3 albedo = texture(lightBuffer, TexCoord).rgb;
   vec3 diffuse = irradiance * albedo;
@@ -411,8 +404,9 @@ vec3 get_fallback_color() {
   vec3 prefilteredColor = textureLod(prefilterMapFallback, reflectInWorld,
                                      roughness * MAX_REFLECTION_LOD)
                               .rgb;
-  vec2 brdf = texture(brdfLutFallback, vec2(max(dot(N, V), 0.0), roughness)).rg;
-  specular = prefilteredColor * (F * brdf.x + brdf.y);
+  costheta = max(dot(normalInWorld.xyz, viewDirInWorld.xyz), 0.0);
+  vec2 brdf = texture(brdfLutFallback, vec2(costheta, roughness)).rg;
+  vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
   return (kD * diffuse + specular);
 }
 
@@ -457,23 +451,27 @@ float isoscelesTriangleNextAdjacent(float adjacentLength,
   return adjacentLength - (incircleRadius * 2.0f);
 }
 
-float get_fade_value(vec4 hitInfo) {
+float get_fade_value(vec4 hitInfo, float gloss, float remainingAlpha) {
   // fade rays close to screen edge
   vec2 hitPixel = hitInfo.xy;
   float2 boundary = abs(hitPixel - vec2(0.5f, 0.5f)) * 2.0f;
   const float fadeDiffRcp = 1.0f / (fadeEnd - fadeStart);
-  float fadeOnBorder = 1.0f - clamp((boundary.x - fadeStart) * fadeDiffRcp);
-  fadeOnBorder *= 1.0f - clamp((boundary.y - fadeStart) * fadeDiffRcp);
+  float fadeOnBorder =
+      1.0f - clamp((boundary.x - fadeStart) * fadeDiffRcp, 0.0, 1.0);
+  fadeOnBorder *=
+      1.0f - clamp((boundary.y - fadeStart) * fadeDiffRcp, 0.0, 1.0);
   fadeOnBorder = smoothstep(0.0f, 1.0f, fadeOnBorder);
   float fadeOnDistance =
       1.0f -
-      clamp(distance(rayHitPointViewSpace, FragInViewSpace) / csMaxDistance);
+      clamp(distance(rayHitPointViewSpace, FragInViewSpace) / csMaxDistance,
+            0.0, 1.0);
   // ray tracing steps stores rdotv in w component - always > 0 due to check at
   // start of this method
-  float fadeOnPerpendicular = clamp(lerp(0.0f, 1.0f, clamp(hitInfo.w * 4.0f)));
-  float fadeOnRoughness = clamp(lerp(0.0f, 1.0f, gloss * 4.0f));
+  float fadeOnPerpendicular =
+      clamp(lerp(0.0f, 1.0f, clamp(hitInfo.w * 4.0f, 0.0, 1.0)), 0.0, 1.0);
+  float fadeOnRoughness = clamp(lerp(0.0f, 1.0f, gloss * 4.0f), 0.0, 1.0);
   float totalFade = fadeOnBorder * fadeOnDistance * fadeOnPerpendicular *
-                    fadeOnRoughness * (1.0f - clamp(remainingAlpha));
+                    fadeOnRoughness * (1.0f - clamp(remainingAlpha, 0.0, 1.0));
   return totalFade;
 }
 
@@ -489,7 +487,7 @@ vec4 cone_trace() {
 
   //
   float roughness = texture(materialBuffer, TexCoord).z;
-  float glossiness = 1 - roughness;
+  float gloss = 1 - roughness;
   float specularPower = roughnessToSpecularPower(roughness);
 
   // convert to cone angle (maximum extent of the specular lobe aperture)
@@ -509,7 +507,7 @@ vec4 cone_trace() {
   float glossMult = gloss;
 
   // cone tracing starts
-  ivec2 texSize = textureSize(linearDepthBuffer);
+  ivec2 texSize = textureSize(linearDepthBuffer, 0);
   float texelWidth = float(texSize.x);
   float texelHeight = float(texSize.y);
 
@@ -519,7 +517,7 @@ vec4 cone_trace() {
   for (uint i = 0; i < cone_trace_iteration; i++) {
     // intersection length is the adjacent side, get the opposite side using
     // trig
-    float oppositeLength = isoscelesTriangleOpposite(adjacentLength, coneTheta);
+    float oppositeLength = isoscelesTriangleOpposite(adjacentLength, coneAngle);
 
     // calculate in-radius of the isosceles triangle
     float incircleSize =
@@ -563,13 +561,13 @@ vec4 cone_trace() {
   vec3 reflectInWorld = reflect(-viewDirInWorld.xyz, normalInWorld.xyz);
   float costheta = max(dot(normalInWorld.xyz, viewDirInWorld.xyz), 0.0);
   float refAtZero = texture(materialBuffer, TexCoord).x;
-  vec3 specular = fresnelSchlickRoughness(costheta, refAtZero, roughness);
+  vec3 specular = fresnelSchlickRoughness(costheta, vec3(refAtZero), roughness);
   specular *= 1.0 / PI;
 
   // fading harsh edges
-  totalFade get_fade_value();
+  float totalFade = get_fade_value(hitInfo, gloss, remainingAlpha);
 
-  return vec4(lerp(fallbackColor, totalColor.rgb * specular, totalFade), 1.0f);
+  return vec4(mix(fallbackColor, totalColor.rgb * specular, totalFade), 1.0f);
 }
 
 void main() { FragColor = cone_trace(); }

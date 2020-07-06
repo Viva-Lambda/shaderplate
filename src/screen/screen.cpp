@@ -150,6 +150,25 @@ Shader loadBackgroundShader() {
   return backgroundShader;
 }
 
+Shader loadGeometryShader() {
+  //
+  fs::path vpath = shaderDirPath / "screen" / "geobuffer.vert";
+  fs::path fpath = shaderDirPath / "screen" / "geobuffer.frag";
+  Shader gShader(vpath.c_str(), fpath.c_str());
+  gShader.useProgram();
+  gShader.setIntUni("normalMap", 0);
+  gShader.setIntUni("roughnessMap", 1);
+  gShader.setIntUni("metallicMap", 2);
+  return gShader;
+}
+
+Shader loadRayConeShader() {
+  fs::path vpath = shaderDirPath / "screen" / "conetrace.vert";
+  fs::path fpath = shaderDirPath / "screen" / "conetrace.frag";
+  Shader coneShader(vpath.c_str(), fpath.c_str());
+  return coneShader;
+}
+
 void setGBufferTexture(GLuint &tex, GLenum informat, GLenum bufferType,
                        unsigned int attachmentNb) {
   glGenTextures(1, &tex);
@@ -541,21 +560,21 @@ int main() {
   attachmentNb += 1;
 
   // stores color values for the given vertex such as diffuse/albedo values
-  GLuint albedoBuffer = 0;
-  setGBufferTexture(albedoBuffer,     // buffer id
-                    GL_RGBA,          // buffer stored value precision
-                    GL_UNSIGNED_BYTE, // buffer stored value type
-                    attachmentNb      // attachment index
-                    );
-  attachmentNb += 1;
+  // GLuint albedoBuffer = 0;
+  // setGBufferTexture(albedoBuffer,     // buffer id
+  //                  GL_RGBA,          // buffer stored value precision
+  //                  GL_UNSIGNED_BYTE, // buffer stored value type
+  //                  attachmentNb      // attachment index
+  //                  );
+  // attachmentNb += 1;
 
   // stores depth values for given vertex, ie the distance between the camera
   // and the vertex
   GLuint linearDepthBuffer = 0;
   setGBufferTexture(linearDepthBuffer, // buffer id
-                    GL_RGBA16F,         // buffer stored value precision
-                    GL_FLOAT,           // buffer stored value type
-                    attachmentNb        // attachment index
+                    GL_RGBA16F,        // buffer stored value precision
+                    GL_FLOAT,          // buffer stored value type
+                    attachmentNb       // attachment index
                     );
   attachmentNb += 1;
 
@@ -588,14 +607,12 @@ int main() {
 
   // ----------------- needed shaders are ------------------------------
   // geometry shader
+  Shader geometryShader = loadGeometryShader();
 
   // lightening shader
 
-  // screen space tracing shader
-
-  // screen blur shader
-
-  // cone tracing shader
+  // screen space ray tracing + cone tracing shader
+  Shader rayConeShader = loadRayConeShader();
 
   int srcw, srch;
   glfwGetFramebufferSize(window, &srcw, &srch);
@@ -629,9 +646,45 @@ int main() {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    pbrShader.useProgram();
-    glm::mat4 model = glm::mat4(1);
+    // 1. geometry pass: render scene geometry color data into geometry buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glm::mat4 projection =
+        glm::perspective(glm::radians(camera.zoom),
+                         (float)WINWIDTH / (float)WINHEIGHT, 0.1f, 100.0f);
     glm::mat4 view = camera.getViewMatrix();
+    glm::mat4 model = glm::mat4(1.0f);
+
+    // set shader uniforms
+    geometryShader.useProgram();
+    geometryShader.setMat4Uni("projection", projection);
+    geometryShader.setMat4Uni("view", view);
+    model = glm::mat4(1.0f);
+    glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
+    model = glm::translate(model, objectPos);
+    model = glm::scale(model, glm::vec3(0.5f));
+    geometryShader.setMat4Uni("model", model);
+
+    // activate and bind textures
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, normalMap);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, roughnessMap);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, metallicMap);
+    renderCubeInTangentSpace();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // 2. lightening pass: render lightening to be refined later on
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    pbrShader.useProgram();
+    model = glm::mat4(1);
+    view = camera.getViewMatrix();
     pbrShader.setMat4Uni("model", model);
     pbrShader.setMat4Uni("view", view);
     pbrShader.setVec3Uni("camPos", camera.pos);
@@ -680,6 +733,11 @@ int main() {
     lampShader.setMat4Uni("model", model);
     lampShader.setMat4Uni("view", view);
     renderSphere();
+
+    // 3. raytrace, cone trace scene
+    rayConeShader.useProgram();
+
+    // 4. background
 
     backgroundShader.useProgram();
     backgroundShader.setMat4Uni("view", view);
