@@ -177,6 +177,8 @@ void setGBufferTexture(GLuint &tex, GLenum informat, GLenum bufferType,
                bufferType, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNb,
                          GL_TEXTURE_2D, tex, 0);
 }
@@ -406,6 +408,7 @@ int main() {
   // enable seamless cubemap sampling for lower mip levels in the pre-filter
   // map.
   glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+  glDisable(GL_BLEND);
 
   // scene description:
   // rusted metal sphere on a mirror like platform
@@ -426,7 +429,7 @@ int main() {
   gerr();
 
   GLuint aoMap = 0;
-  aoMap = loadTexture2d("paintedmetal", "paintedmetal_roughness.jpg");
+  aoMap = loadTexture2d("paintedmetal", "paintedmetal_ao.jpg");
   gerr();
 
   GLuint environmentHdrMap = 0;
@@ -617,11 +620,9 @@ int main() {
   GLuint brdfLutFallbackTexture = brdfLutTexture;
 
   // setting color attachments
-  GLuint attachments[attachmentNb];
-  for (unsigned int i = 0; i < 3; i++) {
-    attachments[i] = GL_COLOR_ATTACHMENT0 + i;
-    gerr();
-  }
+  GLuint attachments[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                           GL_COLOR_ATTACHMENT2};
+
   glDrawBuffers(3, attachments);
   gerr();
 
@@ -677,7 +678,7 @@ int main() {
     processInput_proc2(window);
 
     //
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // 1. geometry pass: render scene geometry color data into geometry buffer

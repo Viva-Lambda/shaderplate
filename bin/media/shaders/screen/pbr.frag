@@ -6,7 +6,7 @@ out vec4 FragColor;
 // learnopengl.com
 // material parameters
 uniform sampler2D albedoMap;
-// uniform sampler2D normalMapGBuffer; // from GBuffer
+uniform sampler2D normalMapGBuffer; // from GBuffer
 uniform sampler2D materialBuffer;
 uniform sampler2D aoMap;
 
@@ -15,7 +15,7 @@ uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
 
-// layout(binding = 8) uniform sampler2D linearDepthMap; // from GBuffer
+uniform sampler2D linearDepthMap; // from GBuffer
 
 uniform float maxMipLevels = 5.0;
 
@@ -103,8 +103,8 @@ void main() {
   // calculate per-light radiance
   vec3 L = normalize(lightPosition - FragPos);
   vec3 H = normalize(V + L);
-  float distance = length(lightPosition - FragPos);
-  float attenuation = 1.0 / (distance * distance);
+  float dist = length(lightPosition - FragPos);
+  float attenuation = 1.0 / (dist * dist);
   vec3 radiance = lightColor * attenuation;
 
   // Cook-Torrance BRDF
@@ -156,5 +156,8 @@ void main() {
   color = pow(color, vec3(1.0 / 2.2));
 
   // FragColor = vec4(color, 1.0);
-  FragColor = vec4(ao);
+  metallic = metallic == 0.0 ? 1.0 : 0.0;
+  roughness = roughness == 0.0 ? 1.0 : 0.0;
+  // FragColor = vec4(metallic);
+  FragColor = vec4(material);
 }

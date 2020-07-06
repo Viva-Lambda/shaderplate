@@ -1,4 +1,4 @@
-#version 430
+#version 330
 
 in vec3 FragPosInView;
 in vec3 FragPos;
@@ -6,9 +6,9 @@ in vec2 TexCoord;
 in vec3 Normal;
 in mat3 TBN;
 
-layout(location = 0) out vec4 gNormal;
-layout(location = 1) out vec4 gMaterial;
-layout(location = 2) out vec4 gDepth;
+layout(location = 0) out vec3 gNormal;
+layout(location = 1) out vec3 gMaterial;
+layout(location = 2) out vec3 gDepth;
 
 uniform sampler2D normalMap;
 uniform sampler2D roughnessMap;
@@ -29,12 +29,13 @@ void main() {
 
   // set values to material buffer
   gMaterial.x = fresnel;
-  gMaterial.z = texture(roughnessMap, TexCoord).z;
+  // gMaterial.z = texture(roughnessMap, TexCoord).z;
+  gMaterial.z = 0.5;
   gMaterial.y = texture(metallicMap, TexCoord).y;
 
   // set normal in view space
   vec3 normalWorldSpace = getSurfaceNormal();
   vec3 normalView = vec3(view * vec4(normalWorldSpace, 1));
-  gNormal.xyz = normalize(normalView);
-  gNormal.w = length(normalView);
+  gNormal = normalize(normalView);
+  // gNormal.x = length(normalView);
 }
