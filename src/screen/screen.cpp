@@ -169,16 +169,22 @@ Shader loadRayConeShader() {
   fs::path vpath = shaderDirPath / "screen" / "conetrace.vert";
   fs::path fpath = shaderDirPath / "screen" / "conetrace.frag";
   Shader coneShader(vpath.c_str(), fpath.c_str());
+  coneShader.useProgram();
+  coneShader.setIntUni("gDepth", 0);
+  coneShader.setIntUni("lightBuffer", 1);
+  coneShader.setIntUni("gNormal", 2);
+  coneShader.setIntUni("gMaterial", 3);
+  coneShader.setIntUni("gIblSpecular", 4);
   return coneShader;
 }
 
-void setGBufferTexture(GLuint &tex,
-                       GLenum informat,     // GL_RGB16F
-                       GLenum outformat,    // GL_RGBA
-                       GLenum bufferType,   // GL_FLOAT
-                       unsigned int width,  // viewport width
-                       unsigned int height, // viewport height
-                       unsigned int &attachmentNb) {
+void setFboTexture(GLuint &tex,
+                   GLenum informat,     // GL_RGB16F
+                   GLenum outformat,    // GL_RGBA
+                   GLenum bufferType,   // GL_FLOAT
+                   unsigned int width,  // viewport width
+                   unsigned int height, // viewport height
+                   unsigned int &attachmentNb) {
   glGenTextures(1, &tex);
   glBindTexture(GL_TEXTURE_2D, tex);
   glTexImage2D(GL_TEXTURE_2D, 0, informat, width, height, 0, outformat,
@@ -355,6 +361,7 @@ void computePrefilterMap(Shader prefilterShader, Shader geometryShader,
     glViewport(0, 0, mipWidth, mipHeight);
 
     float roughness = (float)mip / (float)(maxMipLevels - 1);
+    prefilterShader.useProgram();
     prefilterShader.setFloatUni("roughness", roughness);
     for (unsigned int i = 0; i < 6; ++i) {
       prefilterShader.setMat4Uni("view", captureViews[i]);
@@ -586,23 +593,23 @@ int main() {
 
   // stores fragement distance to camera
   GLuint gDepth;
-  setGBufferTexture(gDepth, GL_RGB16F, GL_RGB, GL_FLOAT, WINWIDTH, WINHEIGHT,
-                    attachmentNb);
+  setFboTexture(gDepth, GL_RGB16F, GL_RGB, GL_FLOAT, WINWIDTH, WINHEIGHT,
+                attachmentNb);
 
   // stores fragment normal in view space
   GLuint gNormal;
-  setGBufferTexture(gDepth, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
-                    attachmentNb);
+  setFboTexture(gDepth, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
+                attachmentNb);
 
   // stores color values for diffuse etc
   GLuint gAlbedo;
-  setGBufferTexture(gAlbedo, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, WINWIDTH,
-                    WINHEIGHT, attachmentNb);
+  setFboTexture(gAlbedo, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, WINWIDTH,
+                WINHEIGHT, attachmentNb);
 
   // stores material information
   GLuint gMaterial;
-  setGBufferTexture(gMaterial, GL_RGB16F, GL_RGBA, GL_FLOAT, WINWIDTH,
-                    WINHEIGHT, attachmentNb);
+  setFboTexture(gMaterial, GL_RGB16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
+                attachmentNb);
 
   // stores fall back specular/ambient term computed
   // with ibl
@@ -618,8 +625,8 @@ int main() {
   // vec3 indirectSpecular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
   GLuint gIblSpecular;
-  setGBufferTexture(gIblSpecular, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH,
-                    WINHEIGHT, attachmentNb);
+  setFboTexture(gIblSpecular, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH,
+                WINHEIGHT, attachmentNb);
 
   // setting color attachments
   GLuint attachments[attachmentNb];
@@ -637,13 +644,29 @@ int main() {
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  // implementing the fbo for lightening
+  GLuint lightFBO;
+  glGenFramebuffers(1, &lightFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  gerr();
+  GLuint lightTexture;
+  GLuint lightAttachment = 0;
+  setFboTexture(lightTexture, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH,
+                WINHEIGHT, lightAttachment);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    std::cout << "SSAO Blur Framebuffer is not complete!" << std::endl;
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
   // ----------------- needed shaders are ------------------------------
   gerr();
 
   // lightening shader
 
   // screen space ray tracing + cone tracing shader
-  // Shader rayConeShader = loadRayConeShader();
+  Shader rayConeShader = loadRayConeShader();
   gerr();
 
   int srcw, srch;
@@ -652,9 +675,11 @@ int main() {
   glViewport(0, 0, srcw, srch);
   // initialize static shader uniforms before rendering
   // --------------------------------------------------
+  float nearPlane = 0.1f;
+  float farPlane = 100.0f;
   glm::mat4 projection =
       glm::perspective(glm::radians(camera.zoom),
-                       (float)WINWIDTH / (float)WINHEIGHT, 0.1f, 100.0f);
+                       (float)WINWIDTH / (float)WINHEIGHT, nearPlane, farPlane);
   pbrShader.useProgram();
   pbrShader.setMat4Uni("projection", projection);
 
@@ -729,13 +754,15 @@ int main() {
       geometryShader.setVec3Uni("viewPos", camera.pos);
       renderCubeInTangentSpace();
 
-      gerr();
+      // gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // 2. lightening pass: render lightening to be refined later on
     {
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+      glClear(GL_COLOR_BUFFER_BIT);
 
       // activate textures
       glActiveTexture(GL_TEXTURE0);
@@ -765,10 +792,50 @@ int main() {
       // pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
       renderQuad();
-      gerr();
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // 3. cone tracing pass:
+    {
+      glClear(GL_COLOR_BUFFER_BIT);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, gDepth);
+
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, lightTexture);
+
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, gNormal);
+
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gMaterial);
+
+      glActiveTexture(GL_TEXTURE4);
+      glBindTexture(GL_TEXTURE_2D, gIblSpecular);
+
+      rayConeShader.useProgram();
+      glm::mat4 view = camera.getViewMatrix();
+
+      rayConeShader.setMat4Uni("view", view);
+      rayConeShader.setMat4Uni("projection", projection);
+      rayConeShader.setVec3Uni("viewDir", camera.front);
+      rayConeShader.setVec3Uni("viewPos", camera.pos);
+      rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
+      rayConeShader.setFloatUni("csDepthThickness", 1.0);
+      rayConeShader.setFloatUni("traceStride", 1.0);
+      rayConeShader.setFloatUni("csMaxSteps", 3.0);
+      rayConeShader.setFloatUni("csMaxDistance", 10.0);
+      rayConeShader.setFloatUni("jitter", 0.4);
+      rayConeShader.setFloatUni("coneAngleZeta", 0.244);
+      rayConeShader.setFloatUni("max_shine", 256.0);
+      rayConeShader.setFloatUni("cone_trace_iteration", 16.0);
+      rayConeShader.setFloatUni("fadeStart", 0.4);
+      rayConeShader.setFloatUni("fadeEnd", 1.0);
+
+      renderQuad();
     }
 
-    // 2.5 draw light source
+    // 3.5 draw light source
     glBindFramebuffer(GL_READ_FRAMEBUFFER, geometry_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glBlitFramebuffer(0, 0, WINWIDTH, WINHEIGHT, 0, 0, WINWIDTH, WINHEIGHT,
@@ -784,9 +851,6 @@ int main() {
     lampShader.setMat4Uni("model", model);
     lampShader.setMat4Uni("view", view);
     renderSphere();
-
-    // 3. raytrace, cone trace scene
-    // rayConeShader.useProgram();
 
     // 4. background
 

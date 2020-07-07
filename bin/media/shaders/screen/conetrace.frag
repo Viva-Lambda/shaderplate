@@ -5,25 +5,59 @@
  * http://roar11.com/2015/07/screen-space-glossy-reflections/
  *
  * */
-#define float2 vec2
-#define float3 vec3
-#define float4 vec4
-#define int2 ivec2
-#define int3 ivec3
-#define int4 ivec4
-/**Directives to match the code*/
-#define Point2 vec2
-#define Point3 vec3
-#define Vector3 vec3
-#define Vector2 vec2
-#define Vector4 vec4
 
 in vec2 TexCoord;
-in vec3 FragInViewSpace;   // vertex
-in vec3 FragInScreenSpace; // vertex
-in mat4 invViewMat;        // vertex
+in mat4 invViewMat;         // vertex
+in vec3 viewDirInViewSpace; // view direction, ie camera front
 
 out vec4 FragColor;
+
+// ---------------------------- uniforms -----------------------------------
+// ------------------------- from other passes -----------------------------
+
+uniform sampler2D gDepth;
+uniform sampler2D lightBuffer;  // convolved color buffer - all mip levels
+uniform sampler2D gNormal;      // normal buffer - from g-buffer in camera space
+uniform sampler2D gMaterial;    // specular buffer - from g-buffer (rgb = ior,
+uniform sampler2D gIblSpecular; // specular buffer - from g-buffer (rgb = ior,
+                                // a = roughness)
+
+// -------------------------- ray tracing uniforms --------------------------
+//
+uniform mat4 projection;
+uniform mat4 view;
+uniform vec3 viewDir; // world space
+uniform vec3 viewPos; // world space
+
+// thickness to ascribe to each pixel in the depth buffer in camera space
+uniform float csDepthThickness = 1.0;
+uniform float csNearPlaneZ = -0.2; // the camera's near z plane
+
+// Step in horizontal or vertical pixels between
+// samples. This is a float
+// because integer math is slow on GPUs, but should be set to an integer >= 1.
+uniform float traceStride = 1.0;
+// Maximum number of iterations. Higher gives better
+// images but may be slow.
+uniform float csMaxSteps = 3.0;
+
+// Maximum camera-space distance to trace before
+// returning a miss.
+uniform float csMaxDistance = 10.0;
+
+// the number of mip levels in the convolved color buffer
+
+uniform float jitter = 0.2; // value [0, 1]
+
+// ------------------------ cone tracing related -----------------------------
+
+uniform float maxMipLevels = 5.0;
+
+uniform float coneAngleZeta = 0.244;
+uniform float max_shine = 256.0;
+uniform float cone_trace_iteration = 18.0;
+uniform float fadeStart = 0.4; // value between [0, 1]
+uniform float fadeEnd = 1.0;
 
 // ----------------------------- utility function --------------------------
 const float PI = 3.14159265;
@@ -85,15 +119,6 @@ vec3 fresnelSchlickRoughness(float costheta, vec3 F0, float roughness) {
 }
 float lerp(float n, float n2, float f) { return n + f * (n2 - n); }
 
-// depth buffer in camera space from g-buffer
-uniform sampler2D gDepth;
-
-uniform sampler2D lightBuffer;  // convolved color buffer - all mip levels
-uniform sampler2D gNormal; // normal buffer - from g-buffer in camera space
-uniform sampler2D gMaterial; // specular buffer - from g-buffer (rgb = ior,
-uniform sampler2D gIblSpecular; // specular buffer - from g-buffer (rgb = ior,
-                                  // a = roughness)
-
 // --------------------------- Ray Tracing Code ------------------------------
 
 /**
@@ -121,29 +146,6 @@ float distanceSquared(vec2 a, vec2 b) {
     2014). URL : http://jcgt.org/published/0003/04/04/., p. 73‑85.
  * */
 
-uniform mat4 projection;
-in vec3 viewDirInViewSpace; // view direction, ie camera front
-
-// thickness to ascribe to each pixel in the depth buffer in camera space
-uniform float csDepthThickness = 1.0;
-uniform float csNearPlaneZ = -0.2; // the camera's near z plane
-
-// Step in horizontal or vertical pixels between
-// samples. This is a float
-// because integer math is slow on GPUs, but should be set to an integer >= 1.
-uniform float traceStride = 1.0;
-// Maximum number of iterations. Higher gives better
-// images but may be slow.
-uniform float csMaxSteps = 3.0;
-
-// Maximum camera-space distance to trace before
-// returning a miss.
-uniform float csMaxDistance = 10.0;
-
-// the number of mip levels in the convolved color buffer
-
-uniform float jitter = 0.2; // value [0, 1]
-
 /**
     \param csOrigin Camera-space ray origin, which must be
     within the view volume and must have z < -0.01 and project within the
@@ -155,7 +157,7 @@ uniform float jitter = 0.2; // value [0, 1]
     \param projection A projection matrix that maps to pixel
    coordinates (not [-1, +1] normalized device coordinates)
 
-    \param linearDepthBuffer The depth or camera-space Z buffer, depending
+    \param gDepth The depth or camera-space Z buffer, depending
    on
    the value
    of \a csZBufferIsHyperbolic
@@ -192,8 +194,8 @@ uniform float jitter = 0.2; // value [0, 1]
 
  */
 
-bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
-                          out Point2 hitPixel, out Point3 csHitPoint) {
+bool traceScreenSpaceRay1(vec3 csOrigin, vec3 csDirection, out vec2 hitPixel,
+                          out vec3 csHitPoint) {
 
   // Clip ray to a near plane in 3D (doesn't have to be *the* near plane,
   // although that would be a good idea)
@@ -201,11 +203,11 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
       ((csOrigin.z + csDirection.z * csMaxDistance) > csNearPlaneZ)
           ? (csNearPlaneZ - csOrigin.z) / csDirection.z
           : csMaxDistance;
-  Point3 csEndPoint = csDirection * rayLength + csOrigin;
+  vec3 csEndPoint = csDirection * rayLength + csOrigin;
 
   // Project into screen space
-  Vector4 H0 = projection * Vector4(csOrigin, 1.0);
-  Vector4 H1 = projection * Vector4(csEndPoint, 1.0);
+  vec4 H0 = projection * vec4(csOrigin, 1.0);
+  vec4 H1 = projection * vec4(csEndPoint, 1.0);
 
   // There are a lot of divisions by w that can be turned into multiplications
   // at some minor precision loss...and we need to interpolate these 1/w values
@@ -218,22 +220,22 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
   float k1 = 1.0 / H1.w;
 
   // Switch the original points to values that interpolate linearly in 2D
-  Point3 Q0 = csOrigin * k0;
-  Point3 Q1 = csEndPoint * k1;
+  vec3 Q0 = csOrigin * k0;
+  vec3 Q1 = csEndPoint * k1;
 
   // Screen-space endpoints
-  Point2 P0 = H0.xy * k0;
-  Point2 P1 = H1.xy * k1;
+  vec2 P0 = H0.xy * k0;
+  vec2 P1 = H1.xy * k1;
 
   // Initialize to off screen
-  hitPixel = Point2(-1.0, -1.0);
+  hitPixel = vec2(-1.0, -1.0);
   int which = 0; // Only one layer
 
   // If the line is degenerate, make it cover at least one pixel
   // to avoid handling zero-pixel extent as a special case later
   P1 += vec2((distanceSquared(P0, P1) < 0.0001) ? 0.01 : 0.0);
 
-  Vector2 delta = P1 - P0;
+  vec2 delta = P1 - P0;
 
   // Permute so that the primary iteration is in x to reduce
   // large branches later
@@ -253,10 +255,10 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
 
   float stepDirection = sign(delta.x);
   float invdx = stepDirection / delta.x;
-  Vector2 dP = Vector2(stepDirection, invdx * delta.y);
+  vec2 dP = vec2(stepDirection, invdx * delta.y);
 
   // Track the derivatives of Q and k
-  Vector3 dQ = (Q1 - Q0) * invdx;
+  vec3 dQ = (Q1 - Q0) * invdx;
   float dk = (k1 - k0) * invdx;
   // Scale derivatives by the desired pixel stride
   dP *= traceStride;
@@ -270,7 +272,7 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
 
   // Slide P from P0 to P1, (now-homogeneous) Q from Q0 to Q1, and k from k0 to
   // k1
-  Point3 Q = Q0;
+  vec3 Q = Q0;
   float k = k0;
 
   // We track the ray depth at +/- 1/2 pixel to treat pixels as clip-space solid
@@ -289,7 +291,7 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
   // We only advance the z field of Q in the inner loop, since
   // Q.xy is never used until after the loop terminates.
 
-  for (Point2 P = P0;
+  for (vec2 P = P0;
        ((P.x * stepDirection) <= end) && (stepCount < csMaxSteps) &&
        ((rayZMax < sceneZMax - csDepthThickness) || (rayZMin > sceneZMax)) &&
        (sceneZMax != 0.0);
@@ -312,7 +314,7 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
     }
 
     // Camera-space z of the background
-    sceneZMax = texelFetch(linearDepthBuffer, int2(hitPixel), 0).r;
+    sceneZMax = texelFetch(gDepth, ivec2(hitPixel), 0).r;
 
   } // pixel on ray
 
@@ -325,16 +327,25 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection,
 
 vec3 rayHitPointViewSpace = vec3(0);
 
+float getLinearDepth(vec2 tcoord){
+  vec3 FragPos = texture(gDepth, tcoord).rgb;
+  vec3 FragPosVS = vec3(view * vec4(FragPos, 1));
+  vec3 viewPosVS = vec3(view * vec4(viewPos, 1));
+  float linearDepth = length(viewPosVS - FragPosVS);
+  return linearDepth;
+}
+
 vec4 ray_trace_screen() {
   // get normal in view space
-  vec3 normalInView = texture(normalBuffer, TexCoord).rgb;
-  float linearDepth = texture(linearDepthBuffer, TexCoord).r;
+  vec3 normalInView = vec3(view * vec4(texture(gNormal, TexCoord).rgb,1));
+  vec3 viewPosVS = vec3(view * vec4(viewPos, 1));
+  float linearDepth = getLinearDepth(TexCoord);
   vec3 rayOriginInView =
-      viewDirInViewSpace * linearDepth; // P = O + viewDir * Depth
+      viewDirInViewSpace * linearDepth + viewPosVS; // P = O + viewDir * Depth
   vec3 normRayOrigInView = normalize(rayOriginInView);
   vec3 normRayDirBias = normalize(reflect(normRayOrigInView, normalInView));
   // biasing ray scatter direction based on surface roughness
-  float roughness = texture(materialBuffer, TexCoord).z;
+  float roughness = texture(gMaterial, TexCoord).y;
   float kappa = 1.0 - roughness;
   vec3 rayDirection = vonmises_dir(normRayDirBias, kappa);
 
@@ -350,10 +361,10 @@ vec4 ray_trace_screen() {
   bool intersection =
       traceScreenSpaceRay1(normRayOrigInView, rayDirection, hitPixel, hitPoint);
 
-  float depth = texture(linearDepthBuffer, hitPixel).a;
+  float depth = getLinearDepth(hitPixel);
 
   // move hit pixel from pixel position to UVs
-  ivec2 texSize = textureSize(linearDepthBuffer, 0);
+  ivec2 texSize = textureSize(gDepth, 0);
   float texelWidth = float(texSize.x);
   float texelHeight = float(texSize.y);
   hitPixel *= vec2(texelWidth, texelHeight);
@@ -368,44 +379,7 @@ vec4 ray_trace_screen() {
 
 // --------------------------- Cone Tracing Code -----------------------------
 
-uniform float maxMipLevels = 5.0;
-
-uniform float coneAngleZeta = 0.244;
-uniform float max_shine = 256.0;
-uniform float cone_trace_iteration = 18.0;
-uniform float fadeStart = 0.4; // value between [0, 1]
-uniform float fadeEnd = 1.0;
-
-vec3 get_fallback_color() {
-  //
-  vec3 normalInView = texture(normalBuffer, TexCoord).rgb;
-  vec4 normalInWorld = invViewMat * vec4(normalInView, 1.0);
-  vec4 viewDirInWorld = invViewMat * vec4(viewDirInViewSpace, 1.0);
-  vec3 reflectInWorld = reflect(-viewDirInWorld.xyz, normalInWorld.xyz);
-  float costheta = max(dot(normalInWorld.xyz, viewDirInWorld.xyz), 0.0);
-  vec3 materialProps = texture(materialBuffer, TexCoord).xyz;
-  float roughness = materialProps.z;
-  float refAtZero = materialProps.x;
-  float metallic = materialProps.y;
-  vec3 F = fresnelSchlickRoughness(costheta, vec3(refAtZero), roughness);
-  vec3 kS = F;
-  vec3 kD = 1.0 - kS;
-  kD *= 1.0 - metallic;
-
-  vec3 irradiance = texture(irradianceMapFallback, normalInWorld.xyz).rgb;
-
-  vec3 albedo = texture(lightBuffer, TexCoord).rgb;
-  vec3 diffuse = irradiance * albedo;
-
-  float MAX_REFLECTION_LOD = maxMipLevels - 1.0;
-  vec3 prefilteredColor = textureLod(prefilterMapFallback, reflectInWorld,
-                                     roughness * MAX_REFLECTION_LOD)
-                              .rgb;
-  costheta = max(dot(normalInWorld.xyz, viewDirInWorld.xyz), 0.0);
-  vec2 brdf = texture(brdfLutFallback, vec2(costheta, roughness)).rg;
-  vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-  return (kD * diffuse + specular);
-}
+vec3 get_fallback_color() { return texture(gIblSpecular, TexCoord).rgb; }
 
 float roughnessToSpecularPower(float roughness) {
   // from graphics rant
@@ -451,13 +425,14 @@ float isoscelesTriangleNextAdjacent(float adjacentLength,
 float get_fade_value(vec4 hitInfo, float gloss, float remainingAlpha) {
   // fade rays close to screen edge
   vec2 hitPixel = hitInfo.xy;
-  float2 boundary = abs(hitPixel - vec2(0.5f, 0.5f)) * 2.0f;
+  vec2 boundary = abs(hitPixel - vec2(0.5f, 0.5f)) * 2.0f;
   const float fadeDiffRcp = 1.0f / (fadeEnd - fadeStart);
   float fadeOnBorder =
       1.0f - clamp((boundary.x - fadeStart) * fadeDiffRcp, 0.0, 1.0);
   fadeOnBorder *=
       1.0f - clamp((boundary.y - fadeStart) * fadeDiffRcp, 0.0, 1.0);
   fadeOnBorder = smoothstep(0.0f, 1.0f, fadeOnBorder);
+  vec3 FragInViewSpace = vec3(view * vec4(texture(gDepth, TexCoord).rgb, 1));
   float fadeOnDistance =
       1.0f -
       clamp(distance(rayHitPointViewSpace, FragInViewSpace) / csMaxDistance,
@@ -479,11 +454,11 @@ vec4 cone_trace() {
   if (vec4(0.0) == hitInfo) {
     return fallbackColor;
   }
-  vec3 normalInView = texture(normalBuffer, TexCoord).rgb;
-  float linearDepth = texture(linearDepthBuffer, TexCoord).r;
+  vec3 normalInView = texture(gNormal, TexCoord).rgb;
+  float linearDepth = texture(gDepth, TexCoord).r;
 
   //
-  float roughness = texture(materialBuffer, TexCoord).z;
+  float roughness = texture(gMaterial, TexCoord).y;
   float gloss = 1 - roughness;
   float specularPower = roughnessToSpecularPower(roughness);
 
@@ -494,6 +469,9 @@ vec4 cone_trace() {
 
   // P1 = positionSS, P2 = raySS, adjacent length = ||P2 - P1||
   vec2 hitPixel = hitInfo.xy;
+
+  vec3 FragInScreenSpace =
+      vec3(projection * view * vec4(texture(gDepth, TexCoord).rgb, 1));
   vec2 deltaP = hitPixel - FragInScreenSpace.xy;
   float adjacentLength = length(deltaP);
   vec2 adjacentUnit = normalize(deltaP);
@@ -504,7 +482,7 @@ vec4 cone_trace() {
   float glossMult = gloss;
 
   // cone tracing starts
-  ivec2 texSize = textureSize(linearDepthBuffer, 0);
+  ivec2 texSize = textureSize(gDepth, 0);
   float texelWidth = float(texSize.x);
   float texelHeight = float(texSize.y);
 
@@ -553,11 +531,11 @@ vec4 cone_trace() {
     glossMult *= gloss;
   }
 
-  vec4 normalInWorld = invViewMat * vec4(normalInView, 1.0);
-  vec4 viewDirInWorld = invViewMat * vec4(viewDirInViewSpace, 1.0);
-  vec3 reflectInWorld = reflect(-viewDirInWorld.xyz, normalInWorld.xyz);
-  float costheta = max(dot(normalInWorld.xyz, viewDirInWorld.xyz), 0.0);
-  float refAtZero = texture(materialBuffer, TexCoord).x;
+  vec3 normalInWorld = texture(gNormal, TexCoord).rgb;
+  vec3 viewDirInWorld = viewDir;
+  // vec3 reflectInWorld = reflect(-viewDirInWorld, normalInWorld);
+  float costheta = max(dot(normalInWorld, viewDirInWorld), 0.0);
+  float refAtZero = texture(gMaterial, TexCoord).w;
   vec3 specular = fresnelSchlickRoughness(costheta, vec3(refAtZero), roughness);
   specular *= 1.0 / PI;
 

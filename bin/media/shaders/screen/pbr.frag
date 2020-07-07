@@ -1,8 +1,7 @@
 #version 430
+layout(location = 0) out vec3 FragColor;
 
 in vec2 TexCoord;
-
-out vec4 FragColor;
 
 // material parameters
 uniform sampler2D gDepth;       // from GBuffer
@@ -121,8 +120,8 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 void main() {
-  //float viewDist = texture(gDepth, TexCoord).x;
-  //vec3 FragPos = ViewRay * viewDist + viewPos;
+  // float viewDist = texture(gDepth, TexCoord).x;
+  // vec3 FragPos = ViewRay * viewDist + viewPos;
   vec3 FragPos = texture(gDepth, TexCoord).xyz;
 
   // material properties
@@ -178,6 +177,5 @@ void main() {
   // HDR tonemapping
   color = color / (color + vec3(1.0));
   // gamma correct
-  color = pow(color, vec3(1.0 / 2.2));
-  FragColor = vec4(color, 1);
+  FragColor = pow(color, vec3(1.0 / 2.2));
 }
