@@ -121,8 +121,8 @@ Shader loadBrdfShader() {
   return envShader;
 }
 Shader loadPbrShader() {
-  fs::path vpath = shaderDirPath / "screen" / "pbr.vert"; // DONE
-  fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
+  fs::path vpath = shaderDirPath / "screen" / "pbr.vert";   // DONE
+  fs::path fpath = shaderDirPath / "screen" / "phong.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
   pbrShader.setIntUni("gDepth", 0);
@@ -761,8 +761,8 @@ int main() {
 
       pbrShader.setVec3Uni("lightPos", spotLight.position);
       pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
-      // bind textures
-
+      // if doing phong lightening
+      pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
       renderQuad();
       gerr();
