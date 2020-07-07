@@ -581,12 +581,12 @@ int main() {
   // -------------------------------------------------------------------------
 
   //--------------------------------- B. rendering ---------------------------
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   // set up required buffers for rendering
   GLuint geometry_fbo, depthRbo; // required for g buffer pass
   glGenFramebuffers(1, &geometry_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   gerr();
 
   GLuint attachmentNb = 0;
@@ -645,11 +645,11 @@ int main() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // implementing the fbo for lightening
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   GLuint lightFBO;
   glGenFramebuffers(1, &lightFBO);
   glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   gerr();
   GLuint lightTexture;
   GLuint lightAttachment = 0;
@@ -754,11 +754,10 @@ int main() {
       geometryShader.setVec3Uni("viewPos", camera.pos);
       renderCubeInTangentSpace();
 
-      // gerr();
+      gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // 2. lightening pass: render lightening to be refined later on
     {
       glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);

@@ -3,6 +3,7 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
+#include <custom/debug.hpp>
 #include <custom/singulars.hpp>
 
 glm::vec3 getTangent(glm::vec2 deltaUV2, glm::vec2 deltaUV1, glm::vec3 edge1,
@@ -27,7 +28,16 @@ glm::vec3 getBiTangent(glm::vec2 deltaUV2, glm::vec2 deltaUV1, glm::vec3 edge1,
   return bitangent;
 }
 
-void renderTriangleInTangentSpace(float vert[15], float normal[3]) {
+struct VertexAttrib {
+  GLuint loc;
+  GLuint size;
+};
+bool compareAttribs(const VertexAttrib &v1, const VertexAttrib &v2) {
+  return v1.size < v2.size;
+}
+
+void renderTriangleInTangentSpace(float vert[15], float normal[3],
+                                  std::vector<VertexAttrib> vs) {
   GLuint triVBO, triVAO;
   glGenBuffers(1, &triVBO);
   glGenVertexArrays(1, &triVAO);
@@ -63,36 +73,30 @@ void renderTriangleInTangentSpace(float vert[15], float normal[3]) {
   glBindVertexArray(triVAO);
   glBindBuffer(GL_ARRAY_BUFFER, triVBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(trivert), &trivert, GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0); // location
-  // specify attributes
-  GLsizei fsize = 14 * sizeof(float);
-  glVertexAttribPointer(0, // location ==  aPos
-                        3, // vec3
-                        GL_FLOAT, GL_FALSE, fsize, (void *)0);
-  glEnableVertexAttribArray(1); // location
-  glVertexAttribPointer(1,      // location ==  aNormal
-                        3,      // vec3
-                        GL_FLOAT, GL_FALSE, fsize, (void *)(3 * sizeof(float)));
-  glEnableVertexAttribArray(2); // location
-  glVertexAttribPointer(2,      // location ==  aTexCoord
-                        2,      // vec2
-                        GL_FLOAT, GL_FALSE, fsize, (void *)(6 * sizeof(float)));
-  glEnableVertexAttribArray(3); // location
-  glVertexAttribPointer(3,      // location ==  aTan
-                        3,      // vec3
-                        GL_FLOAT, GL_FALSE, fsize, (void *)(8 * sizeof(float)));
-  glEnableVertexAttribArray(4); // location
-  glVertexAttribPointer(4,      // location ==  aBiTan
-                        3,      // vec3
-                        GL_FLOAT, GL_FALSE, fsize,
-                        (void *)(11 * sizeof(float)));
+
+  // deal with size
+  size_t fsize = 0 * sizeof(float);
+  std::sort(vs.begin(), vs.end(), compareAttribs); // 1,2,3,4
+  for (const auto &v : vs) {
+    fsize += v.size * sizeof(float);
+  }
+  // now to locations
+  size_t voffset = 0 * sizeof(float); // attribute offset
+  for (const auto &v : vs) {
+    glEnableVertexAttribArray(v.loc); // location
+    glVertexAttribPointer(v.loc,      // location ==  aPos
+                          v.size,     // vec3
+                          GL_FLOAT, GL_FALSE, fsize, (void *)voffset);
+    voffset += v.size * sizeof(float);
+  }
   glBindVertexArray(triVAO);
   glDrawArrays(GL_TRIANGLES, 0, 3);
   glBindVertexArray(0);
   glDeleteVertexArrays(1, &triVAO);
   glDeleteBuffers(1, &triVBO);
 }
-void renderTriangle(float vert[15], float normal[3]) {
+void renderTriangle(float vert[15], float normal[3],
+                    std::vector<VertexAttrib> vs) {
   GLuint triVBO, triVAO;
   glGenBuffers(1, &triVBO);
   glGenVertexArrays(1, &triVAO);
@@ -107,20 +111,22 @@ void renderTriangle(float vert[15], float normal[3]) {
   glBindVertexArray(triVAO);
   glBindBuffer(GL_ARRAY_BUFFER, triVBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(trivert), &trivert, GL_STATIC_DRAW);
-  // specify attributes
-  GLsizei fsize = 8 * sizeof(float);
-  glVertexAttribPointer(0, // location ==  aPos
-                        3, // vec3
-                        GL_FLOAT, GL_FALSE, fsize, (void *)0);
-  glEnableVertexAttribArray(0); // location
-  glVertexAttribPointer(1,      // location ==  aNormal
-                        3,      // vec3
-                        GL_FLOAT, GL_FALSE, fsize, (void *)3);
-  glEnableVertexAttribArray(1); // location
-  glVertexAttribPointer(2,      // location ==  aTexCoord
-                        2,      // vec2
-                        GL_FLOAT, GL_FALSE, fsize, (void *)6);
-  glEnableVertexAttribArray(2); // location
+
+  // deal with size
+  size_t fsize = 0 * sizeof(float);
+  std::sort(vs.begin(), vs.end(), compareAttribs); // 1,2,3,4
+  for (const auto &v : vs) {
+    fsize += v.size * sizeof(float);
+  }
+  // now to locations
+  size_t voffset = 0 * sizeof(float); // attribute offset
+  for (const auto &v : vs) {
+    glEnableVertexAttribArray(v.loc); // location
+    glVertexAttribPointer(v.loc,      // location ==  aPos
+                          v.size,     // vec3
+                          GL_FLOAT, GL_FALSE, fsize, (void *)voffset);
+    voffset += v.size * sizeof(float);
+  }
   glBindVertexArray(triVAO);
   glDrawArrays(GL_TRIANGLES, 0, 3);
   glBindVertexArray(0);
@@ -147,94 +153,120 @@ void renderLamp() {
   glDeleteVertexArrays(1, &lightVao);
   glDeleteBuffers(1, &vbo);
 }
+void renderCubeInTangentSpace(std::vector<VertexAttrib> vs) {
+  /*
+     Draw cube
+   */
+  float s1n[] = {0.0f, 0.0f, -1.0f};
+  float s2n[] = {0.0f, 0.0f, 1.0f};
+  float s3n[] = {-1.0f, 0.0f, 0.0f};
+  float s4n[] = {1.0f, 0.0f, 0.0f};
+  float s5n[] = {0.0f, -1.0f, 0.0f};
+  float s6n[] = {0.0f, 1.0f, 0.0f};
+  // positions        // texture coords
+  float t1[] = {
+      -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,  0.5f, -0.5f, -0.5f,
+      1.0f,  0.0f,  0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+  };
+  renderTriangleInTangentSpace(t1, s1n, vs);
+  gerr();
+  float tt1[] = {
+      0.5f, 0.5f, -0.5f, 1.0f,  1.0f,  -0.5f, 0.5f, -0.5f,
+      0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,
+  };
+  renderTriangleInTangentSpace(tt1, s1n, vs);
+  gerr();
+
+  float t2[] = {
+      -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.5f, -0.5f, 0.5f,
+      1.0f,  0.0f,  0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
+  };
+
+  renderTriangleInTangentSpace(t2, s2n, vs);
+  gerr();
+  float tt2[] = {
+      0.5f, 0.5f, 0.5f,  1.0f,  1.0f, -0.5f, 0.5f, 0.5f,
+      0.0f, 1.0f, -0.5f, -0.5f, 0.5f, 0.0f,  0.0f,
+  };
+
+  renderTriangleInTangentSpace(tt2, s2n, vs);
+  gerr();
+
+  float t3[] = {
+      -0.5f, 0.5f, 0.5f,  1.0f,  0.0f,  -0.5f, 0.5f, -0.5f,
+      1.0f,  1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  1.0f,
+  };
+  renderTriangleInTangentSpace(t3, s3n, vs);
+  gerr();
+
+  float tt3[] = {
+      -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, 0.5f,
+      0.0f,  0.0f,  -0.5f, 0.5f, 0.5f, 1.0f,  0.0f,
+  };
+  renderTriangleInTangentSpace(tt3, s3n, vs);
+  gerr();
+
+  float t4[] = {
+      0.5f, 0.5f, 0.5f, 1.0f,  0.0f,  0.5f, 0.5f, -0.5f,
+      1.0f, 1.0f, 0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+  };
+
+  renderTriangleInTangentSpace(t4, s4n, vs);
+  gerr();
+  float tt4[] = {
+      0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f, -0.5f, 0.5f,
+      0.0f, 0.0f,  0.5f,  0.5f, 0.5f, 1.0f, 0.0f,
+  };
+
+  renderTriangleInTangentSpace(tt4, s4n, vs);
+  gerr();
+
+  float t5[] = {
+      -0.5f, -0.5f, -0.5f, 0.0f,  1.0f, 0.5f, -0.5f, -0.5f,
+      1.0f,  1.0f,  0.5f,  -0.5f, 0.5f, 1.0f, 0.0f,
+  };
+
+  renderTriangleInTangentSpace(t5, s5n, vs);
+  gerr();
+
+  float tt5[] = {
+      0.5f, -0.5f, 0.5f,  1.0f,  0.0f,  -0.5f, -0.5f, 0.5f,
+      0.0f, 0.0f,  -0.5f, -0.5f, -0.5f, 0.0f,  1.0f,
+  };
+
+  renderTriangleInTangentSpace(tt5, s5n, vs);
+  gerr();
+
+  float t6[] = {
+      -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.5f, 0.5f, -0.5f,
+      1.0f,  1.0f, 0.5f,  0.5f, 0.5f, 1.0f, 0.0f,
+  };
+
+  renderTriangleInTangentSpace(t6, s6n, vs);
+  gerr();
+
+  float tt6[] = {0.5f, 0.5f, 0.5f,  1.0f, 0.0f,  -0.5f, 0.5f, 0.5f,
+                 0.0f, 0.0f, -0.5f, 0.5f, -0.5f, 0.0f,  1.0f};
+
+  renderTriangleInTangentSpace(tt6, s6n, vs);
+  gerr();
+}
+
 void renderCubeInTangentSpace() {
   /*
      Draw cube
    */
-  float s1n[] = {0.0f, 0.0f, -1.0f};
-  float s2n[] = {0.0f, 0.0f, 1.0f};
-  float s3n[] = {-1.0f, 0.0f, 0.0f};
-  float s4n[] = {1.0f, 0.0f, 0.0f};
-  float s5n[] = {0.0f, -1.0f, 0.0f};
-  float s6n[] = {0.0f, 1.0f, 0.0f};
-
-  // positions        // texture coords
-  float t1[] = {
-      -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,  0.5f, -0.5f, -0.5f,
-      1.0f,  0.0f,  0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+  std::vector<VertexAttrib> vs{
+      {0, 3}, // aPos
+      {1, 3}, // aNormal
+      {2, 2}, // aTexCoord
+      {3, 3}, // aTan
+      {4, 3}, // aBiTan
   };
-  renderTriangleInTangentSpace(t1, s1n);
-  float tt1[] = {
-      0.5f, 0.5f, -0.5f, 1.0f,  1.0f,  -0.5f, 0.5f, -0.5f,
-      0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,
-  };
-  renderTriangleInTangentSpace(tt1, s1n);
-
-  float t2[] = {
-      -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.5f, -0.5f, 0.5f,
-      1.0f,  0.0f,  0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-  };
-
-  renderTriangleInTangentSpace(t2, s2n);
-  float tt2[] = {
-      0.5f, 0.5f, 0.5f,  1.0f,  1.0f, -0.5f, 0.5f, 0.5f,
-      0.0f, 1.0f, -0.5f, -0.5f, 0.5f, 0.0f,  0.0f,
-  };
-
-  renderTriangleInTangentSpace(tt2, s2n);
-
-  float t3[] = {
-      -0.5f, 0.5f, 0.5f,  1.0f,  0.0f,  -0.5f, 0.5f, -0.5f,
-      1.0f,  1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  1.0f,
-  };
-  renderTriangleInTangentSpace(t3, s3n);
-
-  float tt3[] = {
-      -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, 0.5f,
-      0.0f,  0.0f,  -0.5f, 0.5f, 0.5f, 1.0f,  0.0f,
-  };
-  renderTriangleInTangentSpace(tt3, s3n);
-
-  float t4[] = {
-      0.5f, 0.5f, 0.5f, 1.0f,  0.0f,  0.5f, 0.5f, -0.5f,
-      1.0f, 1.0f, 0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-  };
-
-  renderTriangleInTangentSpace(t4, s4n);
-  float tt4[] = {
-      0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f, -0.5f, 0.5f,
-      0.0f, 0.0f,  0.5f,  0.5f, 0.5f, 1.0f, 0.0f,
-  };
-
-  renderTriangleInTangentSpace(tt4, s4n);
-
-  float t5[] = {
-      -0.5f, -0.5f, -0.5f, 0.0f,  1.0f, 0.5f, -0.5f, -0.5f,
-      1.0f,  1.0f,  0.5f,  -0.5f, 0.5f, 1.0f, 0.0f,
-  };
-
-  renderTriangleInTangentSpace(t5, s5n);
-
-  float tt5[] = {
-      0.5f, -0.5f, 0.5f,  1.0f,  0.0f,  -0.5f, -0.5f, 0.5f,
-      0.0f, 0.0f,  -0.5f, -0.5f, -0.5f, 0.0f,  1.0f,
-  };
-
-  renderTriangleInTangentSpace(tt5, s5n);
-
-  float t6[] = {
-      -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.5f, 0.5f, -0.5f,
-      1.0f,  1.0f, 0.5f,  0.5f, 0.5f, 1.0f, 0.0f,
-  };
-
-  renderTriangleInTangentSpace(t6, s6n);
-
-  float tt6[] = {0.5f, 0.5f, 0.5f,  1.0f, 0.0f,  -0.5f, 0.5f, 0.5f,
-                 0.0f, 0.0f, -0.5f, 0.5f, -0.5f, 0.0f,  1.0f};
-
-  renderTriangleInTangentSpace(tt6, s6n);
+  renderCubeInTangentSpace(vs);
 }
-void renderCube(bool asTriangles = true) {
+
+void renderCube(std::vector<VertexAttrib> vs) {
   /*
      Draw cube
    */
@@ -250,77 +282,101 @@ void renderCube(bool asTriangles = true) {
       -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,  0.5f, -0.5f, -0.5f,
       1.0f,  0.0f,  0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
   };
-  renderTriangle(t1, s1n);
+  renderTriangle(t1, s1n, vs);
+  gerr();
   float tt1[] = {
       0.5f, 0.5f, -0.5f, 1.0f,  1.0f,  -0.5f, 0.5f, -0.5f,
       0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,
   };
-  renderTriangle(tt1, s1n);
+  renderTriangle(tt1, s1n, vs);
+  gerr();
 
   float t2[] = {
       -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.5f, -0.5f, 0.5f,
       1.0f,  0.0f,  0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
   };
 
-  renderTriangle(t2, s2n);
+  renderTriangle(t2, s2n, vs);
+  gerr();
   float tt2[] = {
       0.5f, 0.5f, 0.5f,  1.0f,  1.0f, -0.5f, 0.5f, 0.5f,
       0.0f, 1.0f, -0.5f, -0.5f, 0.5f, 0.0f,  0.0f,
   };
 
-  renderTriangle(tt2, s2n);
+  renderTriangle(tt2, s2n, vs);
+  gerr();
 
   float t3[] = {
       -0.5f, 0.5f, 0.5f,  1.0f,  0.0f,  -0.5f, 0.5f, -0.5f,
       1.0f,  1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  1.0f,
   };
-  renderTriangle(t3, s3n);
+  renderTriangle(t3, s3n, vs);
+  gerr();
 
   float tt3[] = {
       -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, 0.5f,
       0.0f,  0.0f,  -0.5f, 0.5f, 0.5f, 1.0f,  0.0f,
   };
-  renderTriangle(tt3, s3n);
+  renderTriangle(tt3, s3n, vs);
+  gerr();
 
   float t4[] = {
       0.5f, 0.5f, 0.5f, 1.0f,  0.0f,  0.5f, 0.5f, -0.5f,
       1.0f, 1.0f, 0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
   };
 
-  renderTriangle(t4, s4n);
+  renderTriangle(t4, s4n, vs);
+  gerr();
   float tt4[] = {
       0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f, -0.5f, 0.5f,
       0.0f, 0.0f,  0.5f,  0.5f, 0.5f, 1.0f, 0.0f,
   };
 
-  renderTriangle(tt4, s4n);
+  renderTriangle(tt4, s4n, vs);
+  gerr();
 
   float t5[] = {
       -0.5f, -0.5f, -0.5f, 0.0f,  1.0f, 0.5f, -0.5f, -0.5f,
       1.0f,  1.0f,  0.5f,  -0.5f, 0.5f, 1.0f, 0.0f,
   };
 
-  renderTriangle(t5, s5n);
+  renderTriangle(t5, s5n, vs);
+  gerr();
 
   float tt5[] = {
       0.5f, -0.5f, 0.5f,  1.0f,  0.0f,  -0.5f, -0.5f, 0.5f,
       0.0f, 0.0f,  -0.5f, -0.5f, -0.5f, 0.0f,  1.0f,
   };
 
-  renderTriangle(tt5, s5n);
+  renderTriangle(tt5, s5n, vs);
+  gerr();
 
   float t6[] = {
       -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.5f, 0.5f, -0.5f,
       1.0f,  1.0f, 0.5f,  0.5f, 0.5f, 1.0f, 0.0f,
   };
 
-  renderTriangle(t6, s6n);
+  renderTriangle(t6, s6n, vs);
+  gerr();
 
   float tt6[] = {0.5f, 0.5f, 0.5f,  1.0f, 0.0f,  -0.5f, 0.5f, 0.5f,
                  0.0f, 0.0f, -0.5f, 0.5f, -0.5f, 0.0f,  1.0f};
 
-  renderTriangle(tt6, s6n);
+  renderTriangle(tt6, s6n, vs);
+  gerr();
 }
+void renderCube() {
+  /*
+     Draw cube
+   */
+  std::vector<VertexAttrib> vs{
+      {0, 3}, // aPos
+      {1, 3}, // aNormal
+      {2, 2}, // aTexCoord
+  };
+  renderCube(vs);
+}
+
 void renderCubeD() {
   // from learnopengl.com
   //
@@ -386,12 +442,14 @@ void renderCubeD() {
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                         (void *)(6 * sizeof(float)));
+  gerr();
   //
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
   // render
   glBindVertexArray(cubeVAO);
   glDrawArrays(GL_TRIANGLES, 0, 36);
+  gerr();
   glBindVertexArray(0);
   glDeleteVertexArrays(1, &cubeVAO);
   glDeleteBuffers(1, &cubeVBO);
@@ -423,6 +481,7 @@ void renderQuad() {
                         (void *)(3 * sizeof(float)));
   glBindVertexArray(quadVAO);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  gerr();
   glBindVertexArray(0);
   glDeleteVertexArrays(1, &quadVAO);
   glDeleteBuffers(1, &quadVBO);
@@ -462,6 +521,7 @@ void renderPlane() {
 
   glBindVertexArray(planeVAO);
   glDrawArrays(GL_TRIANGLES, 0, 6);
+  gerr();
 }
 // renders (and builds at first invocation) a sphere
 // -------------------------------------------------
@@ -549,6 +609,7 @@ void renderSphere() {
 
   glBindVertexArray(sphereVAO);
   glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
+  gerr();
   glBindVertexArray(0);
   glDeleteVertexArrays(1, &sphereVAO);
   glDeleteBuffers(1, &vbo);

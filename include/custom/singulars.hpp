@@ -26,9 +26,6 @@ fs::path modelPath = current_dir / "media" / "model";
 const unsigned int WINWIDTH = 800;
 const unsigned int WINHEIGHT = 600;
 
-// debug related
-const bool DEBUG = true;
-
 // camera related
 
 float lastX = WINWIDTH / 2.0f;
