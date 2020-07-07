@@ -125,15 +125,11 @@ Shader loadPbrShader() {
   fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
-  pbrShader.setIntUni("albedoMap", 0);
-  pbrShader.setIntUni("normalMap", 1);
-  pbrShader.setIntUni("roughnessMap", 2);
-  pbrShader.setIntUni("metallicMap", 3);
-  pbrShader.setIntUni("aoMap", 4);
-  pbrShader.setIntUni("irradianceMap", 5);
-  pbrShader.setIntUni("prefilterMap", 6);
-  pbrShader.setIntUni("brdfLUT", 7);
-  pbrShader.setIntUni("linearDepthMap", 8);
+  pbrShader.setIntUni("gDepth", 0);
+  pbrShader.setIntUni("gNormal", 1);
+  pbrShader.setIntUni("gAlbedo", 2);
+  pbrShader.setIntUni("gMaterial", 3);
+  pbrShader.setIntUni("gIblSpecular", 4);
   return pbrShader;
 }
 Shader loadLampShader() {
@@ -156,6 +152,16 @@ Shader loadGeometryShader() {
   fs::path vpath = shaderDirPath / "screen" / "geobuffer.vert";
   fs::path fpath = shaderDirPath / "screen" / "geobuffer.frag";
   Shader gShader(vpath.c_str(), fpath.c_str());
+  gShader.useProgram();
+  gShader.setIntUni("albedoMap", 0);
+  gShader.setIntUni("normalMap", 1);
+  gShader.setIntUni("roughnessMap", 2);
+  gShader.setIntUni("metallicMap", 3);
+  gShader.setIntUni("aoMap", 4);
+  gShader.setIntUni("irradianceMap", 5);
+  gShader.setIntUni("prefilterMap", 6);
+  gShader.setIntUni("brdfLUT", 7);
+
   return gShader;
 }
 
@@ -580,7 +586,7 @@ int main() {
 
   // stores fragement distance to camera
   GLuint gDepth;
-  setGBufferTexture(gDepth, GL_R16F, GL_RED, GL_FLOAT, WINWIDTH, WINHEIGHT,
+  setGBufferTexture(gDepth, GL_RGB16F, GL_RGB, GL_FLOAT, WINWIDTH, WINHEIGHT,
                     attachmentNb);
 
   // stores fragment normal in view space
@@ -600,9 +606,6 @@ int main() {
 
   // stores fall back specular/ambient term computed
   // with ibl
-  GLuint gIblSpecular;
-  setGBufferTexture(gIblSpecular, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH,
-                    WINHEIGHT, attachmentNb);
 
   // a fall back texture with precomputed brdf and environment cubemap
   // the values inside this cubemap is captured using a captureFBO
@@ -613,6 +616,10 @@ int main() {
   // vec3 prefilteredColor = textureCubeLod(PrefilteredEnvMap, refVec, lod);
   // vec2 envBRDF = texture2D(BRDFIntegrationMap, vec2(NdotV, roughness)).xy;
   // vec3 indirectSpecular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+  GLuint gIblSpecular;
+  setGBufferTexture(gIblSpecular, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH,
+                    WINHEIGHT, attachmentNb);
 
   // setting color attachments
   GLuint attachments[attachmentNb];
@@ -715,55 +722,19 @@ int main() {
       pbrShader.useProgram();
       glm::mat4 model = glm::mat4(1);
       glm::mat4 view = camera.getViewMatrix();
-      pbrShader.setVec3Uni("camPos", camera.pos);
+      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos));
+      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position));
 
+      pbrShader.setVec3Uni("camPosVS", camPosVS);
+
+      pbrShader.setVec3Uni("lightPosVS", lightPosVS);
+      pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
       // bind textures
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, baseColorMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, normalMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE2);
-      glBindTexture(GL_TEXTURE_2D, roughnessMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE3);
-      glBindTexture(GL_TEXTURE_2D, metallicMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE4);
-      glBindTexture(GL_TEXTURE_2D, aoMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE5);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE6);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE7);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLutTexture);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE8);
-      glBindTexture(GL_TEXTURE_2D, linearDepthBuffer);
-
       model = glm::mat4(1.0f);
       model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
       pbrShader.setMat4Uni("model", model);
       renderQuad();
       gerr();
-
-      // render light
-      // glBindTexture(GL_TEXTURE_2D, 0);
-      pbrShader.useProgram();
-      pbrShader.setVec3Uni("lightPosition", spotLight.position);
-      pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
     }
 
     // 3. raytrace, cone trace scene

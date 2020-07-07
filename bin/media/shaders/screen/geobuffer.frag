@@ -1,6 +1,6 @@
 #version 430
 
-layout(location = 0) out float gDepth;
+layout(location = 0) out vec3 gDepth;
 layout(location = 1) out vec4 gNormal;
 layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
@@ -18,9 +18,9 @@ uniform sampler2D aoMap;        // 4
 
 // ibl
 // IBL
-uniform samplerCube irradianceMap;
-uniform samplerCube prefilterMap;
-uniform sampler2D brdfLUT;
+uniform samplerCube irradianceMap; // 5
+uniform samplerCube prefilterMap;  // 6
+uniform sampler2D brdfLUT;         // 7
 
 uniform float maxMipLevels = 5.0;
 
@@ -107,7 +107,7 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
   vec3 kS = F;
   vec3 kD = 1.0 - kS;
   kD *= 1.0 - metallic;
-  vec3 refbias = normalize(reflect(viewDir, normal));
+  vec3 refbias = normalize(reflect(-viewDir, normal));
   float kappa = 1.0 - roughness;
   vec3 R = vonmises_dir(refbias, kappa);
 
@@ -130,14 +130,14 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
 void main() {
   // set depth in view space
   // gDepth.xyz = normalize(FragPosInView);
-  gDepth = length(FragPosInView);
+  gDepth.x = length(FragPosInView);
   vec3 norm = getNormalFromMap(); // in view space
   vec3 viewDir = normalize(vec3(view * vec4(camFront, 1)));
 
   //
   gAlbedo.xyz = texture(albedoMap, TexCoord).xyz;
 
-  gNormal.xyz = normalize(norm);
+  gNormal.xyz = normalize(norm); // in view space
   gNormal.w = length(norm);
 
   float metallic = texture(metallicMap, TexCoord).r;
