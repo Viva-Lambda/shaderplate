@@ -1,6 +1,6 @@
 #version 430
 in vec2 TexCoord;
-in vec3 viewRay;
+in vec3 ViewRay;
 
 out vec4 FragColor;
 
@@ -122,7 +122,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 }
 void main() {
   float viewDist = texture(gDepth, TexCoord).x;
-  vec3 FragPosVS = viewRay * viewDist + camPosVS;
+  vec3 FragPosVS = ViewRay * viewDist + camPosVS;
 
   // material properties
   vec3 albedo = pow(texture(gAlbedo, TexCoord).rgb, vec3(2.2));

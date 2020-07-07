@@ -700,6 +700,31 @@ int main() {
       model = glm::scale(model, glm::vec3(0.5f));
       geometryShader.setMat4Uni("model", model);
 
+      // activate textures
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, albedoMap);
+
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, normalMap);
+
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, roughnessMap);
+
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, metallicMap);
+
+      glActiveTexture(GL_TEXTURE4);
+      glBindTexture(GL_TEXTURE_2D, aoMap);
+
+      glActiveTexture(GL_TEXTURE5);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+      
+      glActiveTexture(GL_TEXTURE6);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+      glActiveTexture(GL_TEXTURE7);
+      glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
+
       renderCubeInTangentSpace();
       gerr();
       lampShader.useProgram();
