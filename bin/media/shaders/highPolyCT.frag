@@ -153,7 +153,7 @@ vec3 getLightDir() { return normalize(lightPos - FragPos); }
 vec3 getSurfaceNormal() {
   //
   // vec3 normal = texture2D(normalMap, TexCoord).rgb;
-  vec3 normal = texture2D(heightMap1, TexCoord).rgb * 2.0 - 1.0;
+  vec3 normal = texture(heightMap1, TexCoord).rgb * 2.0 - 1.0;
   normal = normalize(TBN * normal);
   // return normalize(normal * 2.0 - 1.0);
   return normal;
