@@ -643,7 +643,7 @@ int main() {
   // lightening shader
 
   // screen space ray tracing + cone tracing shader
-  Shader rayConeShader = loadRayConeShader();
+  // Shader rayConeShader = loadRayConeShader();
   gerr();
 
   int srcw, srch;
@@ -696,7 +696,7 @@ int main() {
       model = glm::mat4(1.0f);
       glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
       model = glm::translate(model, objectPos);
-      model = glm::scale(model, glm::vec3(0.5f));
+      model = glm::scale(model, glm::vec3(1.5f));
 
       // activate textures
       glActiveTexture(GL_TEXTURE0);
@@ -722,21 +722,13 @@ int main() {
 
       glActiveTexture(GL_TEXTURE7);
       glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
+
       geometryShader.useProgram();
       geometryShader.setMat4Uni("model", model);
       geometryShader.setMat4Uni("view", view);
-
+      geometryShader.setVec3Uni("viewPos", camera.pos);
       renderCubeInTangentSpace();
-      gerr();
-      lampShader.useProgram();
-      lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
 
-      // model = glm::mat4(1.0f);
-      // model = glm::translate(model, spotLight.position);
-      // model = glm::scale(model, glm::vec3(0.2f));
-      // lampShader.setMat4Uni("model", model);
-      // lampShader.setMat4Uni("view", view);
-      // renderSphere();
       gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -761,42 +753,49 @@ int main() {
       glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D, gIblSpecular);
 
-
       pbrShader.useProgram();
       glm::mat4 model = glm::mat4(1);
       glm::mat4 view = camera.getViewMatrix();
-      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos, 1));
-      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position, 1));
 
-      pbrShader.setVec3Uni("camPosVS", camPosVS);
-      pbrShader.setVec3Uni("camFrontVS",
-                           glm::vec3(view * glm::vec4(camera.front, 1)));
+      pbrShader.setVec3Uni("viewPos", camera.pos);
 
-      pbrShader.setVec3Uni("lightPosVS", lightPosVS);
+      pbrShader.setVec3Uni("lightPos", spotLight.position);
       pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
       // bind textures
-      model = glm::mat4(1.0f);
-      model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
-      pbrShader.setMat4Uni("view", view);
-      pbrShader.setMat4Uni("projection", projection);
 
-      
+
       renderQuad();
       gerr();
     }
 
+    // 2.5 draw light source
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, geometry_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, WINWIDTH, WINHEIGHT, 0, 0, WINWIDTH, WINHEIGHT,
+                      GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+    lampShader.useProgram();
+    lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
+
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 view = camera.getViewMatrix();
+    model = glm::translate(model, spotLight.position);
+    model = glm::scale(model, glm::vec3(0.2f));
+    lampShader.setMat4Uni("model", model);
+    lampShader.setMat4Uni("view", view);
+    renderSphere();
+
     // 3. raytrace, cone trace scene
-    rayConeShader.useProgram();
+    // rayConeShader.useProgram();
 
     // 4. background
 
     // glm::mat4 view = camera.getViewMatrix();
-    // backgroundShader.useProgram();
-    // backgroundShader.setMat4Uni("view", view);
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    // renderCubeD();
-    gerr();
+    backgroundShader.useProgram();
+    backgroundShader.setMat4Uni("view", view);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    renderCubeD();
     // swap buffer vs
     glfwSwapBuffers(window);
     glfwPollEvents();

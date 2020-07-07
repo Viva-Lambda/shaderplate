@@ -1,7 +1,6 @@
 #version 430
 
 in vec2 TexCoord;
-in vec3 ViewRay;
 
 out vec4 FragColor;
 
@@ -13,10 +12,10 @@ uniform sampler2D gMaterial;    // from GBuffer
 uniform sampler2D gIblSpecular; // from GBuffer
 
 // lights
-uniform vec3 lightPosVS; // in view space
+uniform vec3 lightPos; // in world space
 uniform vec3 lightColor;
 
-uniform vec3 camPosVS; // in view space
+uniform vec3 viewPos; // in world space
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -122,19 +121,20 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 void main() {
-  float viewDist = texture(gDepth, TexCoord).x;
-  vec3 FragPosVS = ViewRay * viewDist + camPosVS;
+  //float viewDist = texture(gDepth, TexCoord).x;
+  //vec3 FragPos = ViewRay * viewDist + viewPos;
+  vec3 FragPos = texture(gDepth, TexCoord).xyz;
 
   // material properties
   vec3 albedo = pow(texture(gAlbedo, TexCoord).rgb, vec3(2.2));
-  float metallic = texture(gMaterial, TexCoord).r;
-  float roughness = texture(gMaterial, TexCoord).g;
-  float ao = texture(gMaterial, TexCoord).b;
+  float metallic = texture(gMaterial, TexCoord).x;
+  float roughness = texture(gMaterial, TexCoord).y;
+  float ao = texture(gMaterial, TexCoord).z;
 
   // input lighting data
   // vec3 N = getNormalFromMap();
-  vec3 N = texture(gNormal, TexCoord).rgb; // in view space
-  vec3 V = normalize(camPosVS - FragPosVS);
+  vec3 N = texture(gNormal, TexCoord).rgb; // in world space
+  vec3 V = normalize(viewPos - FragPos);
   vec3 refbias = normalize(reflect(-V, N));
   float kappa = 1.0 - roughness;
   vec3 R = vonmises_dir(refbias, kappa);
@@ -145,9 +145,9 @@ void main() {
   // reflectance equation
   vec3 Lo = vec3(0.0);
   // calculate per-light radiance
-  vec3 L = normalize(lightPosVS - FragPosVS);
+  vec3 L = normalize(lightPos - FragPos);
   vec3 H = normalize(V + L);
-  float dist = length(lightPosVS - FragPosVS);
+  float dist = length(lightPos - FragPos);
   float attenuation = 1.0 / (dist * dist);
   vec3 radiance = lightColor * attenuation;
 
@@ -158,7 +158,7 @@ void main() {
 
   vec3 nominator = NDF * G * F;
   float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) +
-                      0.001; // 0.001 to prevent divide by zero.
+                      0.0001; // 0.001 to prevent divide by zero.
   vec3 specular = nominator / denominator;
 
   // kS is equal to Fresnel

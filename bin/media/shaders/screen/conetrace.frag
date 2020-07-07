@@ -86,16 +86,13 @@ vec3 fresnelSchlickRoughness(float costheta, vec3 F0, float roughness) {
 float lerp(float n, float n2, float f) { return n + f * (n2 - n); }
 
 // depth buffer in camera space from g-buffer
-uniform sampler2D linearDepthBuffer;
+uniform sampler2D gDepth;
 
 uniform sampler2D lightBuffer;  // convolved color buffer - all mip levels
-uniform sampler2D normalBuffer; // normal buffer - from g-buffer in camera space
-uniform sampler2D materialBuffer; // specular buffer - from g-buffer (rgb = ior,
+uniform sampler2D gNormal; // normal buffer - from g-buffer in camera space
+uniform sampler2D gMaterial; // specular buffer - from g-buffer (rgb = ior,
+uniform sampler2D gIblSpecular; // specular buffer - from g-buffer (rgb = ior,
                                   // a = roughness)
-uniform samplerCube envCubemapFallback;
-uniform samplerCube irradianceMapFallback;
-uniform samplerCube prefilterMapFallback;
-uniform sampler2D brdfLutFallback;
 
 // --------------------------- Ray Tracing Code ------------------------------
 

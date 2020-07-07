@@ -6,6 +6,7 @@ layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
 layout(location = 4) out vec3 gIblSpecular;
 
+in vec3 FragPos;
 in vec3 FragPosInView;
 in vec2 TexCoord;
 in mat3 TBN;
@@ -26,8 +27,8 @@ uniform float maxMipLevels = 5.0;
 
 uniform mat4 view;
 
-uniform float fresnel = 0.04;
-uniform vec3 camFrontVS; // world space
+uniform float fresnel = 0.4; // metal
+uniform vec3 viewPos; // world space
 
 /**
  * Utility code for von fischer distribution
@@ -86,13 +87,13 @@ vec3 vonmises_dir(vec3 bias_dir, float kappa) {
 }
 
 /**
- * Compute normal in view space using TBN matrix
+ * Compute normal in world space using TBN matrix
  * */
 vec3 getNormalFromMap() {
 
   vec3 normal = texture(normalMap, TexCoord).rgb * 2.0 - 1.0;
   normal = normalize(TBN * normal);
-  normal = vec3(view * vec4(normal, 1));
+  // normal = vec3(view * vec4(normal, 1));
   return normal;
 }
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
@@ -130,14 +131,16 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
 void main() {
   // set depth in view space
   // gDepth.xyz = normalize(FragPosInView);
-  gDepth.x = length(FragPosInView);
+  // gDepth.x = length(FragPosInView);
+  gDepth = FragPos;
+  // gDepth.y = length(FragPosInView);
   vec3 norm = getNormalFromMap(); // in view space
-  vec3 viewDir = normalize(camFrontVS);
+  vec3 viewDir = normalize(viewPos - FragPos);
 
   //
   gAlbedo.xyz = texture(albedoMap, TexCoord).xyz;
 
-  gNormal.xyz = normalize(norm); // in view space
+  gNormal.xyz = normalize(norm); // in world space
   gNormal.w = length(norm);
 
   float metallic = texture(metallicMap, TexCoord).r;
@@ -149,8 +152,7 @@ void main() {
   gMaterial.z = ao;
   gMaterial.w = fresnel;
 
-  // gIblSpecular = getIblSpecular(normalize(norm), viewDir, metallic,
-  // gAlbedo.xyz,
-  //                              roughness, ao);
-  gIblSpecular = 0.1* gAlbedo.xyz;
+  gIblSpecular = getIblSpecular(normalize(norm), viewDir, metallic, gAlbedo.xyz,
+                                roughness, ao);
+  // gIblSpecular = 0.1* gAlbedo.xyz;
 }
