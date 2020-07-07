@@ -27,7 +27,7 @@ uniform float maxMipLevels = 5.0;
 uniform mat4 view;
 
 uniform float fresnel = 0.04;
-uniform vec3 camFront;
+uniform vec3 camFrontVS; // world space
 
 /**
  * Utility code for von fischer distribution
@@ -132,7 +132,7 @@ void main() {
   // gDepth.xyz = normalize(FragPosInView);
   gDepth.x = length(FragPosInView);
   vec3 norm = getNormalFromMap(); // in view space
-  vec3 viewDir = normalize(vec3(view * vec4(camFront, 1)));
+  vec3 viewDir = normalize(camFrontVS);
 
   //
   gAlbedo.xyz = texture(albedoMap, TexCoord).xyz;
@@ -149,6 +149,8 @@ void main() {
   gMaterial.z = ao;
   gMaterial.w = fresnel;
 
-  gIblSpecular = getIblSpecular(normalize(norm), viewDir, metallic, gAlbedo.xyz,
-                                roughness, ao);
+  // gIblSpecular = getIblSpecular(normalize(norm), viewDir, metallic,
+  // gAlbedo.xyz,
+  //                              roughness, ao);
+  gIblSpecular = 0.1* gAlbedo.xyz;
 }

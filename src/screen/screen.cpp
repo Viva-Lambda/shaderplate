@@ -697,7 +697,7 @@ int main() {
       glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
       model = glm::translate(model, objectPos);
       model = glm::scale(model, glm::vec3(0.5f));
-      
+
       // activate textures
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, baseColorMap);
@@ -726,7 +726,6 @@ int main() {
       geometryShader.setMat4Uni("model", model);
       geometryShader.setMat4Uni("view", view);
 
-
       renderCubeInTangentSpace();
       gerr();
       lampShader.useProgram();
@@ -746,22 +745,6 @@ int main() {
     {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      pbrShader.useProgram();
-      glm::mat4 model = glm::mat4(1);
-      glm::mat4 view = camera.getViewMatrix();
-      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos, 1));
-      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position, 1));
-
-      pbrShader.setVec3Uni("camPosVS", camPosVS);
-
-      pbrShader.setVec3Uni("lightPosVS", lightPosVS);
-      pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
-      // bind textures
-      model = glm::mat4(1.0f);
-      model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
-      pbrShader.setMat4Uni("view", view);
-      pbrShader.setMat4Uni("projection", projection);
-
       // activate textures
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, gDepth);
@@ -778,6 +761,26 @@ int main() {
       glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D, gIblSpecular);
 
+
+      pbrShader.useProgram();
+      glm::mat4 model = glm::mat4(1);
+      glm::mat4 view = camera.getViewMatrix();
+      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos, 1));
+      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position, 1));
+
+      pbrShader.setVec3Uni("camPosVS", camPosVS);
+      pbrShader.setVec3Uni("camFrontVS",
+                           glm::vec3(view * glm::vec4(camera.front, 1)));
+
+      pbrShader.setVec3Uni("lightPosVS", lightPosVS);
+      pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
+      // bind textures
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
+      pbrShader.setMat4Uni("view", view);
+      pbrShader.setMat4Uni("projection", projection);
+
+      
       renderQuad();
       gerr();
     }
