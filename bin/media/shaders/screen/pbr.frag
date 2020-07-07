@@ -1,4 +1,5 @@
 #version 430
+
 in vec2 TexCoord;
 in vec3 ViewRay;
 

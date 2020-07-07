@@ -12,7 +12,7 @@ out vec3 ViewRay;
 void main() {
   TexCoord = aTexCoord;
   mat4 invProjMat = inverse(projection * view);
-  vec3 fragVS = invProjMat * vec4(aPos, 1);
+  vec3 fragVS = vec3(invProjMat * vec4(aPos, 1));
   ViewRay = normalize(camPosVS - fragVS); // might produce bug
   // classic gl pos
   gl_Position = vec4(aPos, 1);

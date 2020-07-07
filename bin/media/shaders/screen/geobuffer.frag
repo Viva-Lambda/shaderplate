@@ -32,6 +32,7 @@ uniform vec3 camFront;
 /**
  * Utility code for von fischer distribution
  * */
+const float PI = 3.14159265359;
 
 float rand(vec2 co) {
   // random gen
@@ -92,17 +93,19 @@ vec3 getNormalFromMap() {
   vec3 normal = texture(normalMap, TexCoord).rgb * 2.0 - 1.0;
   normal = normalize(TBN * normal);
   normal = vec3(view * vec4(normal, 1));
-  return normal
+  return normal;
 }
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness,
-                             float ao) {
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
-                    float roughness) {
+                    float roughness, float ao) {
 
-  F = fresnelSchlickRoughness(max(dot(normal, viewDir), 0.0), F0, roughness);
+  vec3 F0 = vec3(fresnel);
+  F0 = mix(F0, albedo, metallic);
+  float costheta = max(dot(normal, viewDir), 0.0);
+  vec3 F = fresnelSchlickRoughness(costheta, F0, roughness);
 
   vec3 kS = F;
   vec3 kD = 1.0 - kS;
@@ -114,14 +117,11 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
   vec3 irradiance = texture(irradianceMap, normal).rgb;
   vec3 diffuse = irradiance * albedo;
 
-  // sample both the pre-filter map and the BRDF lut and combine them together
-  // as per the Split-Sum approximation to get the IBL specular part.
   const float MAX_REFLECTION_LOD = maxMipLevels - 1.0;
   vec3 prefilteredColor =
       textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-  vec2 brdf =
-      texture(brdfLUT, vec2(max(dot(normal, viewDir), 0.0), roughness)).rg;
-  specular = prefilteredColor * (F * brdf.x + brdf.y);
+  vec2 brdf = texture(brdfLUT, vec2(costheta, roughness)).rg;
+  vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
   vec3 ambient = (kD * diffuse + specular) * ao;
   return ambient;
@@ -150,5 +150,5 @@ void main() {
   gMaterial.w = fresnel;
 
   gIblSpecular = getIblSpecular(normalize(norm), viewDir, metallic, gAlbedo.xyz,
-                                roughness);
+                                roughness, ao);
 }

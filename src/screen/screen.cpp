@@ -693,13 +693,11 @@ int main() {
       glm::mat4 model = glm::mat4(1.0f);
 
       // set shader uniforms
-      geometryShader.setMat4Uni("view", view);
       model = glm::mat4(1.0f);
       glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
       model = glm::translate(model, objectPos);
       model = glm::scale(model, glm::vec3(0.5f));
-      geometryShader.setMat4Uni("model", model);
-
+      
       // activate textures
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, baseColorMap);
@@ -718,24 +716,28 @@ int main() {
 
       glActiveTexture(GL_TEXTURE5);
       glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
-      
+
       glActiveTexture(GL_TEXTURE6);
       glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
 
       glActiveTexture(GL_TEXTURE7);
       glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
+      geometryShader.useProgram();
+      geometryShader.setMat4Uni("model", model);
+      geometryShader.setMat4Uni("view", view);
+
 
       renderCubeInTangentSpace();
       gerr();
       lampShader.useProgram();
       lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
 
-      model = glm::mat4(1.0f);
-      model = glm::translate(model, spotLight.position);
-      model = glm::scale(model, glm::vec3(0.2f));
-      lampShader.setMat4Uni("model", model);
-      lampShader.setMat4Uni("view", view);
-      renderSphere();
+      // model = glm::mat4(1.0f);
+      // model = glm::translate(model, spotLight.position);
+      // model = glm::scale(model, glm::vec3(0.2f));
+      // lampShader.setMat4Uni("model", model);
+      // lampShader.setMat4Uni("view", view);
+      // renderSphere();
       gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -747,8 +749,8 @@ int main() {
       pbrShader.useProgram();
       glm::mat4 model = glm::mat4(1);
       glm::mat4 view = camera.getViewMatrix();
-      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos,1));
-      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position,1));
+      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos, 1));
+      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position, 1));
 
       pbrShader.setVec3Uni("camPosVS", camPosVS);
 
@@ -759,6 +761,23 @@ int main() {
       model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
       pbrShader.setMat4Uni("view", view);
       pbrShader.setMat4Uni("projection", projection);
+
+      // activate textures
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, gDepth);
+
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, gNormal);
+
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, gAlbedo);
+
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gMaterial);
+
+      glActiveTexture(GL_TEXTURE4);
+      glBindTexture(GL_TEXTURE_2D, gIblSpecular);
+
       renderQuad();
       gerr();
     }
@@ -768,12 +787,12 @@ int main() {
 
     // 4. background
 
-    glm::mat4 view = camera.getViewMatrix();
-    backgroundShader.useProgram();
-    backgroundShader.setMat4Uni("view", view);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    renderCubeD();
+    // glm::mat4 view = camera.getViewMatrix();
+    // backgroundShader.useProgram();
+    // backgroundShader.setMat4Uni("view", view);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    // renderCubeD();
     gerr();
     // swap buffer vs
     glfwSwapBuffers(window);
