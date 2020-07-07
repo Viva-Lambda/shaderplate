@@ -328,7 +328,7 @@ void genPrefilterMap(GLuint &prefilterMap, GLuint prefilterMapWidth,
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 }
 
-void computePrefilterMap(Shader prefilterShader, Shader pbrShader,
+void computePrefilterMap(Shader prefilterShader, Shader geometryShader,
                          glm::mat4 captureProjection, GLuint captureWidth,
                          GLuint &envCubemap, GLuint &captureFBO,
                          GLuint &captureRBO,
@@ -543,7 +543,7 @@ int main() {
   // ----------------------------------------------------------------------------------------------------
   Shader prefilterShader = loadPrefilterShader();
   gerr();
-  computePrefilterMap(prefilterShader, pbrShader, captureProjection,
+  computePrefilterMap(prefilterShader, geometryShader, captureProjection,
                       captureWidth, envCubemap, captureFBO, captureRBO,
                       captureViews, prefilterMap, prefilterMapWidth,
                       prefilterMapHeight);
@@ -702,7 +702,7 @@ int main() {
 
       // activate textures
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, albedoMap);
+      glBindTexture(GL_TEXTURE_2D, baseColorMap);
 
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_2D, normalMap);
@@ -747,8 +747,8 @@ int main() {
       pbrShader.useProgram();
       glm::mat4 model = glm::mat4(1);
       glm::mat4 view = camera.getViewMatrix();
-      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos));
-      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position));
+      glm::vec3 camPosVS = glm::vec3(view * glm::vec4(camera.pos,1));
+      glm::vec3 lightPosVS = glm::vec3(view * glm::vec4(spotLight.position,1));
 
       pbrShader.setVec3Uni("camPosVS", camPosVS);
 
@@ -757,7 +757,8 @@ int main() {
       // bind textures
       model = glm::mat4(1.0f);
       model = glm::translate(model, glm::vec3(-5.0, 0.0, 2.0));
-      pbrShader.setMat4Uni("model", model);
+      pbrShader.setMat4Uni("view", view);
+      pbrShader.setMat4Uni("projection", projection);
       renderQuad();
       gerr();
     }
