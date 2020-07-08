@@ -1,8 +1,9 @@
 #version 430
-//layout(location = 0) out vec3 FragColor;
+// layout(location = 0) out vec3 FragColor;
 out vec3 FragColor;
 
 in vec2 TexCoord;
+in vec3 ViewRay;
 
 // material parameters
 uniform sampler2D gDepth;    // from GBuffer
@@ -22,10 +23,10 @@ uniform vec3 lightPos; // in world space
 uniform vec3 lightColor;
 
 uniform vec3 viewPos; // in world space
+uniform mat4 view;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
-
 
 /**
  * Utility code for von fischer distribution
@@ -149,9 +150,9 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
   return ambient;
 }
 void main() {
-  // float viewDist = texture(gDepth, TexCoord).x;
-  // vec3 FragPos = ViewRay * viewDist + viewPos;
-  vec3 FragPos = texture(gDepth, TexCoord).xyz;
+  float viewDist = texture(gDepth, TexCoord).x;
+  vec3 FragPos = ViewRay * viewDist + viewPos;
+  vec3 FragPosVS = vec3(view * vec4(FragPos,1));
 
   // material properties
   vec3 albedo = pow(texture(gAlbedo, TexCoord).rgb, vec3(2.2));
@@ -160,10 +161,12 @@ void main() {
   float ao = texture(gMaterial, TexCoord).z;
 
   // input lighting data
-  // vec3 N = getNormalFromMap();
-  vec3 N = texture(gNormal, TexCoord).rgb; // in world space
-  vec3 V = normalize(viewPos - FragPos);
-  vec3 refbias = normalize(reflect(-V, N));
+  vec2 NormalVSxy = texture(gDepth, TexCoord).yz; // in view space
+  float NormalVSz = texture(gNormal, TexCoord).x; // in view space
+  vec3 NormalVS = vec3(NormalVSxy, NormalVSz);
+  vec3 ViewPosVS = vec3(view * vec4(viewPos, 1));
+  vec3 V = normalize(ViewPosVS - FragPosVS);
+  vec3 refbias = normalize(reflect(-V, NormalVS));
   float kappa = 1.0 - roughness;
   vec3 R = vonmises_dir(refbias, kappa);
   float fresnel = texture(gMaterial, TexCoord).w;
@@ -174,19 +177,20 @@ void main() {
   // reflectance equation
   vec3 Lo = vec3(0.0);
   // calculate per-light radiance
-  vec3 L = normalize(lightPos - FragPos);
+  vec3 LightPosVS = vec3(view * vec4(lightPos,1));
+  vec3 L = normalize(LightPosVS - FragPosVS);
   vec3 H = normalize(V + L);
-  float dist = length(lightPos - FragPos);
+  float dist = length(LightPosVS - FragPosVS);
   float attenuation = 1.0 / (dist * dist);
   vec3 radiance = lightColor * attenuation;
 
   // Cook-Torrance BRDF
-  float NDF = DistributionGGX(N, H, roughness);
-  float G = GeometrySmith(N, V, L, roughness);
+  float NDF = DistributionGGX(NormalVS, H, roughness);
+  float G = GeometrySmith(NormalVS, V, L, roughness);
   vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
   vec3 nominator = NDF * G * F;
-  float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) +
+  float denominator = 4 * max(dot(NormalVS, V), 0.0) * max(dot(NormalVS, L), 0.0) +
                       0.0001; // 0.001 to prevent divide by zero.
   vec3 specular = nominator / denominator;
 
@@ -196,12 +200,12 @@ void main() {
   kD *= 1.0 - metallic;
 
   // scale light by NdotL
-  float NdotL = max(dot(N, L), 0.0);
+  float NdotL = max(dot(NormalVS, L), 0.0);
 
   // add to outgoing radiance Lo
   Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-  vec3 ambient = getIblSpecular(N, V, metallic, albedo, roughness, ao, fresnel);
+  vec3 ambient = getIblSpecular(NormalVS, V, metallic, albedo, roughness, ao, fresnel);
   vec3 color = ambient + Lo;
 
   // HDR tonemapping

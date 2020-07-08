@@ -6,6 +6,7 @@ layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
 
 in vec3 FragPosVS;
+in vec3 FragPos;
 in vec2 TexCoord;
 in vec3 Normal;
 
@@ -45,13 +46,16 @@ void main() {
   // set depth in view space
   gDepth.x = length(FragPosVS);
   vec3 norm = getNormalFromMap(); // in view space
-  vec3 NormalVS = vec3(view * vec4(norm, 1));
-  gDepth.yzw = normalize(NormalVS);
+  vec3 NormalVS0 = vec3(view * vec4(norm, 1));
+  vec3 NormalVS = normalize(NormalVS0);
+  gDepth.y = NormalVS.x;
+  gDepth.z = NormalVS.y;
 
   //
   gAlbedo = texture(albedoMap, TexCoord).xyz;
 
-  gNormal.x = length(NormalVS); // in world space
+  gNormal.x = NormalVS.z; // in world space
+  gNormal.y = length(NormalVS0); // in world space
 
   float metallic = texture(metallicMap, TexCoord).r;
   float roughness = texture(roughnessMap, TexCoord).r;
