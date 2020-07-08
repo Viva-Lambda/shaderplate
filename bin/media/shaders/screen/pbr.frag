@@ -1,14 +1,21 @@
 #version 430
-layout(location = 0) out vec3 FragColor;
+//layout(location = 0) out vec3 FragColor;
+out vec3 FragColor;
 
 in vec2 TexCoord;
 
 // material parameters
-uniform sampler2D gDepth;       // from GBuffer
-uniform sampler2D gNormal;      // from GBuffer
-uniform sampler2D gAlbedo;      // from GBuffer
-uniform sampler2D gMaterial;    // from GBuffer
-uniform sampler2D gIblSpecular; // from GBuffer
+uniform sampler2D gDepth;    // from GBuffer
+uniform sampler2D gNormal;   // from GBuffer
+uniform sampler2D gAlbedo;   // from GBuffer
+uniform sampler2D gMaterial; // from GBuffer
+
+// IBL
+uniform samplerCube irradianceMap; // 5
+uniform samplerCube prefilterMap;  // 6
+uniform sampler2D brdfLUT;         // 7
+
+uniform float maxMipLevels = 5.0;
 
 // lights
 uniform vec3 lightPos; // in world space
@@ -18,12 +25,7 @@ uniform vec3 viewPos; // in world space
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
-// vec3 getNormalFromMap() {
-// vec3 normalRayViewSpace = texture(normalMapGBuffer, TexCoord).xyz;
-// float normalDist = texture(normalMapGBuffer, TexCoord).a;
-// vec3 Normal = normalRayViewSpace * normalDist + camPos;
-// return normalize(Normal);
-//}
+
 
 /**
  * Utility code for von fischer distribution
@@ -119,6 +121,33 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
+vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
+                    float roughness, float ao, float fresnel) {
+
+  vec3 F0 = vec3(fresnel);
+  F0 = mix(F0, albedo, metallic);
+  float costheta = max(dot(normal, viewDir), 0.0);
+  vec3 F = fresnelSchlickRoughness(costheta, F0, roughness);
+
+  vec3 kS = F;
+  vec3 kD = 1.0 - kS;
+  kD *= 1.0 - metallic;
+  vec3 refbias = normalize(reflect(-viewDir, normal));
+  float kappa = 1.0 - roughness;
+  vec3 R = vonmises_dir(refbias, kappa);
+
+  vec3 irradiance = texture(irradianceMap, normal).rgb;
+  vec3 diffuse = irradiance * albedo;
+
+  const float MAX_REFLECTION_LOD = maxMipLevels - 1.0;
+  vec3 prefilteredColor =
+      textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+  vec2 brdf = texture(brdfLUT, vec2(costheta, roughness)).rg;
+  vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+  vec3 ambient = (kD * diffuse + specular) * ao;
+  return ambient;
+}
 void main() {
   // float viewDist = texture(gDepth, TexCoord).x;
   // vec3 FragPos = ViewRay * viewDist + viewPos;
@@ -137,8 +166,9 @@ void main() {
   vec3 refbias = normalize(reflect(-V, N));
   float kappa = 1.0 - roughness;
   vec3 R = vonmises_dir(refbias, kappa);
+  float fresnel = texture(gMaterial, TexCoord).w;
 
-  vec3 F0 = vec3(texture(gMaterial, TexCoord).w);
+  vec3 F0 = vec3(fresnel);
   F0 = mix(F0, albedo, metallic);
 
   // reflectance equation
@@ -171,7 +201,7 @@ void main() {
   // add to outgoing radiance Lo
   Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-  vec3 ambient = texture(gIblSpecular, TexCoord).rgb;
+  vec3 ambient = getIblSpecular(N, V, metallic, albedo, roughness, ao, fresnel);
   vec3 color = ambient + Lo;
 
   // HDR tonemapping
