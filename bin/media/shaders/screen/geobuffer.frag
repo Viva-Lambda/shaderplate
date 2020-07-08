@@ -5,7 +5,7 @@ layout(location = 1) out vec4 gNormal;
 layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
 
-in vec3 FragPos;
+in vec3 FragPosVS;
 in vec2 TexCoord;
 in vec3 Normal;
 
@@ -18,11 +18,8 @@ uniform sampler2D aoMap;        // 4
 // ibl
 
 uniform float fresnel = 0.4; // metal
+uniform mat4 view;
 
-/**
- * Utility code for von fischer distribution
- * */
-const float PI = 3.14159265359;
 
 /**
  * Compute normal in world space using TBN matrix
@@ -41,24 +38,20 @@ vec3 getNormalFromMap() {
   vec3 B = -normalize(cross(N, T));
   mat3 TBN = mat3(T, B, N);
 
-  return normalize(TBN * tangentNormal);
+  return TBN * tangentNormal;
 }
-
-
 
 void main() {
   // set depth in view space
-  // gDepth.xyz = normalize(FragPosInView);
-  // gDepth.x = length(FragPosInView);
-  gDepth = FragPos;
-  // gDepth.y = length(FragPosInView);
+  gDepth.x = length(FragPosVS);
   vec3 norm = getNormalFromMap(); // in view space
+  vec3 NormalVS = vec3(view * vec4(norm, 1));
+  gDepth.yzw = normalize(NormalVS);
 
   //
   gAlbedo = texture(albedoMap, TexCoord).xyz;
 
-  gNormal.xyz = normalize(norm); // in world space
-  gNormal.w = length(norm);
+  gNormal.x = length(NormalVS); // in world space
 
   float metallic = texture(metallicMap, TexCoord).r;
   float roughness = texture(roughnessMap, TexCoord).r;
@@ -68,5 +61,4 @@ void main() {
   gMaterial.y = roughness;
   gMaterial.z = ao;
   gMaterial.w = fresnel;
-
 }
