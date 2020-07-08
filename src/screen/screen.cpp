@@ -143,7 +143,6 @@ Shader loadBackgroundShader() {
   fs::path vpath = shaderDirPath / "screen" / "background.vert";
   fs::path fpath = shaderDirPath / "screen" / "background.frag";
   Shader backgroundShader(vpath.c_str(), fpath.c_str());
-  backgroundShader.setIntUni("envMap", 0);
   return backgroundShader;
 }
 
@@ -267,13 +266,15 @@ void equirectToCubemapTransform(Shader equirectangularToCubemapShader,
 
   glViewport(0, 0, captureWidth, captureHeight);
   glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+
+  std::vector<VertexAttrib> env2cubeVa{{0, 3}};
   for (unsigned int i = 0; i < 6; ++i) {
     equirectangularToCubemapShader.setMat4Uni("view", captureViews[i]);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderCubeD();
+    renderCubeD(env2cubeVa);
   }
 }
 
@@ -301,6 +302,7 @@ void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
   glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 
   glViewport(0, 0, lmapResolutionWidth, lmapResolutionHeight);
+  std::vector<VertexAttrib> env2cubeVa{{0, 3}};
   glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
   for (unsigned int i = 0; i < 6; ++i) {
     irradianceShader.setMat4Uni("view", captureViews[i]);
@@ -309,7 +311,7 @@ void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
                            irradianceCubemap, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderCubeD();
+    renderCubeD(env2cubeVa);
   }
 }
 
@@ -348,6 +350,7 @@ void computePrefilterMap(Shader prefilterShader, Shader geometryShader,
   glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 
   glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+  std::vector<VertexAttrib> env2cubeVa{{0, 3}};
   int maxMipLevels = 5;
   geometryShader.useProgram();
   geometryShader.setFloatUni("maxMipLevels", (float)maxMipLevels);
@@ -370,7 +373,7 @@ void computePrefilterMap(Shader prefilterShader, Shader geometryShader,
                              mip);
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      renderCubeD();
+      renderCubeD(env2cubeVa);
     }
   }
 }
@@ -572,9 +575,10 @@ int main() {
   glViewport(0, 0, captureWidth, captureHeight);
   Shader brdfShader = loadBrdfShader();
   gerr();
+  std::vector<VertexAttrib> brdfVa{{0, 3}, {1, 2}};
   brdfShader.useProgram();
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  renderQuad();
+  renderQuad(brdfVa);
   gerr();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -690,12 +694,19 @@ int main() {
 
   Shader backgroundShader = loadBackgroundShader();
   backgroundShader.useProgram();
-  backgroundShader.setMat4Uni("projection", projection);
+  // backgroundShader.setMat4Uni("projection", projection);
+  backgroundShader.setIntUni("envMap", 0);
   gerr();
 
   geometryShader.useProgram();
   geometryShader.setMat4Uni("projection", projection);
+  gerr();
   // geometryShader.setIntUni();
+  std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
+  std::vector<VertexAttrib> backVa{{0, 3}};
+  std::vector<VertexAttrib> lampVa{{0, 3}, {1, 3}, {2, 2}};
+  std::vector<VertexAttrib> pbrVa{{0, 3}, {1, 2}};
+  std::vector<VertexAttrib> coneVa{{0, 3}, {1, 2}};
 
   while (!glfwWindowShouldClose(window)) {
 
@@ -755,7 +766,7 @@ int main() {
       geometryShader.setVec3Uni("viewPos", camera.pos);
       geometryShader.setFloatUni("fresnel", 0.04);     // 0.4
       geometryShader.setFloatUni("maxMipLevels", 5.0); // 0.4
-      renderCubeD();
+      renderCubeD(geoVa);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -791,7 +802,7 @@ int main() {
       // if doing phong lightening
       // pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
-      renderQuad();
+      renderQuad(pbrVa);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -832,7 +843,7 @@ int main() {
       rayConeShader.setFloatUni("fadeStart", 0.4);
       rayConeShader.setFloatUni("fadeEnd", 1.0);
 
-      renderQuad();
+      renderQuad(coneVa);
     }
 
     // 3.5 draw light source
@@ -850,16 +861,18 @@ int main() {
     model = glm::scale(model, glm::vec3(0.2f));
     lampShader.setMat4Uni("model", model);
     lampShader.setMat4Uni("view", view);
-    renderSphere();
+    renderSphere(lampVa);
 
     // 4. background
 
     // glm::mat4 view = camera.getViewMatrix();
-    backgroundShader.useProgram();
-    backgroundShader.setMat4Uni("view", view);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    renderCubeD();
+    //  glActiveTexture(GL_TEXTURE0);
+    //  glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+    //  backgroundShader.useProgram();
+    //  backgroundShader.setMat4Uni("view", view);
+    //  backgroundShader.setMat4Uni("projection", projection);
+    //  renderCubeD(backVa);
     // swap buffer vs
     glfwSwapBuffers(window);
     glfwPollEvents();

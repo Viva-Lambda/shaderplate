@@ -6,14 +6,16 @@
 #include <stdexcept>
 namespace fs = std::filesystem;
 
-void checkShaderCompilation(GLuint shader, const char *shaderType) {
+void checkShaderCompilation(GLuint shader, const char *shaderType, const char*
+        shaderFilePath) {
   // check the shader compilation
   int success;
   char infoLog[512];
   glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
   if (success == 0) {
     glGetShaderInfoLog(shader, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::" << shaderType << "::COMPILATION_FAILED\n"
+    std::cout << "ERROR::SHADER::" << shaderType << "::" << shaderFilePath
+              << "::COMPILATION_FAILED\n"
               << infoLog << std::endl;
   }
 }
@@ -163,7 +165,7 @@ GLuint Shader::loadShader(const GLchar *shaderFilePath,
   glCompileShader(shader);
 
   // a sanity check for unsuccessful compilations
-  checkShaderCompilation(shader, shaderType);
+  checkShaderCompilation(shader, shaderType, shaderFilePath);
   return shader;
 }
 
@@ -219,14 +221,14 @@ Shader::Shader(const GLchar *vertexSource, const GLchar *fragmentSource,
   glCompileShader(vshader);
 
   // a sanity check for unsuccessful compilations
-  checkShaderCompilation(vshader, "VERTEX");
+  checkShaderCompilation(vshader, "VERTEX", "from source");
   glAttachShader(this->programId, vshader);
   GLuint fshader;
   glShaderSource(fshader, 1, &fragmentSource, NULL);
   glCompileShader(fshader);
 
   // a sanity check for unsuccessful compilations
-  checkShaderCompilation(fshader, "FRAGMENT");
+  checkShaderCompilation(fshader, "FRAGMENT", "from source");
   glAttachShader(this->programId, fshader);
   glLinkProgram(this->programId);
   checkShaderProgramCompilation(this->programId);
