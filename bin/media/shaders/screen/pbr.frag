@@ -152,7 +152,7 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
 void main() {
   float viewDist = texture(gDepth, TexCoord).x;
   vec3 FragPos = ViewRay * viewDist + viewPos;
-  vec3 FragPosVS = vec3(view * vec4(FragPos,1));
+  vec3 FragPosVS = vec3(view * vec4(FragPos, 1));
 
   // material properties
   vec3 albedo = pow(texture(gAlbedo, TexCoord).rgb, vec3(2.2));
@@ -161,11 +161,13 @@ void main() {
   float ao = texture(gMaterial, TexCoord).z;
 
   // input lighting data
-  vec2 NormalVSxy = texture(gDepth, TexCoord).yz; // in view space
-  float NormalVSz = texture(gNormal, TexCoord).x; // in view space
-  vec3 NormalVS = vec3(NormalVSxy, NormalVSz);
-  vec3 ViewPosVS = vec3(view * vec4(viewPos, 1));
-  vec3 V = normalize(ViewPosVS - FragPosVS);
+  vec2 NormalWSxy = texture(gDepth, TexCoord).yz;              // in world space
+  float NormalWSz = texture(gNormal, TexCoord).x;              // in world space
+  vec3 NormalWS = vec3(NormalWSxy.x, NormalWSxy.y, NormalWSz); // world space
+  vec3 NormalVS = vec3(view * vec4(NormalWS, 1));              // view space
+  vec3 ViewPosVS = vec3(view * vec4(viewPos, 1));              // view space
+  vec3 V_WS = normalize(viewPos - FragPos);                    // world space
+  vec3 V = vec3(view * vec4(V_WS, 1));
   vec3 refbias = normalize(reflect(-V, NormalVS));
   float kappa = 1.0 - roughness;
   vec3 R = vonmises_dir(refbias, kappa);
@@ -177,8 +179,9 @@ void main() {
   // reflectance equation
   vec3 Lo = vec3(0.0);
   // calculate per-light radiance
-  vec3 LightPosVS = vec3(view * vec4(lightPos,1));
-  vec3 L = normalize(LightPosVS - FragPosVS);
+  vec3 LightPosVS = vec3(view * vec4(lightPos, 1));
+  vec3 L_WS = normalize(lightPos - FragPos);
+  vec3 L = vec3(view * vec4(L_WS, 1.0));
   vec3 H = normalize(V + L);
   float dist = length(LightPosVS - FragPosVS);
   float attenuation = 1.0 / (dist * dist);
@@ -190,8 +193,9 @@ void main() {
   vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
   vec3 nominator = NDF * G * F;
-  float denominator = 4 * max(dot(NormalVS, V), 0.0) * max(dot(NormalVS, L), 0.0) +
-                      0.0001; // 0.001 to prevent divide by zero.
+  float denominator =
+      4 * max(dot(NormalVS, V), 0.0) * max(dot(NormalVS, L), 0.0) +
+      0.0001; // 0.001 to prevent divide by zero.
   vec3 specular = nominator / denominator;
 
   // kS is equal to Fresnel
@@ -205,12 +209,13 @@ void main() {
   // add to outgoing radiance Lo
   Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-  vec3 ambient = getIblSpecular(NormalVS, V, metallic, albedo, roughness, ao, fresnel);
+  vec3 ambient =
+      getIblSpecular(NormalWS, V_WS, metallic, albedo, roughness, ao, fresnel);
   vec3 color = ambient + Lo;
 
   // HDR tonemapping
   color = color / (color + vec3(1.0));
   // gamma correct
-  //FragColor = pow(color, vec3(1.0 / 2.2));
-  FragColor = vec3(1.0);
+   FragColor = pow(color, vec3(1.0 / 2.2));
+  // FragColor = vec3(NdotL);
 }

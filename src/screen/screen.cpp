@@ -770,6 +770,7 @@ int main() {
       pbrShader.useProgram();
 
       pbrShader.setVec3Uni("viewPos", camera.pos);
+      pbrShader.setMat4Uni("view", view);
 
       pbrShader.setVec3Uni("lightPos", spotLight.position);
       pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));

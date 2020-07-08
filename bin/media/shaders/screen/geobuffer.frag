@@ -46,16 +46,15 @@ void main() {
   // set depth in view space
   gDepth.x = length(FragPosVS);
   vec3 norm = getNormalFromMap(); // in view space
-  vec3 NormalVS0 = vec3(view * vec4(norm, 1));
-  vec3 NormalVS = normalize(NormalVS0);
-  gDepth.y = NormalVS.x;
-  gDepth.z = NormalVS.y;
+  vec3 NormalWS = normalize(norm);
+  gDepth.y = NormalWS.x;
+  gDepth.z = NormalWS.y;
 
   //
   gAlbedo = texture(albedoMap, TexCoord).xyz;
 
-  gNormal.x = NormalVS.z; // in world space
-  gNormal.y = length(NormalVS0); // in world space
+  gNormal.x = NormalWS.z; // in world space
+  gNormal.y = length(norm); // in world space
 
   float metallic = texture(metallicMap, TexCoord).r;
   float roughness = texture(roughnessMap, TexCoord).r;
