@@ -55,7 +55,7 @@ void main() {
   vec3 norm = getNormalFromMap(); // in view space
 
   //
-  gAlbedo.xyz = texture(albedoMap, TexCoord).xyz;
+  gAlbedo = texture(albedoMap, TexCoord).xyz;
 
   gNormal.xyz = normalize(norm); // in world space
   gNormal.w = length(norm);

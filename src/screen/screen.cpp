@@ -160,7 +160,7 @@ Shader loadGeometryShader() {
   gShader.setIntUni("roughnessMap", 2);
   gShader.setIntUni("metallicMap", 3);
   gShader.setIntUni("aoMap", 4);
-  
+
   return gShader;
 }
 
@@ -173,7 +173,6 @@ Shader loadRayConeShader() {
   coneShader.setIntUni("lightBuffer", 1);
   coneShader.setIntUni("gNormal", 2);
   coneShader.setIntUni("gMaterial", 3);
-  coneShader.setIntUni("gIblSpecular", 4);
   return coneShader;
 }
 
@@ -274,7 +273,7 @@ void equirectToCubemapTransform(Shader equirectangularToCubemapShader,
                            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderCubeD(env2cubeVa);
+    renderCubeD();
   }
 }
 
@@ -311,7 +310,7 @@ void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
                            irradianceCubemap, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderCubeD(env2cubeVa);
+    renderCubeD();
   }
 }
 
@@ -373,7 +372,7 @@ void computePrefilterMap(Shader prefilterShader, Shader geometryShader,
                              mip);
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      renderCubeD(env2cubeVa);
+      renderCubeD();
     }
   }
 }
@@ -578,7 +577,7 @@ int main() {
   std::vector<VertexAttrib> brdfVa{{0, 3}, {1, 2}};
   brdfShader.useProgram();
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  renderQuad(brdfVa);
+  renderQuad();
   gerr();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -733,18 +732,17 @@ int main() {
       glBindTexture(GL_TEXTURE_2D, aoMap);
       gerr();
 
-
       geometryShader.useProgram();
       geometryShader.setMat4Uni("model", model);
       geometryShader.setMat4Uni("view", view);
-      geometryShader.setFloatUni("fresnel", 0.04);     // 0.4
-      renderCube();
+      geometryShader.setFloatUni("fresnel", 0.04); // 0.4
+      renderCubeInTangentSpace();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // 2. lightening pass: render lightening to be refined later on
     {
-     // glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+      glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
       glClear(GL_COLOR_BUFFER_BIT);
 
       // activate textures
@@ -778,46 +776,46 @@ int main() {
       // if doing phong lightening
       // pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
-      renderQuad(pbrVa);
+      renderQuad();
       gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // 3. cone tracing pass:
     {
-      // glClear(GL_COLOR_BUFFER_BIT);
-      // glActiveTexture(GL_TEXTURE0);
-      // glBindTexture(GL_TEXTURE_2D, gDepth);
+      glClear(GL_COLOR_BUFFER_BIT);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, gDepth);
 
-      // glActiveTexture(GL_TEXTURE1);
-      // glBindTexture(GL_TEXTURE_2D, lightTexture);
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, lightTexture);
 
-      // glActiveTexture(GL_TEXTURE2);
-      // glBindTexture(GL_TEXTURE_2D, gNormal);
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, gNormal);
 
-      // glActiveTexture(GL_TEXTURE3);
-      // glBindTexture(GL_TEXTURE_2D, gMaterial);
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gMaterial);
 
-      // rayConeShader.useProgram();
-      // glm::mat4 view = camera.getViewMatrix();
+      rayConeShader.useProgram();
+      glm::mat4 view = camera.getViewMatrix();
 
-      // rayConeShader.setMat4Uni("view", view);
-      // rayConeShader.setMat4Uni("projection", projection);
-      // rayConeShader.setVec3Uni("viewDir", camera.front);
-      // rayConeShader.setVec3Uni("viewPos", camera.pos);
-      // rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
-      // rayConeShader.setFloatUni("csDepthThickness", 1.0);
-      // rayConeShader.setFloatUni("traceStride", 1.0);
-      // rayConeShader.setFloatUni("csMaxSteps", 3.0);
-      // rayConeShader.setFloatUni("csMaxDistance", 10.0);
-      // rayConeShader.setFloatUni("jitter", 0.4);
-      // rayConeShader.setFloatUni("coneAngleZeta", 0.244);
-      // rayConeShader.setFloatUni("max_shine", 256.0);
-      // rayConeShader.setFloatUni("cone_trace_iteration", 16.0);
-      // rayConeShader.setFloatUni("fadeStart", 0.4);
-      // rayConeShader.setFloatUni("fadeEnd", 1.0);
+      rayConeShader.setMat4Uni("view", view);
+      rayConeShader.setMat4Uni("projection", projection);
+      rayConeShader.setVec3Uni("viewDir", camera.front);
+      rayConeShader.setVec3Uni("viewPos", camera.pos);
+      rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
+      rayConeShader.setFloatUni("csDepthThickness", 1.0);
+      rayConeShader.setFloatUni("traceStride", 1.0);
+      rayConeShader.setFloatUni("csMaxSteps", 5.0);
+      rayConeShader.setFloatUni("csMaxDistance", 10.0);
+      rayConeShader.setFloatUni("jitter", 0.1);
+      rayConeShader.setFloatUni("coneAngleZeta", 0.244);
+      rayConeShader.setFloatUni("max_shine", 25.0);
+      rayConeShader.setFloatUni("cone_trace_iteration", 6.0);
+      rayConeShader.setFloatUni("fadeStart", 0.4);
+      rayConeShader.setFloatUni("fadeEnd", 1.0);
 
-      // renderQuad(coneVa);
+      renderQuad(coneVa);
     }
 
     // 3.5 draw light source
@@ -835,19 +833,19 @@ int main() {
     model = glm::scale(model, glm::vec3(0.2f));
     lampShader.setMat4Uni("model", model);
     lampShader.setMat4Uni("view", view);
-    renderSphere(lampVa);
+    renderSphere();
     gerr();
 
     // 4. background
 
-    //glm::mat4 view = camera.getViewMatrix();
+    // glm::mat4 view = camera.getViewMatrix();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 
     backgroundShader.useProgram();
     backgroundShader.setMat4Uni("view", view);
     backgroundShader.setMat4Uni("projection", projection);
-    renderCube();
+    renderCubeD();
     gerr();
     // swap buffer vs
     glfwSwapBuffers(window);

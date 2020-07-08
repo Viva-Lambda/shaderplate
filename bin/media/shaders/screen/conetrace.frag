@@ -16,11 +16,9 @@ out vec4 FragColor;
 // ------------------------- from other passes -----------------------------
 
 uniform sampler2D gDepth;
-uniform sampler2D lightBuffer;  // convolved color buffer - all mip levels
-uniform sampler2D gNormal;      // normal buffer - from g-buffer in camera space
-uniform sampler2D gMaterial;    // specular buffer - from g-buffer (rgb = ior,
-uniform sampler2D gIblSpecular; // specular buffer - from g-buffer (rgb = ior,
-                                // a = roughness)
+uniform sampler2D lightBuffer; // convolved color buffer - all mip levels
+uniform sampler2D gNormal;     // normal buffer - from g-buffer in camera space
+uniform sampler2D gMaterial;   // specular buffer - from g-buffer (rgb = ior,
 
 // -------------------------- ray tracing uniforms --------------------------
 //
@@ -206,8 +204,11 @@ bool traceScreenSpaceRay1(vec3 csOrigin, vec3 csDirection, out vec2 hitPixel,
   vec3 csEndPoint = csDirection * rayLength + csOrigin;
 
   // Project into screen space
-  vec4 H0 = projection * vec4(csOrigin, 1.0);
-  vec4 H1 = projection * vec4(csEndPoint, 1.0);
+  vec4 H0NDC = projection * vec4(csOrigin, 1.0);
+
+  vec4 H0 = H0NDC / H0NDC.w;
+  vec4 H1NDC = projection * vec4(csEndPoint, 1.0);
+  vec4 H1 = H1NDC / H1NDC.w;
 
   // There are a lot of divisions by w that can be turned into multiplications
   // at some minor precision loss...and we need to interpolate these 1/w values
@@ -327,7 +328,7 @@ bool traceScreenSpaceRay1(vec3 csOrigin, vec3 csDirection, out vec2 hitPixel,
 
 vec3 rayHitPointViewSpace = vec3(0);
 
-float getLinearDepth(vec2 tcoord){
+float getLinearDepth(vec2 tcoord) {
   vec3 FragPos = texture(gDepth, tcoord).rgb;
   vec3 FragPosVS = vec3(view * vec4(FragPos, 1));
   vec3 viewPosVS = vec3(view * vec4(viewPos, 1));
@@ -337,7 +338,7 @@ float getLinearDepth(vec2 tcoord){
 
 vec4 ray_trace_screen() {
   // get normal in view space
-  vec3 normalInView = vec3(view * vec4(texture(gNormal, TexCoord).rgb,1));
+  vec3 normalInView = vec3(view * vec4(texture(gNormal, TexCoord).rgb, 1));
   vec3 viewPosVS = vec3(view * vec4(viewPos, 1));
   float linearDepth = getLinearDepth(TexCoord);
   vec3 rayOriginInView =
@@ -379,7 +380,7 @@ vec4 ray_trace_screen() {
 
 // --------------------------- Cone Tracing Code -----------------------------
 
-vec3 get_fallback_color() { return texture(gIblSpecular, TexCoord).rgb; }
+vec3 get_fallback_color() { return texture(lightBuffer, TexCoord).rgb; }
 
 float roughnessToSpecularPower(float roughness) {
   // from graphics rant
@@ -469,9 +470,10 @@ vec4 cone_trace() {
 
   // P1 = positionSS, P2 = raySS, adjacent length = ||P2 - P1||
   vec2 hitPixel = hitInfo.xy;
+  vec4 fragInNDC =
+      vec4(projection * view * vec4(texture(gDepth, TexCoord).rgb, 1));
 
-  vec3 FragInScreenSpace =
-      vec3(projection * view * vec4(texture(gDepth, TexCoord).rgb, 1));
+  vec3 FragInScreenSpace = fragInNDC.xyz / fragInNDC.w;
   vec2 deltaP = hitPixel - FragInScreenSpace.xy;
   float adjacentLength = length(deltaP);
   vec2 adjacentUnit = normalize(deltaP);
