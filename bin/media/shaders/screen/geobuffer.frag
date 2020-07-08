@@ -9,7 +9,7 @@ layout(location = 4) out vec3 gIblSpecular;
 in vec3 FragPos;
 in vec3 FragPosInView;
 in vec2 TexCoord;
-in mat3 TBN;
+in vec3 Normal;
 
 uniform sampler2D albedoMap;    // 0
 uniform sampler2D normalMap;    // 1
@@ -28,7 +28,7 @@ uniform float maxMipLevels = 5.0;
 uniform mat4 view;
 
 uniform float fresnel = 0.4; // metal
-uniform vec3 viewPos; // world space
+uniform vec3 viewPos;        // world space
 
 /**
  * Utility code for von fischer distribution
@@ -89,13 +89,23 @@ vec3 vonmises_dir(vec3 bias_dir, float kappa) {
 /**
  * Compute normal in world space using TBN matrix
  * */
-vec3 getNormalFromMap() {
 
-  vec3 normal = texture(normalMap, TexCoord).rgb * 2.0 - 1.0;
-  normal = normalize(TBN * normal);
-  // normal = vec3(view * vec4(normal, 1));
-  return normal;
+vec3 getNormalFromMap() {
+  vec3 tangentNormal = texture(normalMap, TexCoord).xyz * 2.0 - 1.0;
+
+  vec3 Q1 = dFdx(FragPos);
+  vec3 Q2 = dFdy(FragPos);
+  vec2 st1 = dFdx(TexCoord);
+  vec2 st2 = dFdy(TexCoord);
+
+  vec3 N = normalize(Normal);
+  vec3 T = normalize(Q1 * st2.t - Q2 * st1.t);
+  vec3 B = -normalize(cross(N, T));
+  mat3 TBN = mat3(T, B, N);
+
+  return normalize(TBN * tangentNormal);
 }
+
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
   return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }

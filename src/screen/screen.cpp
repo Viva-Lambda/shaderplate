@@ -691,6 +691,7 @@ int main() {
   Shader backgroundShader = loadBackgroundShader();
   backgroundShader.useProgram();
   backgroundShader.setMat4Uni("projection", projection);
+  gerr();
 
   geometryShader.useProgram();
   geometryShader.setMat4Uni("projection", projection);
@@ -747,14 +748,14 @@ int main() {
 
       glActiveTexture(GL_TEXTURE7);
       glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
-
       geometryShader.useProgram();
+
       geometryShader.setMat4Uni("model", model);
       geometryShader.setMat4Uni("view", view);
       geometryShader.setVec3Uni("viewPos", camera.pos);
-      renderCubeInTangentSpace();
-
-      gerr();
+      geometryShader.setFloatUni("fresnel", 0.04);     // 0.4
+      geometryShader.setFloatUni("maxMipLevels", 5.0); // 0.4
+      renderCubeD();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

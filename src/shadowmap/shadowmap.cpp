@@ -271,11 +271,11 @@ void renderScene(const Shader &shader, const GLuint &planeVAO) {
   shader.setMat4Uni("model", model);
   renderCube2();
 }
-unsigned int cubeVAO = 0;
-unsigned int cubeVBO = 0;
+unsigned int cubeVAONI = 0;
+unsigned int cubeVBONI = 0;
 void renderCube2() {
   // initialize (if necessary)
-  if (cubeVAO == 0) {
+  if (cubeVAONI == 0) {
     float vertices[] = {
         // back face
         -1.0f, -1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
@@ -320,13 +320,13 @@ void renderCube2() {
         -1.0f, 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top-left
         -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f   // bottom-left
     };
-    glGenVertexArrays(1, &cubeVAO);
-    glGenBuffers(1, &cubeVBO);
+    glGenVertexArrays(1, &cubeVAONI);
+    glGenBuffers(1, &cubeVBONI);
     // fill buffer
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBONI);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     // link vertex attributes
-    glBindVertexArray(cubeVAO);
+    glBindVertexArray(cubeVAONI);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                           (void *)0);
@@ -340,7 +340,7 @@ void renderCube2() {
     glBindVertexArray(0);
   }
   // render Cube
-  glBindVertexArray(cubeVAO);
+  glBindVertexArray(cubeVAONI);
   glDrawArrays(GL_TRIANGLES, 0, 36);
   glBindVertexArray(0);
 }
