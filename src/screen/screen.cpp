@@ -121,7 +121,7 @@ Shader loadBrdfShader() {
   return envShader;
 }
 Shader loadPbrShader() {
-  fs::path vpath = shaderDirPath / "screen" / "pbr.vert"; // DONE
+  fs::path vpath = shaderDirPath / "screen" / "pbr.vert";       // DONE
   fs::path fpath = shaderDirPath / "screen" / "phongview.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
@@ -130,7 +130,7 @@ Shader loadPbrShader() {
   pbrShader.setIntUni("gAlbedo", 2);
   pbrShader.setIntUni("gMaterial", 3);
   pbrShader.setIntUni("gAmbient", 4);
-  
+
   return pbrShader;
 }
 Shader loadLampShader() {
@@ -161,7 +161,6 @@ Shader loadGeometryShader() {
   gShader.setIntUni("irradianceMap", 5);
   gShader.setIntUni("prefilterMap", 6);
   gShader.setIntUni("brdfLUT", 7);
-
 
   return gShader;
 }
@@ -773,12 +772,9 @@ int main() {
 
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, gMaterial);
-      
+
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, gMaterial);
-
-
-
 
       pbrShader.useProgram();
 

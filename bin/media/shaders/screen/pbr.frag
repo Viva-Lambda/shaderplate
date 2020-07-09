@@ -10,13 +10,7 @@ uniform sampler2D gDepth;    // from GBuffer
 uniform sampler2D gNormal;   // from GBuffer
 uniform sampler2D gAlbedo;   // from GBuffer
 uniform sampler2D gMaterial; // from GBuffer
-
-// IBL
-uniform samplerCube irradianceMap; // 5
-uniform samplerCube prefilterMap;  // 6
-uniform sampler2D brdfLUT;         // 7
-
-uniform float maxMipLevels = 5.0;
+uniform sampler2D gAmbient;  // from GBuffer
 
 // lights
 uniform vec3 lightPos; // in world space
@@ -209,13 +203,13 @@ void main() {
   // add to outgoing radiance Lo
   Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 
-  vec3 ambient =
-      getIblSpecular(NormalWS, V_WS, metallic, albedo, roughness, ao, fresnel);
+  vec3 ambient = texture(gAmbient, TexCoord).rgb;
+
   vec3 color = ambient + Lo;
 
   // HDR tonemapping
   color = color / (color + vec3(1.0));
   // gamma correct
-   FragColor = pow(color, vec3(1.0 / 2.2));
+  FragColor = pow(color, vec3(1.0 / 2.2));
   // FragColor = vec3(NdotL);
 }
