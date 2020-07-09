@@ -130,7 +130,8 @@ float computeHammonFDiff(float NdotL, float NdotV, float NdotH, float LdotV) {
  * Equation 9.63 p. 351 from Möller Realtime
  * */
 vec3 computeFDiffCT(float VdotH) {
-  return (texture(gAlbedo, TexCoord).rgb / PI) * (1 - computeFresnelCT(VdotH));
+  vec3 albedo = pow(texture(gAlbedo, TexCoord).rgb, vec3(2.2));
+  return (albedo / PI) * (1 - computeFresnelCT(VdotH));
 }
 
 /**
@@ -143,17 +144,17 @@ vec3 computeFDiffCT(float VdotH) {
  * */
 vec3 CTBrdfColor(float s, vec3 lightDir, vec3 viewDir, vec3 normal, float NdotL,
                  vec3 lightColor) {
-  float d = 1 - s;
+  float d = 1.0 - s;
   vec3 H = normalize(viewDir + lightDir);
   float NdotV = dot(normal, viewDir);
   float NdotH = dot(normal, H);
   float VdotH = dot(viewDir, H);
   float R_s = computeFSpecCT(NdotH, NdotL, NdotV, VdotH);
   vec3 R_d = computeFDiffCT(VdotH);
-  return (d * R_d) + (s * R_s) * lightColor * NdotL;
+  return ((d * R_d) + (s * R_s)) * lightColor * max(NdotL, 0);
 }
 vec3 computeCTColor(float s, vec3 lightDir, vec3 viewDir, vec3 normal,
-                    vec3 lightColor) {
+                    vec3 lightColor, float attenuation) {
   float NdotL = dot(normal, lightDir);
   vec3 ambient = computeAmbientCT(NdotL);
   return ambient + CTBrdfColor(s, lightDir, viewDir, normal, NdotL, lightColor);
@@ -192,6 +193,7 @@ void main() {
   vec3 NormalVS = texture(gNormal, TexCoord).xyz;
   vec3 viewDir = getViewDir(FragPosVS);
   float s = 1 - ao;
+  float attenuation = 1.0 / pow(length(LightPosVS - FragPosVS), 2);
 
   // for each light source
   vec3 lightDir = getLightDir(FragPosVS);
@@ -199,10 +201,12 @@ void main() {
   vec3 ambient = computeAmbientCT(NdotL);
   vec3 color = CTBrdfColor(s, lightDir, viewDir, NormalVS, NdotL, lightColor);
   color *= ao;
+  color *= attenuation;
   color += ambient;
 
   // HDR tonemapping
   color = color / (color + vec3(1.0));
   // gamma correct
   FragColor = pow(color, vec3(1.0 / 2.2));
+  // FragColor = vec3(0.6);
 }
