@@ -129,10 +129,8 @@ Shader loadPbrShader() {
   pbrShader.setIntUni("gNormal", 1);
   pbrShader.setIntUni("gAlbedo", 2);
   pbrShader.setIntUni("gMaterial", 3);
-  pbrShader.setIntUni("irradianceMap", 4);
-  pbrShader.setIntUni("prefilterMap", 5);
-  pbrShader.setIntUni("brdfLUT", 6);
-
+  pbrShader.setIntUni("gAmbient", 4);
+  
   return pbrShader;
 }
 Shader loadLampShader() {
@@ -160,6 +158,10 @@ Shader loadGeometryShader() {
   gShader.setIntUni("roughnessMap", 2);
   gShader.setIntUni("metallicMap", 3);
   gShader.setIntUni("aoMap", 4);
+  gShader.setIntUni("irradianceMap", 5);
+  gShader.setIntUni("prefilterMap", 6);
+  gShader.setIntUni("brdfLUT", 7);
+
 
   return gShader;
 }
@@ -552,7 +554,7 @@ int main() {
   // ----------------------------------------------------------------------------------------------------
   Shader prefilterShader = loadPrefilterShader();
   gerr();
-  computePrefilterMap(prefilterShader, pbrShader, captureProjection,
+  computePrefilterMap(prefilterShader, geometryShader, captureProjection,
                       captureWidth, envCubemap, captureFBO, captureRBO,
                       captureViews, prefilterMap, prefilterMapWidth,
                       prefilterMapHeight);
@@ -612,6 +614,11 @@ int main() {
   // stores material information
   GLuint gMaterial;
   setFboTexture(gMaterial, GL_RGB16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
+                attachmentNb);
+
+  // stores material information
+  GLuint gAmbient;
+  setFboTexture(gAmbient, GL_RGB16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
                 attachmentNb);
 
   // setting color attachments
@@ -732,6 +739,15 @@ int main() {
       glBindTexture(GL_TEXTURE_2D, aoMap);
       gerr();
 
+      glActiveTexture(GL_TEXTURE5);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+
+      glActiveTexture(GL_TEXTURE6);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+      glActiveTexture(GL_TEXTURE7);
+      glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
+
       geometryShader.useProgram();
       geometryShader.setMat4Uni("model", model);
       geometryShader.setMat4Uni("view", view);
@@ -757,15 +773,12 @@ int main() {
 
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, gMaterial);
+      
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gMaterial);
 
-      glActiveTexture(GL_TEXTURE4);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
 
-      glActiveTexture(GL_TEXTURE5);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
 
-      glActiveTexture(GL_TEXTURE6);
-      glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
 
       pbrShader.useProgram();
 
