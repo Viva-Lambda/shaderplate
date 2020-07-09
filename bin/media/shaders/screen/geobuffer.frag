@@ -27,6 +27,7 @@ uniform float maxMipLevels = 5.0;
 uniform float fresnel = 0.4; // metal
 uniform mat4 view;
 uniform vec3 viewPos;
+uniform vec3 lightPos;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -85,24 +86,31 @@ vec3 vonmises_dir(vec3 bias_dir, float kappa) {
   float normalization = kappa / (2 * PI * (exp(kappa) - exp(-kappa)));
   return exp(kappa * cos(theta)) * normalization;
 }
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
-  return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+/**
+ * p. 16, of Cook Torrance 1982
+ * */
+float computeFresnelCT(float VdotH, float n) {
+  float f0 = pow((n - 1.0) / (n + 1.0), 2);
+  float eta = (1 + sqrt(f0)) / (1 - sqrt(f0));
+  float g = sqrt(pow(eta, 2) + pow(VdotH, 2) - 1);
+  float c = VdotH;
+  float gminc = g - c;
+  float gplusc = g + VdotH;
+  float firstTerm = (pow(gminc, 2) / pow(gplusc, 2));
+  float secondTerm = 1 + pow(c * gplusc - 1, 2) / pow(c * gminc + 1, 2);
+  return 0.5 * firstTerm * secondTerm;
 }
-vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
-                    float roughness, float ao, float fresnel) {
 
-  vec3 F0 = vec3(fresnel);
-  F0 = mix(F0, albedo, metallic);
-  float costheta = max(dot(normal, viewDir), 0.0);
-  vec3 F = fresnelSchlickRoughness(costheta, F0, roughness);
+vec3 getIblSpecular(vec3 normal, vec3 viewDir, vec3 halfDir, float metallic,
+                    vec3 albedo, float roughness, float ao, float fresnel) {
+
+  float costheta = max(dot(viewDir, halfDir), 0.0);
+  vec3 F = vec3(computeFresnelCT(costheta, fresnel));
 
   vec3 kS = F;
   vec3 kD = 1.0 - kS;
   kD *= 1.0 - metallic;
-  vec3 refbias = normalize(reflect(-viewDir, normal));
-  float kappa = 1.0 - roughness;
-  // vec3 R = vonmises_dir(refbias, kappa);
-  vec3 R = refbias;
+  vec3 R = normalize(reflect(-viewDir, normal));
 
   vec3 irradiance = texture(irradianceMap, normal).rgb;
   vec3 diffuse = irradiance * albedo;
@@ -136,6 +144,9 @@ vec3 getNormalFromMap() {
 
   return TBN * tangentNormal;
 }
+vec3 getLightDir() { return normalize(FragPos - lightPos); }
+vec3 getViewDir() { return normalize(FragPos - viewPos); }
+vec3 getHalfDir() { return normalize(getViewDir() + getLightDir()); }
 
 void main() {
   // set depth in view space
@@ -156,10 +167,15 @@ void main() {
   gMaterial.x = metallic;
   gMaterial.y = roughness;
   gMaterial.z = ao;
-  gMaterial.w = fresnel;
-
-  vec3 viewDir = normalize(viewPos - FragPos);
-
-  gAmbient.xyz = getIblSpecular(NormalWS, viewDir, metallic, albedo, roughness,
-                                ao, fresnel);
+  if (metallic > 0.0) {
+    // if the zone is metallic its fresnel
+    // value is encoded in albedo
+    gMaterial.w = gAlbedo.x;
+  } else {
+    gMaterial.w = fresnel;
+  }
+  vec3 viewDir = getViewDir();
+  vec3 halfDir = getHalfDir();
+  gAmbient.xyz = getIblSpecular(NormalWS, viewDir, halfDir, metallic, albedo,
+                                roughness, ao, fresnel);
 }

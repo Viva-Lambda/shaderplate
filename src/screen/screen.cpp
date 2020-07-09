@@ -121,8 +121,8 @@ Shader loadBrdfShader() {
   return envShader;
 }
 Shader loadPbrShader() {
-  fs::path vpath = shaderDirPath / "screen" / "pbr.vert";       // DONE
-  fs::path fpath = shaderDirPath / "screen" / "phongview.frag"; // DONE
+  fs::path vpath = shaderDirPath / "screen" / "pbr.vert"; // DONE
+  fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
   pbrShader.useProgram();
   pbrShader.setIntUni("gDepth", 0);
@@ -750,6 +750,8 @@ int main() {
       geometryShader.setMat4Uni("model", model);
       geometryShader.setMat4Uni("view", view);
       geometryShader.setFloatUni("fresnel", 0.04); // 0.4
+      geometryShader.setVec3Uni("viewPos", camera.pos);
+      geometryShader.setVec3Uni("lightPos", spotLight.position);
       renderCubeInTangentSpace();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -777,13 +779,14 @@ int main() {
 
       pbrShader.useProgram();
 
-      pbrShader.setVec3Uni("viewPos", camera.pos);
-      pbrShader.setMat4Uni("view", view);
+      pbrShader.setVec3Uni("ViewPosVS",
+                           glm::vec3(view * glm::vec4(camera.pos, 1.0)));
+      pbrShader.setVec3Uni(
+          "LightPosVS", glm::vec3(view * glm::vec4(spotLight.position, 1.0)));
 
-      pbrShader.setVec3Uni("lightPos", spotLight.position);
       pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
       // if doing phong lightening
-      pbrShader.setVec3Uni("inLightDir", spotLight.front);
+      // pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
       renderQuad();
       gerr();
