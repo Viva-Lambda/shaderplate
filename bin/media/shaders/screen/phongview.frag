@@ -10,6 +10,7 @@ uniform sampler2D gDepth;    // from GBuffer
 uniform sampler2D gNormal;   // from GBuffer
 uniform sampler2D gAlbedo;   // from GBuffer
 uniform sampler2D gMaterial; // from GBuffer
+uniform sampler2D gAmbient; // from GBuffer
 // lights
 uniform vec3 lightPos; // in world space
 uniform vec3 lightColor;
@@ -49,7 +50,7 @@ void main() {
   float epsilon = innerCutoff - outerCutoff;
   float intensity = clamp((lightTheta - outerCutoff) / epsilon, 0.0, 1.0);
 
-  vec3 ambient = diffuse * 0.1;
+  vec3 ambient = texture(gAmbient, TexCoord).rgb;
 
   // compute attenuation using not dist^2 thing
   float attenuation = computeAttenuation(attC, FragPosVS);

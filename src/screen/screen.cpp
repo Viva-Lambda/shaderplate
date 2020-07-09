@@ -715,7 +715,6 @@ int main() {
     glm::mat4 view = camera.getViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
     {
-
       // set shader uniforms
       glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
       model = glm::translate(model, objectPos);
@@ -773,8 +772,8 @@ int main() {
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, gMaterial);
 
-      glActiveTexture(GL_TEXTURE3);
-      glBindTexture(GL_TEXTURE_2D, gMaterial);
+      glActiveTexture(GL_TEXTURE4);
+      glBindTexture(GL_TEXTURE_2D, gAmbient);
 
       pbrShader.useProgram();
 

@@ -4,6 +4,7 @@ layout(location = 0) out vec3 gDepth;
 layout(location = 1) out vec4 gNormal;
 layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
+layout(location = 4) out vec3 gAmbient;
 
 in vec3 FragPosVS;
 in vec3 FragPos;
@@ -25,6 +26,7 @@ uniform float maxMipLevels = 5.0;
 
 uniform float fresnel = 0.4; // metal
 uniform mat4 view;
+uniform vec3 viewPos;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -99,7 +101,8 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, float metallic, vec3 albedo,
   kD *= 1.0 - metallic;
   vec3 refbias = normalize(reflect(-viewDir, normal));
   float kappa = 1.0 - roughness;
-  vec3 R = vonmises_dir(refbias, kappa);
+  // vec3 R = vonmises_dir(refbias, kappa);
+  vec3 R = refbias;
 
   vec3 irradiance = texture(irradianceMap, normal).rgb;
   vec3 diffuse = irradiance * albedo;
@@ -141,8 +144,9 @@ void main() {
   vec3 NormalWS = normalize(norm);
 
   //
-  gAlbedo = texture(albedoMap, TexCoord).xyz;
+  vec3 albedo = texture(albedoMap, TexCoord).xyz;
 
+  gAlbedo.xyz = albedo;
   gNormal.xyz = vec3(view * vec4(norm, 1)); // in world space
 
   float metallic = texture(metallicMap, TexCoord).r;
