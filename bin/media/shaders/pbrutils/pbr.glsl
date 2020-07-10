@@ -2,6 +2,49 @@
 // pbr related functions and their references
 //
 //
+
+float getCosTheta(vec3 normal, vec3 inLightDir) {
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  return dot(normal, inLightDir);
+}
+float getPositiveCosTheta(vec3 normal, vec3 inLightDir) {
+  return max(getCosTheta(normal, inLightDir), 0.0);
+}
+float getCos2Theta(vec3 normal, vec3 inLightDir) {
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  float costheta = getCosTheta(normal, inLightDir);
+  return costheta * costheta;
+}
+float getSin2Theta(vec3 normal, vec3 inLightDir) {
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  float cos2theta = getCos2Theta(normal, inLightDir);
+  return 1 - cos2theta;
+}
+float getSinTheta(vec3 normal, vec3 inLightDir) {
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  return sqrt(max(0, getSin2Theta(normal, inLightDir)));
+}
+float getTanTheta(vec3 normal, vec3 inLightDir) {
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  return getSinTheta(normal, inLightDir) / getCosTheta(normal, inLightDir);
+}
+float getTan2Theta(vec3 normal, vec3 inLightDir) {
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  return getTanTheta(normal, inLightDir) / getTanTheta(normal, inLightDir);
+}
+float roughnessToAlpha(float roughness) {
+  // taken from
+  // https://github.com/mmp/pbrt-v3/blob/9f717d847a807793fa966cf0eaa366852efef167/src/core/microfacet.h
+  float rough = max(roughness, pow(10, -3));
+  float rlog = log(rough);
+  float t1 = 0.000640711 * pow(rlog, 4);
+  t1 += 0.0171201 * pow(rlog, 3);
+  t1 += 0.1734 * pow(rlog, 2);
+  t1 += 0.819955 * rlog;
+  t1 += 1.62142;
+  return t1;
+}
+
 /**
  * Notation
  *
@@ -64,8 +107,35 @@ uniform float n_i = 1.0; // air refractive index
  * given the refractive index
  * */
 float outAngle(float ni, float no, vec3 surfaceNormal, vec3 inComingRay) {
-  float theta_i = acos(dot(inComingRay, surfaceNormal));
-  return ni * theta_i / no;
+  float theta_i = acos(normalize(dot(inComingRay, surfaceNormal)));
+  return asin(ni * sin(theta_i) / no);
+}
+float outAngle(float ni, float no, vec2 surfaceNormal, vec2 inComingRay) {
+  float theta_i = acos(normalize(dot(inComingRay, surfaceNormal)));
+  return asin(ni * sin(theta_i) / no);
+}
+
+float outVector(float ni, float no, vec2 surfaceNormal, vec2 inComingRay) {
+  float angle = outAngle(ni, no, surfaceNormal, inComingRay);
+  float x = -sin(angle);
+  float y = -cos(angle);
+  return vec2(x, y);
+}
+/**
+ * From https://physics.stackexchange.com/a/436252
+ * and from
+ * http://www.cse.chalmers.se/edu/year/2013/course/TDA361/refractionvector.pdf
+ * and from https://shaderbits.com/blog/optimized-snell-s-law-refraction
+ * */
+vec3 outVector(float ni, float no, vec3 surfaceNormal, vec3 inComingRay) {
+  vec3 i = -normalize(inComingRay);
+  vec3 n = normalize(surfaceNormal);
+  float costheta = dot(n, i);
+  float eta = ni / no;
+  vec3 t1 = eta * i;
+  vec3 t2 =
+      n * (eta * costheta - sqrt(1 - pow(eta, 2) * (1 - pow(costheta, 2))));
+  return t1 + t2;
 }
 
 float computeRsRef(float ni, float mi, float nt, float mt, float costhetai,
@@ -139,6 +209,19 @@ float computeFresnel(float ni, float nt, vec3 normal, vec3 lightDir) {
 }
 
 /**
+ * Equation 16 from Walter et.al 2007 Microfacet models ...
+ * h_t = \frac{\vec{h_t}}{|h_t|} where \vec{h_t} = -(n_i * i + n_o * o)
+ * i is the incoming ray direction n_i is the refractive index of the incoming
+ * ray's medium, and n_o or n_t is the transmitted medium and o is the
+ * transmitted direction
+ * */
+vec3 computeHt(float ni, float nt, vec3 inDir, vec3 normal) {
+  vec3 outDir = outAngle(ni, nt, normal, inDir);
+  vec3 ht = -(ni * inDir + nt * outDir);
+  return normalize(ht);
+}
+
+/**
  * from Möller Real time 2018 p. 338
  * */
 float chiPlus(float x) {
@@ -174,7 +257,7 @@ vec3 computeAmbientCT(float NdotL) {
   return ambient * NdotL / PI;
 }
 /**
- * Geometrical attenuation equation page 11
+ * Geometrical attenuation equation page 11 from Cook Torrance 1981 paper
  * */
 float computeGeometryCT(float NdotL, float NdotV, float VdotH, float NdotH) {
   //
@@ -183,6 +266,29 @@ float computeGeometryCT(float NdotL, float NdotV, float VdotH, float NdotH) {
   float gmin = min(g1, g2);
   return min(1.0, gmin);
 }
+/**
+ * Compute Geometric attenuation using lambda functions mostly taken
+ * from pbrt
+ * */
+
+float lambdaPbrt(vec3 normal, vec3 dir, float roughness) {
+  // partly taken from
+  // taken from pbr-book 3rd edition Pharr, Jakob
+  // p. 543 trowbridge reitz
+  float alpha = roughnessToAlpha(roughness);
+  float tan2theta = getTan2Theta(normal, dir);
+  float alphaTan = (alpha * alpha) * tan2theta;
+  float t1 = sqrt(1 + alphaTan);
+  t1 += -1;
+  return t1 / 2;
+}
+
+float computeGeometricPbrt(vec3 inDir, vec3 outDir, vec3 normal,
+                           float roughness) {
+  return 1.0 / (1 + lambdaPbrt(normal, inDir, roughness) +
+                lambdaPbrt(normal, outDir, roughness));
+}
+
 /**
  * Geometrical distribution the microfacet normal is considered as half vector
  * in conformance with p. 337 Möller 2018 Real time
@@ -197,6 +303,23 @@ float computeDCT(float NdotH) {
   nomInExp /= alpha2 * NdotH2;
   return (nominator / (PI * alpha2 * pow(NdotH, 4))) * exp(nomInExp);
 }
+/**
+ * from pbrt edition 3, p. 539 equation 8.12 and Walter et. al 2007 equation
+ * 33
+ * */
+float computeTrowbridgeReitzD(vec3 normal, vec3 halfDir, float roughness) {
+  // traditional version of Trowbridge Reitz distribution
+  float alpha2 = pow(roughnessToAlpha(roughness), 2);
+  float cos2theta = getCos2Theta(normal, halfDir);
+  float nominator = chiPlus(dot(halfDir, normal)) * alpha2;
+  float costheta4 = pow(dot(halfDir, normal), 4);
+  float tantheta2 = pow(getTanTheta(normal, halfDir), 2);
+  tantheta2 += alpha2;
+  tantheta2 *= tantheta2;
+  float denominator = PI * costheta4 * tantheta2;
+  return nominator / denominator;
+}
+
 /**
  * Equation 9.34 p. 337 Möller Realtime
  * */
@@ -251,8 +374,24 @@ vec3 computeFDiffCT(float VdotH) {
 }
 
 /**
- * Equation 9.69 from p. 355 from Möller Realtime
+ * Equation 21 from Walter et. al. 2007
  * */
+vec3 computeFTrans(vec3 inDir, vec3 outDir, vec3 normal, float ni, float nt,
+                   float roughness) {
+  vec3 H_t = computeHt(ni, nt, inDir, normal);
+  float LdotHt = dot(inDir, H_t);
+  float VdotHt = dot(outDir, H_t);
+  float LdotN = dot(inDir, normal);
+  float VdotN = dot(outDir, normal);
+  float n2 = pow(nt, 2);
+  float nominator = n2;
+  nominator *= (1 - computeFresnelCT(LdotHt));
+  nominator *= computeGeometricPbrt(inDir, outDir, normal, roughness);
+  nominator *= computeTrowbridgeReitzD(normal, H_t, roughness);
+  denominator = ni * LdotHt + VdotHt * nt;
+  denominator *= denominator;
+  return (LdotHt * VdotHt) / (LdotN * VdotN) * (nominator / denominator);
+}
 
 /**
  * Cook Torrance BRDF function equation in page 10 R = dR_d + sR_s where d+s=1
@@ -290,4 +429,20 @@ vec3 computeBrdf(vec3 viewDir, vec3 lightDir, vec3 normal) {
 
   return computeHammonFDiff(NdotL, NdotV, NdotH, LdotV) +
          computeFSpecCT(NdotH, NdotL, NdotV, VdotH);
+}
+/**
+ * Compute bsdf using equation 19-21 Walter et.al. 2007 Microfacet Models ...
+ * */
+vec3 computeBSDF(vec3 viewDir, vec3 lightDir, vec3 normal, float ni, float nt,
+                 float roughness) {
+  vec3 H_r = normalize(viewDir + lightDir);
+  float NdotV = dot(normal, viewDir);
+  float NdotH = dot(normal, H);
+  float NdotL = dot(normal, lightDir);
+  float VdotH = dot(viewDir, H);
+  float LdotV = dot(lightDir, viewDir);
+
+  vec3 f_r = computeFSpecCT(NdotH, NdotL, NdotV, VdotH);
+  vec3 f_t = computeFTrans(lightDir, viewDir, normal, ni, nt, roughness);
+  return f_r + f_t;
 }

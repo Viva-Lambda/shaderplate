@@ -69,7 +69,7 @@ float getTanTheta(vec3 normal, vec3 inLightDir) {
 }
 float getTan2Theta(vec3 normal, vec3 inLightDir) {
   // taken from pbr-book 3rd edition Pharr, Jakob
-  return getTanTheta(normal, inLightDir) / getTanTheta(normal, inLightDir);
+  return getTanTheta(normal, inLightDir) * getTanTheta(normal, inLightDir);
 }
 float roughnessToAlpha(float roughness) {
   // taken from

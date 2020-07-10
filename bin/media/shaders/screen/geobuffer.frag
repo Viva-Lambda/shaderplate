@@ -163,6 +163,9 @@ void main() {
   float metallic = texture(metallicMap, TexCoord).r;
   float roughness = texture(roughnessMap, TexCoord).r;
   float ao = texture(aoMap, TexCoord).r;
+  if (ao == 0.0) {
+    ao = 1.0;
+  }
 
   gMaterial.x = metallic;
   gMaterial.y = roughness;

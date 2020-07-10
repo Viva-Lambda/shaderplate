@@ -389,9 +389,9 @@ void attachBrdfToCapture(GLuint &captureFBO, GLuint &captureRBO,
                          brdfLutTexture, 0);
 }
 
-void genTextures(GLuint &metallicMap, GLuint &baseColorMap, GLuint &normalMap,
-                 GLuint &roughnessMap, GLuint &aoMap,
-                 GLuint &environmentHdrMap) {
+void genTextures1(GLuint &metallicMap, GLuint &baseColorMap, GLuint &normalMap,
+                  GLuint &roughnessMap, GLuint &aoMap,
+                  GLuint &environmentHdrMap) {
   metallicMap = loadTexture2d("paintedmetal", "paintedmetal_metallic.jpg");
   gerr();
 
@@ -409,6 +409,112 @@ void genTextures(GLuint &metallicMap, GLuint &baseColorMap, GLuint &normalMap,
 
   loadHdrTexture("newport", "Newport_Loft_Ref.hdr", environmentHdrMap);
   gerr();
+}
+
+void activateTextures1(GLuint &metallicMap, GLuint &baseColorMap,
+                       GLuint &normalMap, GLuint &roughnessMap, GLuint &aoMap) {
+  // activate textures
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, baseColorMap);
+
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, normalMap);
+
+  glActiveTexture(GL_TEXTURE2);
+  glBindTexture(GL_TEXTURE_2D, roughnessMap);
+
+  glActiveTexture(GL_TEXTURE3);
+  glBindTexture(GL_TEXTURE_2D, metallicMap);
+
+  glActiveTexture(GL_TEXTURE4);
+  glBindTexture(GL_TEXTURE_2D, aoMap);
+  gerr();
+}
+
+void drawPaintedMetalSphere(Shader geometryShader, glm::mat4 view,
+                            glm::mat4 model, GLuint &metallicMap,
+                            GLuint &baseColorMap, GLuint &normalMap,
+                            GLuint &roughnessMap, GLuint &aoMap,
+                            GLuint &irradianceCubemap, GLuint &prefilterMap,
+                            GLuint &brdfLutTexture) {
+  // activate textures
+  activateTextures1(metallicMap, baseColorMap, normalMap, roughnessMap, aoMap);
+  gerr();
+  glActiveTexture(GL_TEXTURE5);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+
+  glActiveTexture(GL_TEXTURE6);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+  glActiveTexture(GL_TEXTURE7);
+  glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
+
+  geometryShader.useProgram();
+  geometryShader.setMat4Uni("model", model);
+  geometryShader.setMat4Uni("view", view);
+  geometryShader.setFloatUni("fresnel", 0.04); // 0.4
+  geometryShader.setVec3Uni("viewPos", camera.pos);
+  geometryShader.setVec3Uni("lightPos", spotLight.position);
+  renderSphere();
+}
+
+void genTextures2(GLuint &metallicMap2, GLuint &baseColorMap2,
+                  GLuint &normalMap2, GLuint &roughnessMap2) {
+  metallicMap2 = loadTexture2d("gold", "lightgold_metallic.png");
+  gerr();
+
+  baseColorMap2 = loadTexture2d("gold", "lightgold_albedo.png");
+  gerr();
+
+  normalMap2 = loadTexture2d("gold", "lightgold_normal-ogl.png");
+  gerr();
+
+  roughnessMap2 = loadTexture2d("gold", "lightgold_roughness.png");
+  gerr();
+}
+
+void activateTextures2(GLuint &metallicMap2, GLuint &baseColorMap2,
+                       GLuint &normalMap2, GLuint &roughnessMap2) {
+  // activate textures
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, baseColorMap2);
+
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, normalMap2);
+
+  glActiveTexture(GL_TEXTURE2);
+  glBindTexture(GL_TEXTURE_2D, roughnessMap2);
+
+  glActiveTexture(GL_TEXTURE3);
+  glBindTexture(GL_TEXTURE_2D, metallicMap2);
+  gerr();
+}
+
+void drawGoldSphere(Shader geometryShader, glm::mat4 view, glm::mat4 model,
+                    GLuint &metallicMap2, GLuint &baseColorMap2,
+                    GLuint &normalMap2, GLuint &roughnessMap2,
+                    GLuint &irradianceCubemap, GLuint &prefilterMap,
+                    GLuint &brdfLutTexture) {
+  // activate textures
+  activateTextures2(metallicMap2, baseColorMap2, normalMap2, roughnessMap2);
+  gerr();
+  glActiveTexture(GL_TEXTURE5);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
+
+  glActiveTexture(GL_TEXTURE6);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+  glActiveTexture(GL_TEXTURE7);
+  glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
+
+  geometryShader.useProgram();
+  geometryShader.setMat4Uni("model", model);
+  geometryShader.setMat4Uni("view", view);
+  geometryShader.setFloatUni("fresnel", 0.27035); // 0.4
+  geometryShader.setVec3Uni("viewPos", camera.pos);
+  geometryShader.setVec3Uni("lightPos", spotLight.position);
+  // renderSphere();
+  renderCubeInTangentSpace();
 }
 
 int main() {
@@ -452,15 +558,18 @@ int main() {
   glDisable(GL_BLEND);
 
   // scene description:
-  // rusted metal sphere on a mirror like platform
+  // painted metal cube near a gold sphere
   GLuint metallicMap = 0;
   GLuint baseColorMap = 0;
   GLuint normalMap = 0;
   GLuint roughnessMap = 0;
   GLuint aoMap = 0;
   GLuint environmentHdrMap = 0;
-  genTextures(metallicMap, baseColorMap, normalMap, roughnessMap, aoMap,
-              environmentHdrMap);
+  genTextures1(metallicMap, baseColorMap, normalMap, roughnessMap, aoMap,
+               environmentHdrMap);
+
+  GLuint metallicMap2 = 0, baseColorMap2 = 0, normalMap2 = 0, roughnessMap2 = 0;
+  genTextures2(metallicMap2, baseColorMap2, normalMap2, roughnessMap2);
 
   // with a sphere controllable spotlight inside a newport environment map
 
@@ -697,14 +806,12 @@ int main() {
   std::vector<VertexAttrib> coneVa{{0, 3}, {1, 2}};
 
   while (!glfwWindowShouldClose(window)) {
-
     //
     float currentTime = glfwGetTime();
     deltaTime = currentTime - lastTime;
     lastTime = currentTime;
 
     processInput_proc2(window);
-
     //
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -717,42 +824,20 @@ int main() {
     {
       // set shader uniforms
       glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
+      glm::vec3 objectPos2 = glm::vec3(0.5, -0.5, -5.0);
       model = glm::translate(model, objectPos);
+      model = glm::scale(model, glm::vec3(1.0f));
+
+      // gerr();
+      // drawPaintedMetalSphere(geometryShader, view, model, metallicMap,
+      //                       baseColorMap, normalMap, roughnessMap, aoMap,
+      //                       irradianceCubemap, prefilterMap, brdfLutTexture);
+      model = glm::mat4(1);
+      model = glm::translate(model, objectPos2);
       model = glm::scale(model, glm::vec3(1.5f));
-
-      // activate textures
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, baseColorMap);
-
-      glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, normalMap);
-
-      glActiveTexture(GL_TEXTURE2);
-      glBindTexture(GL_TEXTURE_2D, roughnessMap);
-
-      glActiveTexture(GL_TEXTURE3);
-      glBindTexture(GL_TEXTURE_2D, metallicMap);
-
-      glActiveTexture(GL_TEXTURE4);
-      glBindTexture(GL_TEXTURE_2D, aoMap);
-      gerr();
-
-      glActiveTexture(GL_TEXTURE5);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceCubemap);
-
-      glActiveTexture(GL_TEXTURE6);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-
-      glActiveTexture(GL_TEXTURE7);
-      glBindTexture(GL_TEXTURE_2D, brdfLutTexture);
-
-      geometryShader.useProgram();
-      geometryShader.setMat4Uni("model", model);
-      geometryShader.setMat4Uni("view", view);
-      geometryShader.setFloatUni("fresnel", 0.04); // 0.4
-      geometryShader.setVec3Uni("viewPos", camera.pos);
-      geometryShader.setVec3Uni("lightPos", spotLight.position);
-      renderCubeInTangentSpace();
+      drawGoldSphere(geometryShader, view, model, metallicMap2, baseColorMap2,
+                     normalMap2, roughnessMap2, irradianceCubemap, prefilterMap,
+                     brdfLutTexture);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -784,7 +869,7 @@ int main() {
       pbrShader.setVec3Uni(
           "LightPosVS", glm::vec3(view * glm::vec4(spotLight.position, 1.0)));
 
-      pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
+      pbrShader.setVec3Uni("lightColor", glm::vec3(30.0));
       // if doing phong lightening
       // pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
@@ -838,7 +923,7 @@ int main() {
 
     gerr();
     lampShader.useProgram();
-    lampShader.setVec3Uni("lightColor", glm::vec3(300.0f));
+    lampShader.setVec3Uni("lightColor", glm::vec3(30.0f));
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, spotLight.position);

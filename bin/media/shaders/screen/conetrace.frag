@@ -348,7 +348,7 @@ vec4 ray_trace_screen() {
   // biasing ray scatter direction based on surface roughness
   float roughness = texture(gMaterial, TexCoord).y;
   float kappa = 1.0 - roughness;
-  vec3 rayDirection = vonmises_dir(normRayDirBias, kappa);
+  vec3 rayDirection = normRayDirBias;
 
   // output rDotV to the alpha channel for use in determining how much to fade
   // the ray
