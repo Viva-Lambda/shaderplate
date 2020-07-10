@@ -843,8 +843,8 @@ int main() {
 
     // 2. lightening pass: render lightening to be refined later on
     {
-      // glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
-      // glClear(GL_COLOR_BUFFER_BIT);
+      glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+      glClear(GL_COLOR_BUFFER_BIT);
 
       // activate textures
       glActiveTexture(GL_TEXTURE0);
@@ -880,39 +880,39 @@ int main() {
 
     // 3. cone tracing pass:
     {
-      // glClear(GL_COLOR_BUFFER_BIT);
-      // glActiveTexture(GL_TEXTURE0);
-      // glBindTexture(GL_TEXTURE_2D, gDepth);
+      glClear(GL_COLOR_BUFFER_BIT);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, gDepth);
 
-      // glActiveTexture(GL_TEXTURE1);
-      // glBindTexture(GL_TEXTURE_2D, lightTexture);
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, lightTexture);
 
-      // glActiveTexture(GL_TEXTURE2);
-      // glBindTexture(GL_TEXTURE_2D, gNormal);
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, gNormal);
 
-      // glActiveTexture(GL_TEXTURE3);
-      // glBindTexture(GL_TEXTURE_2D, gMaterial);
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gMaterial);
 
-      // rayConeShader.useProgram();
-      // glm::mat4 view = camera.getViewMatrix();
+      rayConeShader.useProgram();
+      glm::mat4 view = camera.getViewMatrix();
 
-      // rayConeShader.setMat4Uni("view", view);
-      // rayConeShader.setMat4Uni("projection", projection);
-      // rayConeShader.setVec3Uni("viewDir", camera.front);
-      // rayConeShader.setVec3Uni("viewPos", camera.pos);
-      // rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
-      // rayConeShader.setFloatUni("csDepthThickness", 1.0);
-      // rayConeShader.setFloatUni("traceStride", 1.0);
-      // rayConeShader.setFloatUni("csMaxSteps", 5.0);
-      // rayConeShader.setFloatUni("csMaxDistance", 10.0);
-      // rayConeShader.setFloatUni("jitter", 0.1);
-      // rayConeShader.setFloatUni("coneAngleZeta", 0.244);
-      // rayConeShader.setFloatUni("max_shine", 25.0);
-      // rayConeShader.setFloatUni("cone_trace_iteration", 6.0);
-      // rayConeShader.setFloatUni("fadeStart", 0.4);
-      // rayConeShader.setFloatUni("fadeEnd", 1.0);
+      rayConeShader.setMat4Uni("view", view);
+      rayConeShader.setMat4Uni("projection", projection);
+      rayConeShader.setVec3Uni("viewDir", camera.front);
+      rayConeShader.setVec3Uni("viewPos", camera.pos);
+      rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
+      rayConeShader.setFloatUni("csDepthThickness", 1.0);
+      rayConeShader.setFloatUni("traceStride", 1.0);
+      rayConeShader.setFloatUni("csMaxSteps", 5.0);
+      rayConeShader.setFloatUni("csMaxDistance", 10.0);
+      rayConeShader.setFloatUni("jitter", 0.1);
+      rayConeShader.setFloatUni("coneAngleZeta", 0.244);
+      rayConeShader.setFloatUni("max_shine", 25.0);
+      rayConeShader.setFloatUni("cone_trace_iteration", 6.0);
+      rayConeShader.setFloatUni("fadeStart", 0.4);
+      rayConeShader.setFloatUni("fadeEnd", 1.0);
 
-      // renderQuad(coneVa);
+      renderQuad(coneVa);
     }
 
     // 3.5 draw light source
