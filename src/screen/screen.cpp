@@ -513,8 +513,8 @@ void drawGoldSphere(Shader geometryShader, glm::mat4 view, glm::mat4 model,
   geometryShader.setFloatUni("fresnel", 0.27035); // 0.4
   geometryShader.setVec3Uni("viewPos", camera.pos);
   geometryShader.setVec3Uni("lightPos", spotLight.position);
-  // renderSphere();
-  renderCubeInTangentSpace();
+   renderSphere();
+  //renderCubeInTangentSpace();
 }
 
 int main() {
@@ -828,10 +828,10 @@ int main() {
       model = glm::translate(model, objectPos);
       model = glm::scale(model, glm::vec3(1.0f));
 
-      // gerr();
-      // drawPaintedMetalSphere(geometryShader, view, model, metallicMap,
-      //                       baseColorMap, normalMap, roughnessMap, aoMap,
-      //                       irradianceCubemap, prefilterMap, brdfLutTexture);
+      gerr();
+      drawPaintedMetalSphere(geometryShader, view, model, metallicMap,
+                             baseColorMap, normalMap, roughnessMap, aoMap,
+                             irradianceCubemap, prefilterMap, brdfLutTexture);
       model = glm::mat4(1);
       model = glm::translate(model, objectPos2);
       model = glm::scale(model, glm::vec3(1.5f));
@@ -901,10 +901,10 @@ int main() {
       rayConeShader.setVec3Uni("viewDir", camera.front);
       rayConeShader.setVec3Uni("viewPos", camera.pos);
       rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
-      rayConeShader.setFloatUni("csDepthThickness", 1.0);
+      rayConeShader.setFloatUni("csDepthThickness", 10.0);
       rayConeShader.setFloatUni("traceStride", 1.0);
-      rayConeShader.setFloatUni("csMaxSteps", 5.0);
-      rayConeShader.setFloatUni("csMaxDistance", 10.0);
+      rayConeShader.setFloatUni("csMaxSteps", 15.0);
+      rayConeShader.setFloatUni("csMaxDistance", 20.0);
       rayConeShader.setFloatUni("jitter", 0.1);
       rayConeShader.setFloatUni("coneAngleZeta", 0.244);
       rayConeShader.setFloatUni("max_shine", 25.0);
@@ -912,7 +912,7 @@ int main() {
       rayConeShader.setFloatUni("fadeStart", 0.4);
       rayConeShader.setFloatUni("fadeEnd", 1.0);
 
-      renderQuad(coneVa);
+      renderQuad();
     }
 
     // 3.5 draw light source
