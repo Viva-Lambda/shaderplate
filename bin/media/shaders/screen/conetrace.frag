@@ -42,4 +42,6 @@ vec3 hiz_trace(vec3 point, vec3 dir) {
   crossStep.y = (v.y >= 0) ? 1.f : −1. f;
   crossOffset.xy = crossStep.xy * crossEpsilon;
   crossStep.xy = clamp(crossStep.xy, 0.0, 1.0);
+
+  //
 }
