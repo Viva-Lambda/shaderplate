@@ -568,22 +568,7 @@ void drawSceneDepth(Shader hizShader, glm::mat4 view, glm::mat4 model,
   hizShader.useProgram();
   hizShader.setIntUni("mipmapLevel", level-1);
   hizShader.setVec2Uni("pixelOffset", offs);
-
-  glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
-  glm::vec3 objectPos2 = glm::vec3(0.5, -0.5, -5.0);
-  model = glm::translate(model, objectPos);
-  model = glm::scale(model, glm::vec3(1.0f));
-  hizShader.useProgram();
-  hizShader.setMat4Uni("model", model);
-  hizShader.setMat4Uni("view", view);
-  gerr();
-  renderSphere();
-  model = glm::mat4(1);
-  model = glm::translate(model, objectPos2);
-  model = glm::scale(model, glm::vec3(1.5f));
-  hizShader.useProgram();
-  hizShader.setMat4Uni("model", model);
-  renderSphere();
+  renderQuad();
   gerr();
 }
 
@@ -878,9 +863,14 @@ int main() {
   setFboTexture(gMaterial, GL_RGB16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
                 attachmentNb);
 
-  // stores material information
+  // stores ambient light information
   GLuint gAmbient;
   setFboTexture(gAmbient, GL_RGB16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
+                attachmentNb);
+
+  // stores screen space depth information
+  GLuint gSDepth;
+  setFboTexture(gSDepth, GL_RGB16F, GL_RGB, GL_FLOAT, WINWIDTH, WINHEIGHT,
                 attachmentNb);
 
   // setting color attachments
@@ -970,42 +960,8 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glm::mat4 view = camera.getViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
-    glm::vec2 offs = glm::vec2(0);
-    offs.x = WINWIDTH % 2 == 0 ? 1 : 2;
-    offs.y = WINHEIGHT % 2 == 0 ? 1 : 2;
 
-    // Hi-Z buffer pass: generate hierarchical depth buffer
-    glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
-    drawSceneDepth(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
-                   HiZBufferTexture, 0, HiZBCopyTexture, offs);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
-                       HiZBCopyTexture, GL_TEXTURE_2D, 0, 0, 0, 0, WINWIDTH,
-                       WINHEIGHT,
-                       0); // copy previously written mipmap to current
-    gerr();
-    glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
-
-    for (unsigned int i = 1; i < mipmaps.size(); i++) {
-      MipMapInfo minfo = mipmaps[i];
-      int mw = minfo.width;
-      int mh = minfo.height;
-      offs.x = mw % 2 == 0 ? 1 : 2;
-      offs.y = mh % 2 == 0 ? 1 : 2;
-      auto level = minfo.level;
-      glViewport(0, 0, mw, mh);
-      glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, level, 0, 0, 0,
-                         HiZBCopyTexture, GL_TEXTURE_2D, level, 0, 0, 0, mw, mh,
-                         0); // copy previously written mipmap to current
-      gerr();
-
-      drawSceneDepth(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
-                     level, HiZBCopyTexture, offs);
-      gerr();
-    }
-    glViewport(0, 0, WINWIDTH, WINHEIGHT);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    
     // 1. geometry pass: render scene geometry color data into geometry buffer
     glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1017,6 +973,48 @@ int main() {
                 brdfLutTexture);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // Hi-Z buffer pass: generate hierarchical depth buffer
+    {
+      glClear(GL_COLOR_BUFFER_BIT);
+      glm::vec2 offs = glm::vec2(0);
+      offs.x = WINWIDTH % 2 == 0 ? 1 : 2;
+      offs.y = WINHEIGHT % 2 == 0 ? 1 : 2;
+
+      glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+      // first copy from screen space depth texture of gBuffer
+      drawSceneDepth(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
+                     HiZBufferTexture, 0, gSDepth, offs);
+      //
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
+                         HiZBCopyTexture, GL_TEXTURE_2D, 0, 0, 0, 0, WINWIDTH,
+                         WINHEIGHT,
+                         0); // copy previously written mipmap to current
+      gerr();
+      glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+
+      // now sample previous mipmaps from hiz buffer and hiz copy buffer
+      for (unsigned int i = 1; i < mipmaps.size(); i++) {
+        MipMapInfo minfo = mipmaps[i];
+        int mw = minfo.width;
+        int mh = minfo.height;
+        offs.x = mw % 2 == 0 ? 1 : 2;
+        offs.y = mh % 2 == 0 ? 1 : 2;
+        auto level = minfo.level;
+        glViewport(0, 0, mw, mh);
+        glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, level, 0, 0, 0,
+                           HiZBCopyTexture, GL_TEXTURE_2D, level, 0, 0, 0, mw,
+                           mh,
+                           0); // copy previously written mipmap to current
+        gerr();
+
+        drawSceneDepth(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
+                       level, HiZBCopyTexture, offs);
+        gerr();
+      }
+      glViewport(0, 0, WINWIDTH, WINHEIGHT);
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 
     // 2. lightening pass: render lightening to be refined later on
     {

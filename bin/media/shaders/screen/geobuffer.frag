@@ -5,6 +5,7 @@ layout(location = 1) out vec4 gNormal;
 layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
 layout(location = 4) out vec3 gAmbient;
+layout(location = 5) out vec3 gSDepth;
 
 in vec3 FragPosVS;
 in vec3 FragPos;
@@ -151,6 +152,8 @@ vec3 getHalfDir() { return normalize(getViewDir() + getLightDir()); }
 void main() {
   // set depth in view space
   gDepth.xyz = FragPosVS;
+  // set depth in screen space
+  gSDepth.xyz = gl_FragCoord.xyz;
   vec3 norm = getNormalFromMap(); // in view space
   vec3 NormalWS = normalize(norm);
 
@@ -158,7 +161,7 @@ void main() {
   vec3 albedo = texture(albedoMap, TexCoord).xyz;
 
   gAlbedo.xyz = albedo;
-  gNormal.xyz = vec3(view * vec4(norm, 1)); // in world space
+  gNormal.xyz = vec3(view * vec4(norm, 1)); // in view space
 
   float metallic = texture(metallicMap, TexCoord).r;
   float roughness = texture(roughnessMap, TexCoord).r;
