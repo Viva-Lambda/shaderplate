@@ -550,7 +550,7 @@ void drawScene(Shader geometryShader, glm::mat4 view, glm::mat4 model,
 }
 void drawSceneDepth(Shader hizShader, glm::mat4 view, glm::mat4 model,
                     GLuint &mipRbo, int mw, int mh, GLuint &HiZBufferTexture,
-                    unsigned int level, GLuint HiZBCopyTexture,
+                    unsigned int level, GLuint &HiZBCopyTexture,
                     glm::vec2 offs) {
 
   // read from here and write to attached texture of hizFBO
@@ -558,7 +558,7 @@ void drawSceneDepth(Shader hizShader, glm::mat4 view, glm::mat4 model,
   glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mw, mh);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                          HiZBufferTexture, // write to this texture
-                         level + 1);
+                         level );
   gerrf();
   gerr();
 
@@ -566,7 +566,7 @@ void drawSceneDepth(Shader hizShader, glm::mat4 view, glm::mat4 model,
   glBindTexture(GL_TEXTURE_2D, HiZBCopyTexture);
 
   hizShader.useProgram();
-  hizShader.setIntUni("mipmapLevel", level);
+  hizShader.setIntUni("mipmapLevel", level-1);
   hizShader.setVec2Uni("pixelOffset", offs);
 
   glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
@@ -607,15 +607,16 @@ void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   ms.clear();
   int mipw = WINWIDTH;
+  int height = WINHEIGHT;
   unsigned int level = 0;
-  while (mipw >= 1) {
-    int height = static_cast<int>(mipw / sceneAspectRatio);
+  while (mipw >= 1 && height >= 1) {
     MipMapInfo msize(mipw, height, level);
     ms.push_back(msize);
     mipw = static_cast<int>(mipw / 2);
+    height = static_cast<int>(mipw / sceneAspectRatio);
     level++;
   }
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level+1);
   for (unsigned int i = 0; i < ms.size(); i++) {
     MipMapInfo msize = ms[i];
     std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
@@ -635,6 +636,7 @@ void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, ms.size());
   for (unsigned int i = 0; i < ms.size(); i++) {
     MipMapInfo msize = ms[i];
     std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
