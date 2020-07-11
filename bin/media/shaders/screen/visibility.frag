@@ -9,13 +9,6 @@ uniform sampler2D visibilityMap;
 uniform vec2 nearFar;
 uniform int miplevel;
 
-/**Linearize depth value
- * to camera space
- * */
-float linearize(float zval) {
-  return (2 * nearFar.x) /
-         (nearFar.y + nearFar.x - (zval * (nearFar.y - nearFar.x)));
-}
 void main() {
   ivec2 sscoord = ivec2(gl_FragCoord.xy) * 2;
   int mprev = miplevel - 1;

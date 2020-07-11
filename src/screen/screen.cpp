@@ -114,7 +114,7 @@ Shader loadPrefilterShader() {
 }
 Shader loadBrdfShader() {
   fs::path vpath = shaderDirPath / "screen" / "tquad.vert"; // DONE
-  fs::path fpath = shaderDirPath / "screen" / "brdf.frag"; // DONE
+  fs::path fpath = shaderDirPath / "screen" / "brdf.frag";  // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.setIntUni("envMap", 0);
@@ -557,26 +557,36 @@ void drawScene(Shader geometryShader, glm::mat4 view, glm::mat4 model,
                  normalMap2, roughnessMap2, irradianceCubemap, prefilterMap,
                  brdfLutTexture);
 }
-void drawSceneDepth(Shader hizShader, glm::mat4 view, glm::mat4 model,
-                    GLuint &mipRbo, int mw, int mh, GLuint &HiZBufferTexture,
-                    unsigned int level, GLuint &HiZBCopyTexture,
-                    glm::vec2 offs) {
+void genHiZBuffer(Shader hizShader, glm::mat4 view, glm::mat4 model,
+                  GLuint &mipRbo, int mw, int mh, GLuint &HiZBufferTexture,
+                  unsigned int level, GLuint &HiZBCopyTexture, glm::vec2 offs,
+                  GLuint &VisibilityBufferTexture, GLuint &visibilityMap,
+                  float near, float far) {
 
   // read from here and write to attached texture of hizFBO
   glBindRenderbuffer(GL_RENDERBUFFER, mipRbo);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mw, mh);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                          HiZBufferTexture, // write to this texture
-                         level );
+                         level);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
+                         VisibilityBufferTexture, // write to this texture
+                         level);
+  GLuint attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+  glDrawBuffers(2, attachments);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mw, mh);
   gerrf();
   gerr();
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, HiZBCopyTexture);
 
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, visibilityMap);
+
   hizShader.useProgram();
-  hizShader.setIntUni("mipmapLevel", level-1);
+  hizShader.setIntUni("mipmapLevel", level - 1);
   hizShader.setVec2Uni("pixelOffset", offs);
+  hizShader.setVec2Uni("nearFar", glm::vec2(near, far));
   renderQuad();
   gerr();
 }
@@ -610,7 +620,7 @@ void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms) {
     height = static_cast<int>(mipw / sceneAspectRatio);
     level++;
   }
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level+1);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level + 1);
   for (unsigned int i = 0; i < ms.size(); i++) {
     MipMapInfo msize = ms[i];
     std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
@@ -625,8 +635,7 @@ void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
   std::fill(std::begin(imarr), std::end(imarr), 1.0f);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
                GL_FLOAT, &imarr);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -831,15 +840,18 @@ int main() {
   // generate HiZ texture
   GLuint HiZBufferTexture = 0;
   GLuint HiZBCopyTexture = 0;
+  GLuint VisibilityBufferTexture = 0;
+  GLuint visibilityMap = 0;
   std::vector<MipMapInfo> mipmaps;
 
   genHiZTexture(HiZBufferTexture, mipmaps);
   genHiZCopy(HiZBCopyTexture, mipmaps);
+  genHiZCopy(VisibilityBufferTexture, mipmaps);
+  genHiZCopy(visibilityMap, mipmaps);
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   Shader hizShader = loadHizShader();
-  Shader visibilityShader = loadVisibilityShader();
 
   // -----------------------------------------------------------------------
 
@@ -969,7 +981,6 @@ int main() {
     glm::mat4 view = camera.getViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
 
-    
     // 1. geometry pass: render scene geometry color data into geometry buffer
     glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -990,8 +1001,9 @@ int main() {
 
       glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
       // first copy from screen space depth texture of gBuffer
-      drawSceneDepth(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
-                     HiZBufferTexture, 0, gSDepth, offs);
+      genHiZBuffer(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
+                   HiZBufferTexture, 0, gSDepth, offs, VisibilityBufferTexture,
+                   visibilityMap, nearPlane, farPlane);
       //
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
@@ -999,6 +1011,11 @@ int main() {
                          WINHEIGHT,
                          0); // copy previously written mipmap to current
       gerr();
+      glCopyImageSubData(VisibilityBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
+                         visibilityMap, GL_TEXTURE_2D, 0, 0, 0, 0, WINWIDTH,
+                         WINHEIGHT,
+                         0); // copy previously written mipmap to current
+
       glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
 
       // now sample previous mipmaps from hiz buffer and hiz copy buffer
@@ -1016,8 +1033,9 @@ int main() {
                            0); // copy previously written mipmap to current
         gerr();
 
-        drawSceneDepth(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
-                       level, HiZBCopyTexture, offs);
+        genHiZBuffer(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
+                     level, HiZBCopyTexture, offs, VisibilityBufferTexture,
+                     visibilityMap, nearPlane, farPlane);
         gerr();
       }
       glViewport(0, 0, WINWIDTH, WINHEIGHT);
