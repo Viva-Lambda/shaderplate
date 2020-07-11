@@ -113,7 +113,7 @@ Shader loadPrefilterShader() {
   return envShader;
 }
 Shader loadBrdfShader() {
-  fs::path vpath = shaderDirPath / "screen" / "brdf.vert"; // DONE
+  fs::path vpath = shaderDirPath / "screen" / "tquad.vert"; // DONE
   fs::path fpath = shaderDirPath / "screen" / "brdf.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
@@ -178,11 +178,20 @@ Shader loadRayConeShader() {
 }
 
 Shader loadHizShader() {
-  fs::path vpath = shaderDirPath / "screen" / "hizbuffer.vert";
+  fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
   fs::path fpath = shaderDirPath / "screen" / "hizbuffer.frag";
   Shader s(vpath.c_str(), fpath.c_str());
   s.useProgram();
   s.setIntUni("HiZBCopyTexture", 0);
+  return s;
+}
+Shader loadVisibilityShader() {
+  fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
+  fs::path fpath = shaderDirPath / "screen" / "visibility.frag";
+  Shader s(vpath.c_str(), fpath.c_str());
+  s.useProgram();
+  s.setIntUni("HiZBuffer", 0);
+  s.setIntUni("visibilityMap", 1);
   return s;
 }
 
@@ -830,6 +839,7 @@ int main() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   Shader hizShader = loadHizShader();
+  Shader visibilityShader = loadVisibilityShader();
 
   // -----------------------------------------------------------------------
 
@@ -939,8 +949,6 @@ int main() {
   geometryShader.setMat4Uni("projection", projection);
   gerr();
 
-  hizShader.useProgram();
-  hizShader.setMat4Uni("projection", projection);
   // geometryShader.setIntUni();
   std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
   std::vector<VertexAttrib> backVa{{0, 3}};
@@ -973,7 +981,7 @@ int main() {
                 brdfLutTexture);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // Hi-Z buffer pass: generate hierarchical depth buffer
+    // 2. Hi-Z buffer pass: generate hierarchical depth buffer
     {
       glClear(GL_COLOR_BUFFER_BIT);
       glm::vec2 offs = glm::vec2(0);
@@ -1016,7 +1024,7 @@ int main() {
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    // 2. lightening pass: render lightening to be refined later on
+    // 3. lightening pass: render lightening to be refined later on
     {
       glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
       glClear(GL_COLOR_BUFFER_BIT);
@@ -1053,7 +1061,7 @@ int main() {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // 3. cone tracing pass:
+    // 4. cone tracing pass:
     {
       glClear(GL_COLOR_BUFFER_BIT);
       glActiveTexture(GL_TEXTURE0);
