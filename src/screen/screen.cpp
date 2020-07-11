@@ -177,6 +177,15 @@ Shader loadRayConeShader() {
   return coneShader;
 }
 
+Shader loadHizShader() {
+  fs::path vpath = shaderDirPath / "screen" / "hizbuffer.vert";
+  fs::path fpath = shaderDirPath / "screen" / "hizbuffer.frag";
+  Shader s(vpath.c_str(), fpath.c_str());
+  s.useProgram();
+  s.setIntUni("HiZBCopyTexture", 0);
+  return s;
+}
+
 void setFboTexture(GLuint &tex,
                    GLenum informat,     // GL_RGB16F
                    GLenum outformat,    // GL_RGBA
@@ -513,8 +522,125 @@ void drawGoldSphere(Shader geometryShader, glm::mat4 view, glm::mat4 model,
   geometryShader.setFloatUni("fresnel", 0.27035); // 0.4
   geometryShader.setVec3Uni("viewPos", camera.pos);
   geometryShader.setVec3Uni("lightPos", spotLight.position);
-   renderSphere();
-  //renderCubeInTangentSpace();
+  renderSphere();
+  // renderCubeInTangentSpace();
+}
+
+void drawScene(Shader geometryShader, glm::mat4 view, glm::mat4 model,
+               GLuint &metallicMap2, GLuint &baseColorMap2, GLuint &normalMap2,
+               GLuint &roughnessMap2, GLuint &metallicMap, GLuint &baseColorMap,
+               GLuint &normalMap, GLuint &roughnessMap, GLuint &aoMap,
+               GLuint &irradianceCubemap, GLuint &prefilterMap,
+               GLuint &brdfLutTexture) {
+  glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
+  glm::vec3 objectPos2 = glm::vec3(0.5, -0.5, -5.0);
+  model = glm::translate(model, objectPos);
+  model = glm::scale(model, glm::vec3(1.0f));
+
+  gerr();
+  drawPaintedMetalSphere(geometryShader, view, model, metallicMap, baseColorMap,
+                         normalMap, roughnessMap, aoMap, irradianceCubemap,
+                         prefilterMap, brdfLutTexture);
+  model = glm::mat4(1);
+  model = glm::translate(model, objectPos2);
+  model = glm::scale(model, glm::vec3(1.5f));
+  drawGoldSphere(geometryShader, view, model, metallicMap2, baseColorMap2,
+                 normalMap2, roughnessMap2, irradianceCubemap, prefilterMap,
+                 brdfLutTexture);
+}
+void drawSceneDepth(Shader hizShader, glm::mat4 view, glm::mat4 model,
+                    GLuint &mipRbo, int mw, int mh, GLuint &HiZBufferTexture,
+                    unsigned int level, GLuint HiZBCopyTexture,
+                    glm::vec2 offs) {
+
+  // read from here and write to attached texture of hizFBO
+  glBindRenderbuffer(GL_RENDERBUFFER, mipRbo);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mw, mh);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         HiZBufferTexture, // write to this texture
+                         level + 1);
+  gerrf();
+  gerr();
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, HiZBCopyTexture);
+
+  hizShader.useProgram();
+  hizShader.setIntUni("mipmapLevel", level);
+  hizShader.setVec2Uni("pixelOffset", offs);
+
+  glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
+  glm::vec3 objectPos2 = glm::vec3(0.5, -0.5, -5.0);
+  model = glm::translate(model, objectPos);
+  model = glm::scale(model, glm::vec3(1.0f));
+  hizShader.useProgram();
+  hizShader.setMat4Uni("model", model);
+  hizShader.setMat4Uni("view", view);
+  gerr();
+  renderSphere();
+  model = glm::mat4(1);
+  model = glm::translate(model, objectPos2);
+  model = glm::scale(model, glm::vec3(1.5f));
+  hizShader.useProgram();
+  hizShader.setMat4Uni("model", model);
+  renderSphere();
+  gerr();
+}
+
+struct MipMapInfo {
+  const int width, height;
+  const unsigned int level;
+  MipMapInfo(int w, int h, unsigned int l) : width(w), height(h), level(l) {}
+};
+
+void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms) {
+  glGenTextures(1, &hizTex);
+  float sceneAspectRatio = (float)WINWIDTH / (float)WINHEIGHT;
+  glBindTexture(GL_TEXTURE_2D, hizTex);
+  float imarr[WINWIDTH * WINHEIGHT * 3];
+  std::fill(std::begin(imarr), std::end(imarr), 1.0f);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
+               GL_FLOAT, &imarr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  ms.clear();
+  int mipw = WINWIDTH;
+  unsigned int level = 0;
+  while (mipw >= 1) {
+    int height = static_cast<int>(mipw / sceneAspectRatio);
+    MipMapInfo msize(mipw, height, level);
+    ms.push_back(msize);
+    mipw = static_cast<int>(mipw / 2);
+    level++;
+  }
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level);
+  for (unsigned int i = 0; i < ms.size(); i++) {
+    MipMapInfo msize = ms[i];
+    std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
+    glTexImage2D(GL_TEXTURE_2D, msize.level, GL_RGB16F, msize.width,
+                 msize.height, 0, GL_RGB, GL_FLOAT, &iarr[0]);
+  }
+}
+void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
+  glGenTextures(1, &hizTexCopy);
+  glBindTexture(GL_TEXTURE_2D, hizTexCopy);
+  float imarr[WINWIDTH * WINHEIGHT * 3];
+  std::fill(std::begin(imarr), std::end(imarr), 1.0f);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
+               GL_FLOAT, &imarr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  for (unsigned int i = 0; i < ms.size(); i++) {
+    MipMapInfo msize = ms[i];
+    std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
+    glTexImage2D(GL_TEXTURE_2D, msize.level, GL_RGB16F, msize.width,
+                 msize.height, 0, GL_RGB, GL_FLOAT, &iarr[0]);
+  }
 }
 
 int main() {
@@ -694,6 +820,32 @@ int main() {
   // -------------------------------------------------------------------------
 
   //--------------------------------- B. rendering ---------------------------
+
+  // hiz buffer
+  GLuint hizFBO, mipRbo;
+  glGenFramebuffers(1, &hizFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+
+  glGenRenderbuffers(1, &mipRbo);
+  glBindRenderbuffer(GL_RENDERBUFFER, mipRbo);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WINWIDTH,
+                        WINHEIGHT);
+
+  // get number of mipmap levels required for texture
+  // generate HiZ texture
+  GLuint HiZBufferTexture = 0;
+  GLuint HiZBCopyTexture = 0;
+  std::vector<MipMapInfo> mipmaps;
+
+  genHiZTexture(HiZBufferTexture, mipmaps);
+  genHiZCopy(HiZBCopyTexture, mipmaps);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  Shader hizShader = loadHizShader();
+
+  // -----------------------------------------------------------------------
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   // set up required buffers for rendering
   GLuint geometry_fbo, depthRbo; // required for g buffer pass
@@ -739,10 +891,8 @@ int main() {
   gerr();
 
   setGBufferDepthRbo(depthRbo);
+  gerrf();
 
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    std::cout << "Geometry Framebuffer is not complete!" << std::endl;
-  }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // implementing the fbo for lightening
@@ -756,9 +906,7 @@ int main() {
   GLuint lightAttachment = 0;
   setFboTexture(lightTexture, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH,
                 WINHEIGHT, lightAttachment);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    std::cout << "SSAO Blur Framebuffer is not complete!" << std::endl;
-  }
+  gerrf();
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   // ----------------- needed shaders are ------------------------------
@@ -798,6 +946,9 @@ int main() {
   geometryShader.useProgram();
   geometryShader.setMat4Uni("projection", projection);
   gerr();
+
+  hizShader.useProgram();
+  hizShader.setMat4Uni("projection", projection);
   // geometryShader.setIntUni();
   std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
   std::vector<VertexAttrib> backVa{{0, 3}};
@@ -815,29 +966,53 @@ int main() {
     //
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glm::mat4 view = camera.getViewMatrix();
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::vec2 offs = glm::vec2(0);
+    offs.x = WINWIDTH % 2 == 0 ? 1 : 2;
+    offs.y = WINHEIGHT % 2 == 0 ? 1 : 2;
+
+    // Hi-Z buffer pass: generate hierarchical depth buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+    drawSceneDepth(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
+                   HiZBufferTexture, 0, HiZBCopyTexture, offs);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       HiZBCopyTexture, GL_TEXTURE_2D, 0, 0, 0, 0, WINWIDTH,
+                       WINHEIGHT,
+                       0); // copy previously written mipmap to current
+    gerr();
+    glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+
+    for (unsigned int i = 1; i < mipmaps.size(); i++) {
+      MipMapInfo minfo = mipmaps[i];
+      int mw = minfo.width;
+      int mh = minfo.height;
+      offs.x = mw % 2 == 0 ? 1 : 2;
+      offs.y = mh % 2 == 0 ? 1 : 2;
+      auto level = minfo.level;
+      glViewport(0, 0, mw, mh);
+      glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, level, 0, 0, 0,
+                         HiZBCopyTexture, GL_TEXTURE_2D, level, 0, 0, 0, mw, mh,
+                         0); // copy previously written mipmap to current
+      gerr();
+
+      drawSceneDepth(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
+                     level, HiZBCopyTexture, offs);
+      gerr();
+    }
+    glViewport(0, 0, WINWIDTH, WINHEIGHT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // 1. geometry pass: render scene geometry color data into geometry buffer
     glBindFramebuffer(GL_FRAMEBUFFER, geometry_fbo);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glm::mat4 view = camera.getViewMatrix();
-    glm::mat4 model = glm::mat4(1.0f);
     {
       // set shader uniforms
-      glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
-      glm::vec3 objectPos2 = glm::vec3(0.5, -0.5, -5.0);
-      model = glm::translate(model, objectPos);
-      model = glm::scale(model, glm::vec3(1.0f));
-
-      gerr();
-      drawPaintedMetalSphere(geometryShader, view, model, metallicMap,
-                             baseColorMap, normalMap, roughnessMap, aoMap,
-                             irradianceCubemap, prefilterMap, brdfLutTexture);
-      model = glm::mat4(1);
-      model = glm::translate(model, objectPos2);
-      model = glm::scale(model, glm::vec3(1.5f));
-      drawGoldSphere(geometryShader, view, model, metallicMap2, baseColorMap2,
-                     normalMap2, roughnessMap2, irradianceCubemap, prefilterMap,
-                     brdfLutTexture);
+      drawScene(geometryShader, view, model, metallicMap2, baseColorMap2,
+                normalMap2, roughnessMap2, metallicMap, baseColorMap, normalMap,
+                roughnessMap, aoMap, irradianceCubemap, prefilterMap,
+                brdfLutTexture);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
