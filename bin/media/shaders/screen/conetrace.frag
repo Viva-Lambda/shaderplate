@@ -3,7 +3,7 @@
 /*
  *https://github.com/LukasBanana/ForkENGINE/blob/master/shaders/SSCTReflectionPixelShader.glsl
  * */
-
+// layout(origin_upper_left) in vec4 gl_FragCoord;
 in vec2 TexCoord;
 
 out vec4 FragColor;
@@ -30,13 +30,13 @@ uniform mat4 view;
 uniform vec2 nearFar; // near and far plane for viewing frustum
 uniform vec3 viewPos; // world space
 
-uniform float hiz_start_level = 2.0;
+uniform float hiz_start_level = 5.0;
 uniform float hiz_stride = 2.0;
-uniform float hiz_max_iterations = 3.0;
+uniform float hiz_max_iterations = 6.0;
 
 // ------------------- cone tracing uniforms --------------------------
-uniform float sampling_zeta = 0.244;     // taken from GPU pro 5
-uniform float cone_max_iterations = 5.0; // taken from GPU pro 5
+uniform float sampling_zeta = 0.344;     // taken from GPU pro 5
+uniform float cone_max_iterations = 7.0; // taken from GPU pro 5
 uniform float fade_start = 0.5;
 uniform float fade_end = 0.9;
 
@@ -211,7 +211,7 @@ vec4 coneSampleWeightedColor(vec2 samplePos, float mipmapChannel) {
   // simple version
   vec3 color = textureLod(lightBuffer, samplePos, mipmapChannel).rgb;
   float visibility = textureLod(visibilityBuffer, samplePos, mipmapChannel).r;
-  return vec4(color * visibility, visibility);
+  return vec4(color * 0.1, 0.1);
 }
 /*GPU pro 5 listing 4.8*/
 vec4 fadeColor(vec4 color, vec2 hitPoint) {
@@ -250,7 +250,6 @@ vec4 hiz_cone_trace(vec2 hitPoint) {
     iterCount++;
   }
   // normalizing visibility color
-  reflectionColor /= reflectionColor.a;
   return reflectionColor;
 }
 
@@ -286,13 +285,13 @@ void main() {
   // ray_color = fadeColor(ray_color, ray_hitpoint.xy);
   // vec4 ray_color = texture(lightBuffer, ray_hitpoint.xy);
   // in most basic setup
-  vec3 color = ray_color.rgb; //+ texture(lightBuffer, TexCoord).rgb;
+  vec3 color = ray_color.rgb + texture(lightBuffer, ray_hitpoint.xy).rgb;
   color = color / (color + vec3(1.0));
   // gamma correct
   color = pow(color, vec3(1.0 / 2.2));
-  // FragColor = vec4(color, 1);
+  FragColor = vec4(color, 1);
   // FragColor = vec4(ray_hitpoint, 1);
-  FragColor = vec4(texture(lightBuffer, TexCoord).rgb, 1);
+  // FragColor = vec4(texture(lightBuffer, TexCoord).rgb, 1);
 
   // FragColor = vec4(vec3(0.7), 1);
 }
