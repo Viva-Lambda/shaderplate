@@ -92,6 +92,7 @@ Shader loadEquirectangulareToCubemapShader() {
   fs::path vpath = shaderDirPath / "screen" / "env2cube.vert"; // DONE
   fs::path fpath = shaderDirPath / "screen" / "env2cube.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.shaderName = "envShader";
   envShader.useProgram();
   envShader.setIntUni("envMap", 0);
   return envShader;
@@ -101,6 +102,7 @@ Shader loadIrradianceShader() {
   fs::path fpath = shaderDirPath / "screen" / "irradiance.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
+  envShader.shaderName = "irradianceShader";
   envShader.setIntUni("envMap", 0);
   return envShader;
 }
@@ -109,6 +111,7 @@ Shader loadPrefilterShader() {
   fs::path fpath = shaderDirPath / "screen" / "prefilter.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
+  envShader.shaderName = "prefilterShader";
   envShader.setIntUni("envMap", 0);
   return envShader;
 }
@@ -117,6 +120,7 @@ Shader loadBrdfShader() {
   fs::path fpath = shaderDirPath / "screen" / "brdf.frag";  // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
+  envShader.shaderName = "brdfShader";
   envShader.setIntUni("envMap", 0);
   return envShader;
 }
@@ -124,6 +128,7 @@ Shader loadPbrShader() {
   fs::path vpath = shaderDirPath / "screen" / "pbr.vert"; // DONE
   fs::path fpath = shaderDirPath / "screen" / "pbr.frag"; // DONE
   Shader pbrShader(vpath.c_str(), fpath.c_str());
+  pbrShader.shaderName = "pbrShader";
   pbrShader.useProgram();
   pbrShader.setIntUni("gDepth", 0);
   pbrShader.setIntUni("gNormal", 1);
@@ -137,6 +142,7 @@ Shader loadLampShader() {
   fs::path vpath = shaderDirPath / "screen" / "basic_light.vert";
   fs::path fpath = shaderDirPath / "screen" / "basic_color_light.frag";
   Shader lightShader(vpath.c_str(), fpath.c_str());
+  lightShader.shaderName = "lampShader";
   return lightShader;
 }
 
@@ -144,6 +150,7 @@ Shader loadBackgroundShader() {
   fs::path vpath = shaderDirPath / "screen" / "background.vert";
   fs::path fpath = shaderDirPath / "screen" / "background.frag";
   Shader backgroundShader(vpath.c_str(), fpath.c_str());
+  backgroundShader.shaderName = "backgroundShader";
   return backgroundShader;
 }
 
@@ -152,6 +159,7 @@ Shader loadGeometryShader() {
   fs::path vpath = shaderDirPath / "screen" / "geobuffer.vert";
   fs::path fpath = shaderDirPath / "screen" / "geobuffer.frag";
   Shader gShader(vpath.c_str(), fpath.c_str());
+  gShader.shaderName = "gShader";
   gShader.useProgram();
   gShader.setIntUni("albedoMap", 0);
   gShader.setIntUni("normalMap", 1);
@@ -169,30 +177,19 @@ Shader loadRayConeShader() {
   fs::path vpath = shaderDirPath / "screen" / "conetrace.vert";
   fs::path fpath = shaderDirPath / "screen" / "conetrace.frag";
   Shader coneShader(vpath.c_str(), fpath.c_str());
+  coneShader.shaderName = "coneShader";
   coneShader.useProgram();
-  coneShader.setIntUni("gDepth", 0);
-  coneShader.setIntUni("lightBuffer", 1);
-  coneShader.setIntUni("gNormal", 2);
-  coneShader.setIntUni("gMaterial", 3);
   return coneShader;
 }
 
 Shader loadHizShader() {
   fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
   fs::path fpath = shaderDirPath / "screen" / "hizbuffer.frag";
-  Shader s(vpath.c_str(), fpath.c_str());
-  s.useProgram();
-  s.setIntUni("HiZBCopyTexture", 0);
-  return s;
-}
-Shader loadVisibilityShader() {
-  fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "visibility.frag";
-  Shader s(vpath.c_str(), fpath.c_str());
-  s.useProgram();
-  s.setIntUni("HiZBuffer", 0);
-  s.setIntUni("visibilityMap", 1);
-  return s;
+  Shader hs(vpath.c_str(), fpath.c_str());
+  hs.shaderName = "hizShader";
+  hs.useProgram();
+  hs.setIntUni("HiZBCopyTexture", 0);
+  return hs;
 }
 
 void setFboTexture(GLuint &tex,
@@ -270,7 +267,7 @@ std::vector<glm::mat4> getCaptureView() {
   return captureViews;
 }
 
-void equirectToCubemapTransform(Shader equirectangularToCubemapShader,
+void equirectToCubemapTransform(Shader &equirectangularToCubemapShader,
                                 glm::mat4 captureProjection,
                                 GLuint &environmentHdrMap, GLuint captureWidth,
                                 GLuint captureHeight,
@@ -308,7 +305,7 @@ void genIrradianceCubeMap(GLuint lmapResolutionWidth,
                         lmapResolutionWidth, lmapResolutionHeight);
 }
 
-void computeIrradianceMap(Shader irradianceShader, glm::mat4 captureProjection,
+void computeIrradianceMap(Shader &irradianceShader, glm::mat4 captureProjection,
                           GLuint &envCubemap, GLuint lmapResolutionWidth,
                           GLuint lmapResolutionHeight, GLuint &captureFBO,
                           std::vector<glm::mat4> captureViews,
@@ -354,7 +351,7 @@ void genPrefilterMap(GLuint &prefilterMap, GLuint prefilterMapWidth,
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 }
 
-void computePrefilterMap(Shader prefilterShader, Shader geometryShader,
+void computePrefilterMap(Shader &prefilterShader, Shader geometryShader,
                          glm::mat4 captureProjection, GLuint captureWidth,
                          GLuint &envCubemap, GLuint &captureFBO,
                          GLuint &captureRBO,
@@ -449,7 +446,7 @@ void activateTextures1(GLuint &metallicMap, GLuint &baseColorMap,
   gerr();
 }
 
-void drawPaintedMetalSphere(Shader geometryShader, glm::mat4 view,
+void drawPaintedMetalSphere(Shader &geometryShader, glm::mat4 view,
                             glm::mat4 model, GLuint &metallicMap,
                             GLuint &baseColorMap, GLuint &normalMap,
                             GLuint &roughnessMap, GLuint &aoMap,
@@ -508,7 +505,7 @@ void activateTextures2(GLuint &metallicMap2, GLuint &baseColorMap2,
   gerr();
 }
 
-void drawGoldSphere(Shader geometryShader, glm::mat4 view, glm::mat4 model,
+void drawGoldSphere(Shader &geometryShader, glm::mat4 view, glm::mat4 model,
                     GLuint &metallicMap2, GLuint &baseColorMap2,
                     GLuint &normalMap2, GLuint &roughnessMap2,
                     GLuint &irradianceCubemap, GLuint &prefilterMap,
@@ -535,7 +532,7 @@ void drawGoldSphere(Shader geometryShader, glm::mat4 view, glm::mat4 model,
   // renderCubeInTangentSpace();
 }
 
-void drawScene(Shader geometryShader, glm::mat4 view, glm::mat4 model,
+void drawScene(Shader &geometryShader, glm::mat4 view, glm::mat4 model,
                GLuint &metallicMap2, GLuint &baseColorMap2, GLuint &normalMap2,
                GLuint &roughnessMap2, GLuint &metallicMap, GLuint &baseColorMap,
                GLuint &normalMap, GLuint &roughnessMap, GLuint &aoMap,
@@ -557,11 +554,11 @@ void drawScene(Shader geometryShader, glm::mat4 view, glm::mat4 model,
                  normalMap2, roughnessMap2, irradianceCubemap, prefilterMap,
                  brdfLutTexture);
 }
-void genHiZBuffer(Shader hizShader, glm::mat4 view, glm::mat4 model,
+void genHiZBuffer(Shader &hizShader, glm::mat4 view, glm::mat4 model,
                   GLuint &mipRbo, int mw, int mh, GLuint &HiZBufferTexture,
                   unsigned int level, GLuint &HiZBCopyTexture, glm::vec2 offs,
                   GLuint &VisibilityBufferTexture, GLuint &visibilityMap,
-                  float near, float far) {
+                  glm::vec2 &nearFar) {
 
   // read from here and write to attached texture of hizFBO
   glBindRenderbuffer(GL_RENDERBUFFER, mipRbo);
@@ -586,7 +583,7 @@ void genHiZBuffer(Shader hizShader, glm::mat4 view, glm::mat4 model,
   hizShader.useProgram();
   hizShader.setIntUni("mipmapLevel", level - 1);
   hizShader.setVec2Uni("pixelOffset", offs);
-  hizShader.setVec2Uni("nearFar", glm::vec2(near, far));
+  hizShader.setVec2Uni("nearFar", nearFar);
   renderQuad();
   gerr();
 }
@@ -940,6 +937,7 @@ int main() {
   // --------------------------------------------------
   float nearPlane = 0.1f;
   float farPlane = 100.0f;
+  glm::vec2 nearFar(nearPlane, farPlane);
   glm::mat4 projection =
       glm::perspective(glm::radians(camera.zoom),
                        (float)WINWIDTH / (float)WINHEIGHT, nearPlane, farPlane);
@@ -960,6 +958,10 @@ int main() {
   geometryShader.useProgram();
   geometryShader.setMat4Uni("projection", projection);
   gerr();
+
+  rayConeShader.useProgram();
+  rayConeShader.setMat4Uni("projection", projection);
+  rayConeShader.setVec2Uni("nearFar", nearFar);
 
   // geometryShader.setIntUni();
   std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
@@ -1003,7 +1005,7 @@ int main() {
       // first copy from screen space depth texture of gBuffer
       genHiZBuffer(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
                    HiZBufferTexture, 0, gSDepth, offs, VisibilityBufferTexture,
-                   visibilityMap, nearPlane, farPlane);
+                   visibilityMap, nearFar);
       //
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
@@ -1035,7 +1037,7 @@ int main() {
 
         genHiZBuffer(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
                      level, HiZBCopyTexture, offs, VisibilityBufferTexture,
-                     visibilityMap, nearPlane, farPlane);
+                     visibilityMap, nearFar);
         gerr();
       }
       glViewport(0, 0, WINWIDTH, WINHEIGHT);
@@ -1086,16 +1088,26 @@ int main() {
       glBindTexture(GL_TEXTURE_2D, gDepth);
 
       glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, lightTexture);
+      glBindTexture(GL_TEXTURE_2D, gSDepth);
 
       glActiveTexture(GL_TEXTURE2);
-      glBindTexture(GL_TEXTURE_2D, gNormal);
+      glBindTexture(GL_TEXTURE_2D, lightTexture);
 
       glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gNormal);
+
+      glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D, gMaterial);
+      glActiveTexture(GL_TEXTURE5);
+      glBindTexture(GL_TEXTURE_2D, VisibilityBufferTexture);
+      glActiveTexture(GL_TEXTURE6);
+      glBindTexture(GL_TEXTURE_2D, HiZBufferTexture);
 
       rayConeShader.useProgram();
       glm::mat4 view = camera.getViewMatrix();
+      rayConeShader.setMat4Uni("view", view);
+      rayConeShader.setVec3Uni("viewPos", camera.pos);
+      rayConeShader.setFloatUni("mipCount", static_cast<float>(mipmaps.size()));
 
       renderQuad();
     }

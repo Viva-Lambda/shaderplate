@@ -7,8 +7,10 @@ layout(location = 3) out vec4 gMaterial;
 layout(location = 4) out vec3 gAmbient;
 layout(location = 5) out vec4 gSDepth;
 
-in vec3 FragPosVS;
-in vec3 FragPos;
+in vec3 FragPosVS; // in view space
+in vec4 FragPosCS; // in clip space
+in vec3 FragPos;   // in world space
+
 in vec2 TexCoord;
 in vec3 Normal;
 
@@ -27,6 +29,7 @@ uniform float maxMipLevels = 5.0;
 
 uniform float fresnel = 0.4; // metal
 uniform mat4 view;
+uniform mat4 projection;
 uniform vec3 viewPos;
 uniform vec3 lightPos;
 
@@ -152,10 +155,8 @@ vec3 getHalfDir() { return normalize(getViewDir() + getLightDir()); }
 void main() {
   // set depth in view space
   gDepth.xyz = FragPosVS;
-  gDepth.w = 0.2; // marks the existence of a valid frag pos
   // set depth in screen space
-  gSDepth.xyz = gl_FragCoord.xyz;
-  gSDepth.w = 0.2; // marks the existence of a valid frag position
+  gSDepth.xyz = FragPosCS.xyz;
   vec3 norm = getNormalFromMap(); // in world space
   vec3 NormalWS = normalize(norm);
 
@@ -168,9 +169,6 @@ void main() {
   float metallic = texture(metallicMap, TexCoord).r;
   float roughness = texture(roughnessMap, TexCoord).r;
   float ao = texture(aoMap, TexCoord).r;
-  if (ao == 0.0) {
-    ao = 1.0;
-  }
 
   gMaterial.x = metallic;
   gMaterial.y = roughness;

@@ -1,6 +1,4 @@
 #version 430
-in vec2 TexCoord;
-
 layout(location = 0) out vec4 SampleDepth;      // depth value
 layout(location = 1) out vec3 SampleVisibility; // visibility value
 
@@ -11,7 +9,7 @@ uniform sampler2D gSDepth;
 uniform vec2 pixelOffset;
 uniform int mipmapLevel; // previous mipmap level
 uniform vec2 nearFar;
-in vec2 TexCoord;
+in vec2 TexCoords;
 
 /**Linearize depth value
  * to camera space
@@ -83,9 +81,15 @@ float get_visibility_sample(float minz, float maxz, ivec2 pixelCoord) {
   float integ = dot(vec4(0.25), integration);
   return integ;
 }
+vec2 clipToScreenSpace(vec4 pointInClipSpace) {
+  return (pointInClipSpace.xy + 1.0) / 2.0 *
+         vec2(textureSize(gSDepth, mipmapLevel));
+}
 
 void main() {
-  ivec2 pixelCoord = ivec2(gl_FragCoord.xy * vec2(2));
+  vec3 pixelCS = texture(gSDepth, TexCoords).rgb;
+
+  ivec2 pixelCoord = ivec2(clipToScreenSpace(vec4(pixelCS, 1)));
   vec2 dsample = get_depth_sample(pixelCoord);
   float visibility = get_visibility_sample(dsample.x, dsample.y, pixelCoord);
   SampleDepth = vec4(dsample, 0, 1);

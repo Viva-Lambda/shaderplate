@@ -6,8 +6,8 @@
 #include <stdexcept>
 namespace fs = std::filesystem;
 
-void checkShaderCompilation(GLuint shader, const char *shaderType, const char*
-        shaderFilePath) {
+void checkShaderCompilation(GLuint shader, const char *shaderType,
+                            const char *shaderFilePath) {
   // check the shader compilation
   int success;
   char infoLog[512];
@@ -20,15 +20,14 @@ void checkShaderCompilation(GLuint shader, const char *shaderType, const char*
   }
 }
 
-void checkShaderProgramCompilation(GLuint program) {
+void checkShaderProgramCompilation(GLuint program, const char *shaderName) {
   // check the shader compilation
   int success;
   char infoLog[512];
   glGetProgramiv(program, GL_LINK_STATUS, &success);
   if (success == 0) {
     glGetProgramInfoLog(program, 512, NULL, infoLog);
-    std::cout << "ERROR::SHADER::"
-              << "PROGRAM"
+    std::cout << "ERROR::SHADER::" << shaderName << "::PROGRAM"
               << "::LINK_FAILED\n"
               << infoLog << std::endl;
   }
@@ -45,6 +44,7 @@ class Shader {
 public:
   // program id
   GLuint programId;
+  std::string shaderName = "MyShader";
 
   // constructor takes the path of the shaders and builts them
   Shader(const GLchar *vertexPath, const GLchar *fragmentPath);
@@ -178,7 +178,7 @@ Shader::Shader(const GLchar *vertexPath, const GLchar *fragmentPath) {
   glAttachShader(this->programId, vshader);
   glAttachShader(this->programId, fshader);
   glLinkProgram(this->programId);
-  checkShaderProgramCompilation(this->programId);
+  checkShaderProgramCompilation(this->programId, shaderName.c_str());
   glDeleteShader(vshader);
   glDeleteShader(fshader);
 }
@@ -189,7 +189,7 @@ Shader::Shader(const GLchar *computePath) {
   GLuint cshader = this->loadShader(computePath, "COMPUTE");
   glAttachShader(this->programId, cshader);
   glLinkProgram(this->programId);
-  checkShaderProgramCompilation(this->programId);
+  checkShaderProgramCompilation(this->programId, shaderName.c_str());
   glDeleteShader(cshader);
 }
 // second constructor
@@ -204,7 +204,7 @@ Shader::Shader(const GLchar *vertexPath, const GLchar *fragmentPath,
   glAttachShader(this->programId, fshader);
   glAttachShader(this->programId, cshader);
   glLinkProgram(this->programId);
-  checkShaderProgramCompilation(this->programId);
+  checkShaderProgramCompilation(this->programId, shaderName.c_str());
   glDeleteShader(vshader);
   glDeleteShader(fshader);
   glDeleteShader(cshader);
@@ -231,7 +231,7 @@ Shader::Shader(const GLchar *vertexSource, const GLchar *fragmentSource,
   checkShaderCompilation(fshader, "FRAGMENT", "from source");
   glAttachShader(this->programId, fshader);
   glLinkProgram(this->programId);
-  checkShaderProgramCompilation(this->programId);
+  checkShaderProgramCompilation(this->programId, shaderName.c_str());
   glDeleteShader(vshader);
   glDeleteShader(fshader);
 }
@@ -253,7 +253,7 @@ Shader::Shader(std::vector<fs::path> shaderPaths,
     shaderIds.push_back(shdrId);
   }
   glLinkProgram(this->programId);
-  checkShaderProgramCompilation(this->programId);
+  checkShaderProgramCompilation(this->programId, shaderName.c_str());
   for (unsigned int i = 0; i < shaderTypes.size(); i++) {
     //
     glDeleteShader(shaderIds[i]);

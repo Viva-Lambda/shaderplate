@@ -326,6 +326,7 @@ float computeTrowbridgeReitzD(vec3 normal, vec3 halfDir, float roughness) {
   float denominator = PI * costheta4 * tantheta2;
   return nominator / denominator;
 }
+/**Equation 35 from Walter et. al. 2007 Microfacet ...*/
 float sampleTrowbridgeReitzD(float roughness, float zeta) {
   float alpha = roughnessToAlpha(roughness);
   return atan(alpha * sqrt(zeta) / sqrt(1 - zeta));
