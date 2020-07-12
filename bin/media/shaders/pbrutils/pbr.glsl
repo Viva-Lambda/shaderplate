@@ -304,6 +304,13 @@ float computeDCT(float NdotH) {
   return (nominator / (PI * alpha2 * pow(NdotH, 4))) * exp(nomInExp);
 }
 /**
+ * From Walter et. al. 2007 equation 28*/
+float sampleBeckmannD(float roughness, float zeta) {
+  float alpha2 = pow(roughnessToAlpha(roughness), 2);
+  return atan(sqrt(-alpha2 * log(1 - zeta)));
+}
+
+/**
  * from pbrt edition 3, p. 539 equation 8.12 and Walter et. al 2007 equation
  * 33
  * */
@@ -318,6 +325,10 @@ float computeTrowbridgeReitzD(vec3 normal, vec3 halfDir, float roughness) {
   tantheta2 *= tantheta2;
   float denominator = PI * costheta4 * tantheta2;
   return nominator / denominator;
+}
+float sampleTrowbridgeReitzD(float roughness, float zeta) {
+  float alpha = roughnessToAlpha(roughness);
+  return atan(alpha * sqrt(zeta) / sqrt(1 - zeta));
 }
 
 /**

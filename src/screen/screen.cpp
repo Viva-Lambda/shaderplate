@@ -867,7 +867,7 @@ int main() {
 
   // stores fragement distance to camera
   GLuint gDepth;
-  setFboTexture(gDepth, GL_RGB16F, GL_RGB, GL_FLOAT, WINWIDTH, WINHEIGHT,
+  setFboTexture(gDepth, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
                 attachmentNb);
 
   // stores fragment normal in view space
@@ -892,7 +892,7 @@ int main() {
 
   // stores screen space depth information
   GLuint gSDepth;
-  setFboTexture(gSDepth, GL_RGB16F, GL_RGB, GL_FLOAT, WINWIDTH, WINHEIGHT,
+  setFboTexture(gSDepth, GL_RGBA16F, GL_RGBA, GL_FLOAT, WINWIDTH, WINHEIGHT,
                 attachmentNb);
 
   // setting color attachments
@@ -1096,22 +1096,6 @@ int main() {
 
       rayConeShader.useProgram();
       glm::mat4 view = camera.getViewMatrix();
-
-      rayConeShader.setMat4Uni("view", view);
-      rayConeShader.setMat4Uni("projection", projection);
-      rayConeShader.setVec3Uni("viewDir", camera.front);
-      rayConeShader.setVec3Uni("viewPos", camera.pos);
-      rayConeShader.setFloatUni("csNearPlaneZ", -nearPlane);
-      rayConeShader.setFloatUni("csDepthThickness", 10.0);
-      rayConeShader.setFloatUni("traceStride", 1.0);
-      rayConeShader.setFloatUni("csMaxSteps", 15.0);
-      rayConeShader.setFloatUni("csMaxDistance", 20.0);
-      rayConeShader.setFloatUni("jitter", 0.1);
-      rayConeShader.setFloatUni("coneAngleZeta", 0.244);
-      rayConeShader.setFloatUni("max_shine", 25.0);
-      rayConeShader.setFloatUni("cone_trace_iteration", 6.0);
-      rayConeShader.setFloatUni("fadeStart", 0.4);
-      rayConeShader.setFloatUni("fadeEnd", 1.0);
 
       renderQuad();
     }

@@ -6,10 +6,12 @@ layout(location = 1) out vec3 SampleVisibility; // visibility value
 
 uniform sampler2D HiZBCopyTexture;
 uniform sampler2D visibilityMap;
+uniform sampler2D gSDepth;
 
 uniform vec2 pixelOffset;
 uniform int mipmapLevel; // previous mipmap level
 uniform vec2 nearFar;
+in vec2 TexCoord;
 
 /**Linearize depth value
  * to camera space
