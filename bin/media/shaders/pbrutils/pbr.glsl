@@ -2,6 +2,89 @@
 // pbr related functions and their references
 //
 //
+float degree_to_radian(float degree) {
+  //
+  return degree * PI / 180.0;
+}
+float rand(vec2 co) {
+  // random gen
+  float a = 12.9898;
+  float b = 78.233;
+  float c = 43758.5453;
+  float dt = dot(co.xy, vec2(a, b));
+  float sn = mod(dt, PI);
+  return fract(sin(sn) * c);
+}
+float random_double() {
+  // random double
+  return rand(vec2(0.0, 1.0));
+}
+float random_double(float mi, float mx) {
+  // random double
+  return rand(vec2(mi, mx));
+}
+int random_int(int mi, int mx) { return int(random_double(mi, mx)); }
+vec3 random_vec() {
+  // random vector
+  return vec3(random_double(), random_double(), random_double());
+}
+vec3 random_vec(float mi, float ma) {
+  // random vector in given seed
+  return vec3(random_double(mi, ma), random_double(mi, ma),
+              random_double(mi, ma));
+}
+vec3 random_in_unit_sphere() {
+  // random in unit sphere
+  while (true) {
+    //
+    vec3 v = random_vec(-1.0, 1.0);
+    if (dot(v, v) >= 1.0) {
+      continue;
+    }
+    return v;
+  }
+}
+vec3 random_unit_vector() {
+  // unit vector
+  float a = random_double(0, 2 * PI);
+  float z = random_double(-1, 1);
+  float r = sqrt(1 - z * z);
+  return vec3(r * cos(a), r * sin(a), z);
+}
+vec3 random_in_hemisphere(vec3 normal) {
+  // normal ekseninde dagilan yon
+  vec3 unit_sphere_dir = random_in_unit_sphere();
+  if (dot(unit_sphere_dir, normal) > 0.0) {
+    return unit_sphere_dir;
+  } else {
+    return -1 * unit_sphere_dir;
+  }
+}
+vec3 random_in_unit_disk() {
+  // lens yakinsamasi için gerekli
+  while (true) {
+    vec3 point = vec3(random_double(-1, 1), random_double(-1, 1), 0);
+    if (dot(point, point) >= 1) {
+      continue;
+    }
+    return point;
+  }
+}
+vec3 to_spherical(vec3 v) {
+  //
+  float r = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  float phi = atan(v.y / v.x);
+  float theta = acos(v.z / r);
+  return vec3(r, phi, theta);
+}
+vec3 vonmises_dir(vec3 bias_dir, float kappa) {
+  // not done
+  vec3 unit_bias = normalize(bias_dir);
+  vec3 spherical = to_spherical(unit_bias);
+  float theta = spherical.z;
+  float normalization = kappa / (2 * PI * (exp(kappa) - exp(-kappa)));
+  return exp(kappa * cos(theta)) * normalization;
+}
 
 float getCosTheta(vec3 normal, vec3 inLightDir) {
   // taken from pbr-book 3rd edition Pharr, Jakob

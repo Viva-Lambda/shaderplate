@@ -115,6 +115,14 @@ vec3 getIblSpecular(vec3 normal, vec3 viewDir, vec3 halfDir, float metallic,
   vec3 kD = 1.0 - kS;
   kD *= 1.0 - metallic;
   vec3 R = normalize(reflect(-viewDir, normal));
+  // another way to define reflection vector using vonmises
+  // distribution, more rough the surface less biased
+  // the reflection vector or greater the value of
+  // kappa higher the output is concentrated on mean
+  // direction
+  // vec3 meandir = normalize(reflect(-viewDir, normal));
+  // float kappa = 1 - texture(roughnessMap, TexCoord).r;
+  // vec3 R = vonmises_dir(meandir, kappa);
 
   vec3 irradiance = texture(irradianceMap, normal).rgb;
   vec3 diffuse = irradiance * albedo;
@@ -155,6 +163,7 @@ vec3 getHalfDir() { return normalize(getViewDir() + getLightDir()); }
 void main() {
   // set depth in view space
   gDepth.xyz = FragPosVS;
+  gDepth.w = length(FragPosVS);
   // set depth in screen space
   gSDepth.xyz = FragPosCS.xyz;
   vec3 norm = getNormalFromMap(); // in world space

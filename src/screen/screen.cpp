@@ -964,6 +964,19 @@ int main() {
   rayConeShader.setMat4Uni("projection", projection);
   rayConeShader.setVec2Uni("nearFar", nearFar);
 
+  // view projection matrix
+  // from here
+  // http://glasnost.itcarlow.ie/~powerk/GeneralGraphicsNotes/projection/viewport_transformation.html
+  float whalf = (float)WINWIDTH / 2.0;
+  float hhalf = (float)WINHEIGHT / 2.0;
+  float viewPortArr[16] = {
+      whalf, 0,     0,   0, // 1. column
+      0,     hhalf, 0,   0, // 2. column
+      0,     0,     0.5, 0, // 3. column
+      whalf, hhalf, 0.5, 1  // 4. column
+  };
+  glm::mat4 viewProjection = glm::make_mat4(viewPortArr);
+
   // geometryShader.setIntUni();
   std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
   std::vector<VertexAttrib> backVa{{0, 3}};
@@ -997,52 +1010,58 @@ int main() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     // 2. Hi-Z buffer pass: generate hierarchical depth buffer
     {
-      glClear(GL_COLOR_BUFFER_BIT);
-      glm::vec2 offs = glm::vec2(0);
-      offs.x = WINWIDTH % 2 == 0 ? 1 : 2;
-      offs.y = WINHEIGHT % 2 == 0 ? 1 : 2;
+        // glClear(GL_COLOR_BUFFER_BIT);
+        // glm::vec2 offs = glm::vec2(0);
+        // offs.x = WINWIDTH % 2 == 0 ? 1 : 2;
+        // offs.y = WINHEIGHT % 2 == 0 ? 1 : 2;
 
-      glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
-      // first copy from screen space depth texture of gBuffer
-      genHiZBuffer(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
-                   HiZBufferTexture, 0, gSDepth, offs, VisibilityBufferTexture,
-                   visibilityMap, nearFar);
-      //
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-      glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
-                         HiZBCopyTexture, GL_TEXTURE_2D, 0, 0, 0, 0, WINWIDTH,
-                         WINHEIGHT,
-                         0); // copy previously written mipmap to current
-      gerr();
-      glCopyImageSubData(VisibilityBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
-                         visibilityMap, GL_TEXTURE_2D, 0, 0, 0, 0, WINWIDTH,
-                         WINHEIGHT,
-                         0); // copy previously written mipmap to current
+        // glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+        // // first copy from screen space depth texture of gBuffer
+        // genHiZBuffer(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
+        //              HiZBufferTexture, 0, gSDepth, offs,
+        //              VisibilityBufferTexture,
+        //              visibilityMap, nearFar);
+        // //
+        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
+        //                    HiZBCopyTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
+        //                    WINWIDTH,
+        //                    WINHEIGHT,
+        //                    0); // copy previously written mipmap to current
+        // gerr();
+        // glCopyImageSubData(VisibilityBufferTexture, GL_TEXTURE_2D, 0, 0, 0,
+        // 0,
+        //                    visibilityMap, GL_TEXTURE_2D, 0, 0, 0, 0,
+        //                    WINWIDTH,
+        //                    WINHEIGHT,
+        //                    0); // copy previously written mipmap to current
 
-      glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
+        // glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
 
-      // now sample previous mipmaps from hiz buffer and hiz copy buffer
-      for (unsigned int i = 1; i < mipmaps.size(); i++) {
-        MipMapInfo minfo = mipmaps[i];
-        int mw = minfo.width;
-        int mh = minfo.height;
-        offs.x = mw % 2 == 0 ? 1 : 2;
-        offs.y = mh % 2 == 0 ? 1 : 2;
-        auto level = minfo.level;
-        glViewport(0, 0, mw, mh);
-        glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, level, 0, 0, 0,
-                           HiZBCopyTexture, GL_TEXTURE_2D, level, 0, 0, 0, mw,
-                           mh,
-                           0); // copy previously written mipmap to current
-        gerr();
+        // // now sample previous mipmaps from hiz buffer and hiz copy buffer
+        // for (unsigned int i = 1; i < mipmaps.size(); i++) {
+        //   MipMapInfo minfo = mipmaps[i];
+        //   int mw = minfo.width;
+        //   int mh = minfo.height;
+        //   offs.x = mw % 2 == 0 ? 1 : 2;
+        //   offs.y = mh % 2 == 0 ? 1 : 2;
+        //   auto level = minfo.level;
+        //   glViewport(0, 0, mw, mh);
+        //   glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, level, 0, 0, 0,
+        //                      HiZBCopyTexture, GL_TEXTURE_2D, level, 0, 0, 0,
+        //                      mw,
+        //                      mh,
+        //                      0); // copy previously written mipmap to current
+        //   gerr();
 
-        genHiZBuffer(hizShader, model, view, mipRbo, mw, mh, HiZBufferTexture,
-                     level, HiZBCopyTexture, offs, VisibilityBufferTexture,
-                     visibilityMap, nearFar);
-        gerr();
-      }
-      glViewport(0, 0, WINWIDTH, WINHEIGHT);
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //   genHiZBuffer(hizShader, model, view, mipRbo, mw, mh,
+        //   HiZBufferTexture,
+        //                level, HiZBCopyTexture, offs, VisibilityBufferTexture,
+        //                visibilityMap, nearFar);
+        //   gerr();
+        // }
+        // glViewport(0, 0, WINWIDTH, WINHEIGHT);
+        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     // 3. lightening pass: render lightening to be refined later on
@@ -1108,7 +1127,9 @@ int main() {
       glm::mat4 view = camera.getViewMatrix();
       rayConeShader.setMat4Uni("view", view);
       rayConeShader.setVec3Uni("viewPos", camera.pos);
-      rayConeShader.setFloatUni("mipCount", static_cast<float>(mipmaps.size()));
+      rayConeShader.setMat4Uni("viewProjection", viewProjection);
+      // rayConeShader.setFloatUni("mipCount",
+      // static_cast<float>(mipmaps.size()));
 
       renderQuad();
     }
