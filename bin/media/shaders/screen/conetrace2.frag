@@ -1,43 +1,163 @@
 #version 430
+layout(binding = 0) uniform sampler2D gDepth;  // depth in viewspace
+layout(binding = 1) uniform sampler2D gSDepth; // depth in screen space
+layout(binding = 2) uniform sampler2D lightBuffer;
+// convolved color buffer - all mip levels
+layout(binding = 3) uniform sampler2D gNormal;
+// normal buffer - from g-buffer in camera space
+layout(binding = 4) uniform sampler2D gMaterial;
+// specular buffer - from g-buffer (rgb = ior,
+
+uniform mat4 invView;
+uniform mat4 projection;
+uniform mat4 invprojection;
+uniform mat4 view;
+
 in vec2 TexCoord;
-out vec4 FragColor;
 
-uniform sampler2D gDepth;
-uniform sampler2D lightBuffer; // convolved color buffer - all mip levels
-uniform sampler2D gNormal;     // normal buffer - from g-buffer in camera space
-uniform sampler2D gMaterial;   // specular buffer - from g-buffer (rgb = ior,
+out vec4 outColor;
 
-// implementing from
-// publica.fraunhofer.de/documents/N-336466.html
-//
+const float stepsf = 0.1;
+const float minRayStep = 0.1;
+const float maxSteps = 30;
+const int numBinarySearchSteps = 20;
+const float reflectionSpecularFalloffExponent = 3.0;
 
-/**
- * Project point to screen space algorithm 2 p. 27
- * */
-vec3 project_to_screen_space(vec3 PointVS, mat4 projection) {
-  vec4 PointPS = projection * vec4(PointVS, 1.0);
-  vec3 PointSS = PointPS.xyz / PointPS.w;
-  PointSS.xy = PointSS.xy * vec2(0.5, -0.5) + 0.5;
-  return PointSS;
+float Metallic;
+
+vec3 BinarySearch(inout vec3 dir, inout vec3 hitCoord, inout float dDepth);
+
+vec4 RayCast(vec3 dir, inout vec3 hitCoord, out float dDepth);
+vec4 RayMarch(vec3 dir, inout vec3 hitCoord, out float dDepth);
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0);
+
+vec3 hash(vec3 a);
+
+void main() {
+
+  vec3 albedo = texture(lightBuffer, TexCoord).rgb;
+  float Metallic = texture(gMaterial, TexCoord).r;
+  if (Metallic < 0.01) {
+    outColor = vec4(albedo, 1);
+  } else {
+
+    vec3 viewNormal = texture(gNormal, TexCoord).xyz;
+    vec3 viewPos = texture(gDepth, TexCoord).xyz;
+
+    float roughness = texture(gMaterial, TexCoord).y;
+
+    float spec = 1 - roughness;
+
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, Metallic);
+    vec3 Fresnel = fresnelSchlick(
+        max(dot(normalize(viewNormal), normalize(viewPos)), 0.0), F0);
+
+    // Reflection vector
+    vec3 reflected =
+        normalize(reflect(normalize(viewPos), normalize(viewNormal)));
+
+    vec3 hitPos = viewPos;
+    float dDepth;
+
+    vec3 wp = vec3(vec4(viewPos, 1.0) * invView);
+    vec4 coords =
+        RayMarch(reflected * max(minRayStep, -viewPos.z), hitPos, dDepth);
+
+    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
+
+    float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+
+    float ReflectionMultiplier =
+        pow(Metallic, reflectionSpecularFalloffExponent) * screenEdgefactor *
+        -reflected.z;
+
+    // Get color
+    vec3 SSR = mix(textureLod(lightBuffer, coords.xy, 0).rgb, Fresnel,
+                   clamp(ReflectionMultiplier, 0.0, 0.9));
+
+    vec3 color = SSR;
+
+    // hdr
+    color = color / (color + vec3(1.0));
+    // gamma correct
+    color = pow(color, vec3(1.0 / 2.2));
+    outColor = vec4(color, Metallic);
+  }
 }
-vec3 unproject_from_screen_space(vec3 PointSS, mat4 projection) {
-  mat4 invproj = inverse(projection);
-  PointSS.xy = (PointSS.xy - 0.5) * vec2(2.0, -2.0);
-  vec3 PointPS = invproj * PointSS;
-  vec3 PointVS = PointPS.xyz / PointPS.w;
-  return PointVS;
+
+vec3 BinarySearch(inout vec3 dir, inout vec3 hitCoord, inout float dDepth) {
+  float depth;
+
+  vec4 projectedCoord;
+
+  for (int i = 0; i < numBinarySearchSteps; i++) {
+
+    projectedCoord = projection * vec4(hitCoord, 1.0);
+    projectedCoord.xy /= projectedCoord.w;
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+    depth = texture(gSDepth, projectedCoord.xy).z;
+
+    dDepth = hitCoord.z - depth;
+
+    dir *= 0.5;
+    if (dDepth > 0.0)
+      hitCoord += dir;
+    else
+      hitCoord -= dir;
+  }
+
+  projectedCoord = projection * vec4(hitCoord, 1.0);
+  projectedCoord.xy /= projectedCoord.w;
+  projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+  return vec3(projectedCoord.xy, depth);
 }
 
-vec3 get_reflection_ray_direction(ivec2 PixelCoordinates, float pixelDepth,
-                                  vec3 NormalVS, mat4 projection,
-                                  float texSize) {
-  vec3 PointSS = vec3(PixelCoordinates.x, PixelCoordinates.y, pixelDepth);
-  vec3 PointVS = unproject_from_screen_space(PointSS, projection);
-  vec3 ViewDirection = normalize(PointVS);
-  vec3 ReflectRayDirection = reflect(ViewDirection, NormalVS);
-  float epsilon = 1.0 / texSize;
-  vec3 ScreenSpaceOffset = project_to_screen_space(
-      PointVS + ReflectRayDirection * epsilon, projection);
-  vec3 ReflectionVectorSS = ScreenSpaceOffset - PointSS;
-  return ReflectionVectorSS;
+vec4 RayMarch(vec3 dir, inout vec3 hitCoord, out float dDepth) {
+
+  dir *= stepsf;
+
+  float depth;
+  int steps = 0;
+  vec4 projectedCoord;
+
+  for (int i = 0; i < maxSteps; i++) {
+    hitCoord += dir;
+
+    projectedCoord = projection * vec4(hitCoord, 1.0);
+    projectedCoord.xy /= projectedCoord.w;
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+    depth = texture(gSDepth, projectedCoord.xy).z;
+    if (depth > 1000.0)
+      continue;
+
+    dDepth = hitCoord.z - depth;
+
+    if ((dir.z - dDepth) < 5.2) {
+      if (dDepth <= 0.0) {
+        vec4 Result;
+        Result = vec4(BinarySearch(dir, hitCoord, dDepth), 1.0);
+
+        return Result;
+      }
+    }
+
+    steps++;
+  }
+
+  return vec4(projectedCoord.xy, depth, 0.0);
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+vec3 hash(vec3 a) {
+  a = fract(a * vec3(0.8));
+  a += dot(a, a.yxz + 19.19);
+  return fract((a.xxy + a.yxx) * a.zyx);
 }

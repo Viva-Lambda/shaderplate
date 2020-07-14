@@ -11,16 +11,14 @@ out vec4 FragColor;
 // ---------------------------- uniforms -----------------------------------
 // ------------------------- from other passes -----------------------------
 
-layout(binding = 0) uniform sampler2D gDepth;  // depth in viewspace
-layout(binding = 1) uniform sampler2D gSDepth; // depth in screen space
-layout(binding = 2) uniform sampler2D lightBuffer;
+layout(binding = 0) uniform sampler2D gPosition;   // depth in viewspace
+layout(binding = 1) uniform sampler2D gSDepth;     // depth in screen space
+layout(binding = 2) uniform sampler2D lightBuffer; // uv passed
 // convolved color buffer - all mip levels
 layout(binding = 3) uniform sampler2D gNormal;
 // normal buffer - from g-buffer in camera space
 layout(binding = 4) uniform sampler2D gMaterial;
 // specular buffer - from g-buffer (rgb = ior,
-layout(binding = 5) uniform sampler2D visibilityBuffer;
-layout(binding = 6) uniform sampler2D HizBuffer;
 
 // --------------------- ray tracing uniforms --------------------------
 
@@ -30,6 +28,8 @@ uniform mat4 view;
 uniform vec2 nearFar;        // near and far plane for viewing frustum
 uniform vec3 viewPos;        // world space
 uniform mat4 viewProjection; // projection matrix from ndc to screen space
+uniform mat4 invProjView;
+uniform mat4 invView;
 
 // mcguire implementation related
 uniform float cb_maxDistance = 10.0;
@@ -40,17 +40,22 @@ uniform float cb_zThickness = 10.0;
 uniform float cb_jtter = 0.0;
 
 // binary implementation related
-uniform float minRayStep = 0.2;
-uniform float rayStepCount = 30.0;
+uniform float minRayStep = 0.1;
+uniform float rayStepCount = 40.0;
 uniform float rayStep = 1.0;
-uniform float rayStepDecrase = 0.4;
+uniform float rayStepDecrase = 0.2;
 uniform float rayBinaryMaxIter = 12.0;
 uniform float ray_jitter = 0.2;
-uniform float ray_stride = 2.0;
+uniform float ray_stride = 0.1;
 uniform float depthEpsilon = 0.01;
+uniform float bounceNb = 5.0;
+uniform float pixThickness = 0.2;
+uniform float pixMaxDistance = 6;
+uniform float pixResolution = 0.3;
+uniform float pixSteps = 5.0;
 
 // general
-uniform int traceChoice = 4;
+uniform int traceChoice = 5;
 
 // ------------------- cone tracing uniforms --------------------------
 uniform float sampling_zeta = 0.344;     // taken from GPU pro 5
@@ -148,6 +153,12 @@ vec3 vonmises_dir(vec3 bias_dir, float kappa) {
   float theta = spherical.z;
   float normalization = kappa / (2 * PI * (exp(kappa) - exp(-kappa)));
   return exp(kappa * cos(theta)) * normalization;
+}
+
+vec3 fix_color(vec3 pcolor, int samples_per_pixel) {
+  // scale sample
+  pcolor /= samples_per_pixel;
+  return clamp(sqrt(pcolor), 0.0, 0.999);
 }
 
 struct Ray {
@@ -285,8 +296,8 @@ vec3 viewToTextureSpace(vec3 p_vs) {
   vec4 p_cs = projection * vec4(p_vs, 1);
   p_cs /= p_cs.w;
   vec3 p_ts = p_cs.xyz;
-  p_ts *= 0.5;
-  p_ts += 0.5;
+  p_ts.xy *= 0.5;
+  p_ts.xy += 0.5;
   // invert y for opengl
   // p_ts.y = -p_ts.y;
   return p_ts;
@@ -308,6 +319,9 @@ vec4 clipToScreenSpace(vec4 pointInClipSpace) {
 vec4 clipToViewSpace(vec3 p_cs) {
   return inverse(projection * view) * vec4(p_cs, 1);
 }
+vec2 clipToTextureSpace(vec2 p_cs) { return (p_cs + 1) / 2; }
+vec3 clipToTextureSpace(vec3 p_cs) { return (p_cs + 1) / 2; }
+vec3 textureToClipSpace(vec3 tex) { return (tex * 2) - 1.0; }
 
 vec4 viewToScreenSpace(vec3 p_vs) {
   return viewProjection * projection * vec4(p_vs, 1);
@@ -347,7 +361,8 @@ void swap(inout float a, inout float b) {
  * Ray contains values in view space
  *
     \param csOrigin Camera-space ray origin, which must be
-    within the view volume and must have z < -0.01 and project within the valid
+    within the view volume and must have z < -0.01 and project within the
+ valid
  screen rectangle
 
     \param csDirection Unit length camera-space ray direction
@@ -355,7 +370,8 @@ void swap(inout float a, inout float b) {
     \param projectToPixelMatrix A projection matrix that maps to pixel
  coordinates (not [-1, +1] normalized device coordinates)
 
-    \param csZBuffer The depth or camera-space Z buffer, depending on the value
+    \param csZBuffer The depth or camera-space Z buffer, depending on the
+ value
  of \a csZBufferIsHyperbolic
 
     \param csZBufferSize Dimensions of csZBuffer
@@ -365,22 +381,27 @@ void swap(inout float a, inout float b) {
 
     \param csZBufferIsHyperbolic True if csZBuffer is an OpenGL depth buffer,
  false (faster) if
-     csZBuffer contains (negative) "linear" camera space z values. Const so that
+     csZBuffer contains (negative) "linear" camera space z values. Const so
+ that
  the compiler can evaluate the branch based on it at compile time
 
     \param clipInfo See G3D::Camera documentation
 
     \param nearPlaneZ Negative number
 
-    \param stride Step in horizontal or vertical pixels between samples. This is
+    \param stride Step in horizontal or vertical pixels between samples. This
+ is
  a float
-     because integer math is slow on GPUs, but should be set to an integer >= 1
+     because integer math is slow on GPUs, but should be set to an integer >=
+ 1
 
-    \param jitterFraction  Number between 0 and 1 for how far to bump the ray in
+    \param jitterFraction  Number between 0 and 1 for how far to bump the ray
+ in
  stride units
       to conceal banding artifacts
 
-    \param maxSteps Maximum number of iterations. Higher gives better images but
+    \param maxSteps Maximum number of iterations. Higher gives better images
+ but
  may be slow
 
     \param maxRayTraceDistance Maximum camera-space distance to trace before
@@ -555,7 +576,8 @@ vec3 getRayColorMorgan(vec3 pointVS, float depth) {
 //  and
 //  https://gitlab.com/congard/algine/-/blob/master/resources/shaders/SSR.frag.glsl
 //
-// Hermanns (Lukas), Screen space cone tracing for glossy reflections, Bachelor
+// Hermanns (Lukas), Screen space cone tracing for glossy reflections,
+// Bachelor
 // Thesis, Technische Universität Darmstadt, Darmstadt, 2015. URL :
 // http://publica.fraunhofer.de/documents/N-336466.html.
 //
@@ -585,25 +607,18 @@ vec3 hash(vec3 a) {
 vec3 binary_search(inout vec3 dir, // view space ray
                    inout vec3 hitCoord, inout float deltaDepth) {
   float depth;
-  vec4 projected;
+  vec3 projected;
   for (int i = 0; i < rayBinaryMaxIter; i++) {
-    projected = projection * vec4(hitCoord, 1);
-    projected.xy /= projected.w;
-    projected.xy *= 0.5;
-    projected.xy += 0.5;
+    projected = viewToTextureSpace(hitCoord);
     depth = texture(gDepth, projected.xy).z;
     deltaDepth = hitCoord.z - depth;
-    dir *= 0.5;
     if (deltaDepth > 0.0) {
       hitCoord += dir;
     } else {
       hitCoord -= dir;
     }
   }
-  projected = projection * vec4(hitCoord, 1);
-  projected.xy /= projected.w;
-  projected.xy *= 0.5;
-  projected.xy += 0.5;
+  projected = viewToTextureSpace(hitCoord);
   return vec3(projected.xy, depth);
 }
 vec4 ray_march(inout vec3 dir,      // view space ray
@@ -637,12 +652,17 @@ vec4 ray_march(inout vec3 dir,      // view space ray
   intersected = false;
   return vec4(projected.xy, depth, 0.0);
 }
+vec3 toModel(vec3 p_vs) { return vec3(invView * vec4(p_vs, 1)); }
+vec3 toView(vec3 p_ws) { return vec3(view * vec4(p_ws, 1)); }
 vec3 getRayColorBinary() {
   float roughness = texture(gMaterial, TexCoord).y; // 1 - roughness
   float glossiness = 1.0 - roughness;
   vec3 normalvs = texture(gNormal, TexCoord).xyz;
+  vec3 normalWS = toModel(normalvs);
   vec4 posVS = texture(gDepth, TexCoord).xyzw;
-  vec3 refv = reflect(normalize(posVS.xyz), normalize(normalvs));
+  vec3 pWS = toModel(posVS.xyz);
+  vec3 refv = normalize(reflect(normalize(pWS), normalize(normalWS)));
+  refv = toView(refv);
 
   vec3 dir = refv * max(minRayStep, -posVS.z);
   float depth;
@@ -664,7 +684,7 @@ vec3 BinarySearch(vec3 ray, vec3 dir) {
     float depth = textureLod(gSDepth, ray.xy, 0.0).z;
     // Check if the ’depth delta ’ is smaller than our epsilon
     float depthDelta = depth - ray.z;
-    if (abs(depthDelta) < rayStep) {
+    if (abs(depthDelta) < depthEpsilon) {
       break; // Final intersection found -> break iteration
     }
     // Move ray forwards if we are in front of geometry ,
@@ -680,7 +700,9 @@ vec3 BinarySearch(vec3 ray, vec3 dir) {
   // Intersection already found , but we could not refine it to the
   // minimum
 }
-vec3 LinearMarch(vec3 ray, vec3 dir, float stride) {
+vec3 LinearMarch(vec3 ray, // texture space
+                 vec3 dir, // texture space direction
+                 float stride) {
   vec3 prevRay = ray;
   for (int i = 0; i < rayStepCount; ++i) {
     // Sample depth value at current ray position
@@ -699,12 +721,21 @@ vec3 LinearMarch(vec3 ray, vec3 dir, float stride) {
   return vec3(-1); // No intersection found
 }
 
-vec3 getRayColorBinary2() {
+bool hitColor(vec2 TexCoord, out vec2 hitCoordinate, out vec3 outColor) {
   float roughness = texture(gMaterial, TexCoord).y; // roughness
   float glossiness = 1.0 - roughness;
+  float metallic = texture(gMaterial, TexCoord).x; // metallic
+  vec3 fcolor = texture(lightBuffer, TexCoord).rgb;
+  if (metallic < 0.2) {
+    return false;
+  }
+
   vec3 normalvs = texture(gNormal, TexCoord).xyz;
   vec3 posVS = texture(gDepth, TexCoord).xyz;
+  vec3 posSS = texture(gSDepth, TexCoord).xyz;
   vec3 posTS = viewToTextureSpace(posVS);
+  posTS.z = posSS.z;
+
   vec3 refvs = reflect(normalize(posVS.xyz), normalize(normalvs));
   vec3 refts = viewToTextureSpace(refvs);
   vec4 posWS = inverse(view) * vec4(posVS.xyz, 1);
@@ -718,10 +749,32 @@ vec3 getRayColorBinary2() {
   vec3 color = texture(lightBuffer, hitCoord.xy).rgb;
 
   if (hitCoord != vec3(-1.0)) {
+    hitCoordinate = hitCoord.xy;
+    outColor = color;
 
-    return color;
+    return true;
   }
-  return texture(lightBuffer, TexCoord).rgb;
+  return false;
+}
+
+vec3 getRayColorBinary2() {
+  vec3 current = vec3(1);
+  vec3 result = vec3(0);
+  bool intersect;
+  vec2 hitCoordinate;
+  vec2 inCoordinate = TexCoord;
+  vec3 outColor;
+  for (int i = 0; i < bounceNb; i++) {
+    if (hitColor(inCoordinate, hitCoordinate, outColor)) {
+      inCoordinate = hitCoordinate;
+      current *= mix(outColor, current, texture(gMaterial, hitCoordinate).y);
+    } else {
+      result += mix(current, texture(lightBuffer, inCoordinate).rgb,
+                    texture(gMaterial, hitCoordinate).y);
+      break;
+    }
+  }
+  return result;
 }
 
 vec3 LinearRayMarch(vec3 ray, vec3 dir, float stride) {
@@ -729,8 +782,9 @@ vec3 LinearRayMarch(vec3 ray, vec3 dir, float stride) {
     // Sample depth value at current ray position
     float depth = texture(gSDepth, ray.xy).z;
     // Check if ray steps through the depth buffer
-    if (ray.z > depth)
+    if (ray.z > depth) {
       return ray; // Return final intersection
+    }
     // Step to the next sample position
     ray += dir * stride;
   }
@@ -738,27 +792,201 @@ vec3 LinearRayMarch(vec3 ray, vec3 dir, float stride) {
 }
 vec3 getRayColorBinary3() {
   float roughness = texture(gMaterial, TexCoord).y; // roughness
+  float metallic = texture(gMaterial, TexCoord).x;  // metallic
+  vec3 fcolor = texture(lightBuffer, TexCoord).rgb;
+  if (metallic < 0.2) {
+    return fcolor;
+  }
   float glossiness = 1.0 - roughness;
   vec3 normalvs = texture(gNormal, TexCoord).xyz;
   vec3 posVS = texture(gDepth, TexCoord).xyz;
   vec3 posSS = texture(gSDepth, TexCoord).xyz;
-  vec3 posTS = viewToTextureSpace(posVS);
-  posTS.z = posSS.z;
   vec3 refvs = reflect(normalize(posVS.xyz), normalize(normalvs));
   vec3 refts = viewToTextureSpace(refvs);
+  vec3 posTS = viewToTextureSpace(posVS);
 
-  vec3 dir = refts * max(minRayStep, -posTS.z);
+  vec3 dir = refts * max(minRayStep, -posSS.z);
   float depth;
   vec3 hitPoint = posTS;
   vec3 hitCoord = LinearRayMarch(hitPoint, dir, ray_stride);
   vec3 color = texture(lightBuffer, hitCoord.xy).rgb;
-  vec3 fcolor = texture(lightBuffer, TexCoord).rgb;
 
   if (hitCoord != vec3(-1.0)) {
-
     return mix(color, fcolor, glossiness);
   }
   return fcolor;
+}
+/**
+ * From
+ *https://github.com/IanLilleyT/Real-Time-Reflections-OpenGL/blob/master/data/shaders/ReflectionFrag.frag
+
+ * and from
+ *
+ https://github.com/lettier/3d-game-shaders-for-beginners/blob/master/demonstration/shaders/fragment/screen-space-reflection.frag
+ * */
+bool inScreen(vec3 p_ss) {
+  float x = p_ss.x;
+  float y = p_ss.y;
+  float z = p_ss.z;
+  bool x_check = x < 1.0 && x > 0.0;
+  bool y_check = y < 1.0 && y > 0.0;
+  bool z_check = z < 1.0 && z > 0.0;
+  // testing against default values of opengl
+  return x_check && y_check && z_check;
+}
+bool inScreen(vec2 uv) {
+  bool x_check = uv.x < 1.0 && uv.x > 0.0;
+  bool y_check = uv.y < 1.0 && uv.y > 0.0;
+  return x_check && y_check;
+}
+bool inScreen(vec4 uv) {
+  bool x_check = uv.x < 1.0 && uv.x > 0.0;
+  bool y_check = uv.y < 1.0 && uv.y > 0.0;
+  return x_check && y_check;
+}
+void getViewDistDepth(vec2 startFrag, vec2 endFrag, float s, vec2 startView,
+                      vec2 endView, out float viewDistance, out float depth) {
+  vec2 frag = mix(startFrag.xy, endFrag.xy, s);
+  vec2 uv = frag / textureSize(gDepth, 0);
+  vec3 positionToVs = texture(gDepth, uv).rgb;
+  viewDistance = (startView.y * endView.y) / mix(endView.y, startView.y, s);
+  depth = viewDistance - positionToVs.y;
+}
+/**Convert [0,1] screen space depth to view space depth*/
+float linearDepth(float depth_ss) {
+  return (2.0 * nearFar.x) /
+         (nearFar.y + nearFar.x - depth_ss * (nearFar.y - nearFar.x));
+}
+vec4 getRay4() {
+  vec2 texSize = textureSize(gSDepth, 0);
+  vec2 texCoord = gl_FragCoord.xy / texSize;
+
+  vec2 pointSS = texture(gSDepth, texCoord).xy;
+  vec4 pointVSs = texture(gDepth, texCoord);
+  vec4 positionFromVs = pointVSs;
+  vec3 PointSS = vec3(pointSS, texture(gSDepth, texCoord).z);
+
+  vec4 uv = vec4(0);
+
+  // roughness
+  float roughness = texture(gMaterial, texCoord).y;
+  float glossiness = 1 - roughness;
+
+  vec3 viewDirVS = normalize(positionFromVs.xyz);
+  vec3 normalVS = normalize(texture(gNormal, texCoord).xyz);
+  vec3 pivot = normalize(reflect(viewDirVS, normalVS));
+
+  vec4 positionToVs = positionFromVs;
+
+  vec4 startView = vec4(positionFromVs.xyz + (pivot * 0.0), 1.0);
+  vec4 endView = vec4(positionFromVs.xyz + (pivot * pixMaxDistance), 1.0);
+
+  vec4 startFrag = projection * startView;
+  startFrag.xyz /= startFrag.w;
+  startFrag.xy = startFrag.xy * 0.5 + 0.5;
+  startFrag.xy *= texSize;
+
+  vec4 endFrag = projection * endView;
+  endFrag.xyz /= endFrag.w;
+  endFrag.xy = endFrag.xy * 0.5 + 0.5;
+  endFrag.xy *= texSize;
+
+  vec2 frag = startFrag.xy;
+  uv.xy = frag / texSize;
+
+  float deltaX = endFrag.x - startFrag.x;
+  float deltaY = endFrag.y - startFrag.y;
+
+  // decide axis
+  float useX = abs(deltaX) >= abs(deltaY) ? 1.0 : 0.0;
+
+  float delta =
+      mix(abs(deltaY), abs(deltaX), useX) * clamp(pixResolution, 0.0, 1.0);
+
+  vec2 increment = vec2(deltaX, deltaY) / max(delta, 0.001);
+
+  float search0 = 0.0;
+  float search1 = 0.0;
+  int hit0 = 0;
+  int hit1 = 0;
+
+  float steps = pixSteps;
+
+  float viewDistance = startView.y;
+  float depth = pixThickness;
+
+  for (int i = 0; i < int(delta); i++) {
+    frag += increment;
+    uv.xy = frag / texSize;
+    positionToVs = texture(gDepth, uv.xy);
+
+    //
+    search1 = mix((frag.y - startFrag.y) / deltaY,
+                  (frag.x - startFrag.x) / deltaX, useX);
+
+    // clamp to value to uv range
+    search1 = clamp(search1, 0.0, 1.0);
+
+    viewDistance =
+        (startView.y * endView.y) / mix(endView.y, startView.y, search1);
+    depth = viewDistance - positionToVs.y;
+
+    if (depth > 0 && depth < pixThickness) {
+      hit0 = 1;
+    } else {
+      search0 = search1;
+    }
+  }
+  search1 = search0 + ((search1 - search0) / 2.0);
+  steps *= hit0;
+  for (int i = 0; i < steps; i++) {
+    frag = mix(startFrag.xy, endFrag.xy, search1);
+    uv.xy = frag / texSize;
+    positionToVs = texture(gDepth, uv.xy);
+
+    viewDistance =
+        (startView.y * endView.y) / mix(endView.y, startView.y, search1);
+    depth = viewDistance - positionToVs.y;
+
+    if (depth > 0 && depth < pixThickness) {
+      hit1 = 1;
+      search1 = search0 + ((search1 - search0) / 2.0);
+    } else {
+      float temp = search1;
+      search1 = search1 + ((search1 - search0) / 2.0);
+      search0 = temp;
+    }
+  }
+  //
+  float depthAlpha = positionToVs.w;
+  float costheta = max(dot(-viewDirVS, pivot), 0.0);
+  // depth to uv range
+  float uvdepth = (1 - clamp(depth / pixThickness, 0, 1));
+  // scale ray length to uv range
+  float scaled_ray = length(positionToVs - positionFromVs) / pixMaxDistance;
+  float ray_len = 1 - clamp(scaled_ray, 0.0, 1.0);
+  float visibility = hit1 * depthAlpha * (1 - costheta) * uvdepth * ray_len *
+                     (inScreen(uv) ? 1.0 : 0.0);
+
+  visibility = clamp(visibility, 0.0, 1.0); // alpha channel
+  uv.ba = vec2(visibility);
+  return uv;
+}
+vec4 getRayColorBinary4() {
+  //
+  vec4 uv = getRay4();
+  vec4 color4X = textureGather(lightBuffer, uv.xy, 0);
+  vec4 color4Y = textureGather(lightBuffer, uv.xy, 1);
+  vec4 color4Z = textureGather(lightBuffer, uv.xy, 2);
+  vec4 color4A = textureGather(lightBuffer, uv.xy, 3);
+  vec4 first = vec4(color4X.x, color4Y.x, color4Z.x, color4A.x);
+  vec4 second = vec4(color4X.y, color4Y.y, color4Z.y, color4A.y);
+  vec4 third = vec4(color4X.z, color4Y.z, color4Z.z, color4A.z);
+  vec4 fourth = vec4(color4X.a, color4Y.a, color4Z.a, color4A.a);
+  vec4 color = (first + second + third + fourth) / 4.0;
+  float alpha = clamp(uv.z, 0.0, 1.0);
+
+  return vec4(mix(vec3(0.0), color.rgb, alpha), alpha);
 }
 
 // ------------------------------ Cone Tracing -------------------------------
@@ -873,30 +1101,32 @@ void main() {
   } else {
 
     vec3 p_vs = texture(gDepth, TexCoord).xyz;
-    vec3 ray_color;
+    vec4 ray_color;
     switch (traceChoice) {
     case 1:
       float depth = cb_maxSteps;
-      ray_color = getRayColorMorgan(p_vs, depth);
+      ray_color.xyz = getRayColorMorgan(p_vs, depth);
       break;
     case 2:
-      ray_color = getRayColorBinary();
+      ray_color.xyz = getRayColorBinary();
       break;
     case 3:
-      ray_color = getRayColorBinary2();
+      ray_color.xyz = getRayColorBinary2();
       break;
     case 4:
-      ray_color = getRayColorBinary3();
+      ray_color.xyz = getRayColorBinary3();
+      break;
+    case 5:
+      ray_color = getRayColorBinary4();
       break;
     }
 
-    // in most basic setup
-    vec3 color = ray_color; //+ ray_color2.rgb; //
-
+    // vec4 color = ray_color;
+    vec4 color = texture(lightBuffer, TexCoord);
     // hdr
-    color = color / (color + vec3(1.0));
-    // gamma correct
-    color = pow(color, vec3(1.0 / 2.2));
-    FragColor = vec4(color, 1);
+    color.xyz = color.xyz / (color.xyz + vec3(1.0));
+    //// gamma correct
+    color.xyz = pow(color.xyz, vec3(1.0 / 2.2));
+    FragColor = color;
   }
 }

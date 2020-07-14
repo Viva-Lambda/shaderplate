@@ -1,6 +1,5 @@
 // license, see LICENSE
 #include <custom/utils.hpp>
-#include <random>
 float deltaTime2 = 0.05;
 void moveCamera2(GLFWwindow *window) {
   //

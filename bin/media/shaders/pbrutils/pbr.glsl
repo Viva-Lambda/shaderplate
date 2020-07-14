@@ -2,6 +2,47 @@
 // pbr related functions and their references
 //
 //
+
+/**
+ * View space vec2
+ * */
+struct Vec2vs {
+  vec2 v;
+};
+/**
+ * View space vec3
+ * */
+
+struct Vec3vs {
+  vec3 v;
+};
+/**
+ * View space vec4
+ * */
+struct Vec4vs {
+  vec2 v;
+};
+
+/**
+ * Clip space vec2
+ * */
+struct Vec2cs {
+  vec2 v;
+};
+/**
+ * Clip space vec3
+ * */
+
+struct Vec3cs {
+  vec3 v;
+};
+/**
+ * Clip space vec4
+ * */
+struct Vec4cs {
+  vec2 v;
+};
+
 float degree_to_radian(float degree) {
   //
   return degree * PI / 180.0;

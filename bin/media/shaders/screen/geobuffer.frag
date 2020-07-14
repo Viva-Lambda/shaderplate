@@ -1,6 +1,6 @@
 #version 430
 
-layout(location = 0) out vec4 gDepth;
+layout(location = 0) out vec4 gPosition;
 layout(location = 1) out vec4 gNormal;
 layout(location = 2) out vec3 gAlbedo;
 layout(location = 3) out vec4 gMaterial;
@@ -162,10 +162,10 @@ vec3 getHalfDir() { return normalize(getViewDir() + getLightDir()); }
 
 void main() {
   // set depth in view space
-  gDepth.xyz = FragPosVS;
-  gDepth.w = length(FragPosVS);
+  gPosition.xyz = FragPosVS;
+  gPosition.w = length(FragPosVS);
   // set depth in screen space
-  gSDepth.xyz = FragPosCS.xyz;
+  gSDepth.xyz = gl_FragCoord.xyz;
   vec3 norm = getNormalFromMap(); // in world space
   vec3 NormalWS = normalize(norm);
 
