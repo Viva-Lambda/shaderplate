@@ -2,23 +2,36 @@
 in vec2 TexCoords;
 layout(binding = 0) uniform sampler2D uvBuffer;
 layout(binding = 1) uniform sampler2D lightBuffer;
+
+vec2 clipToTextureSpace(vec2 p_cs) { return (p_cs + 1) / 2; }
+vec2 screenToTextureSpace(vec2 p_ss) {
+  p_ss /= vec2(textureSize(uvBuffer, 0));
+  p_ss *= 2;
+  return p_ss - 1.0;
+}
+
 out vec4 FragColor;
 void main() {
   vec4 uv = texture(uvBuffer, TexCoords);
-  if (uv.b <= 0.0) {
-    FragColor = texture(lightBuffer, TexCoords);
-  } else {
-    vec4 color4X = textureGather(lightBuffer, uv.xy, 0);
-    vec4 color4Y = textureGather(lightBuffer, uv.xy, 1);
-    vec4 color4Z = textureGather(lightBuffer, uv.xy, 2);
-    vec4 color4A = textureGather(lightBuffer, uv.xy, 3);
-    vec4 first = vec4(color4X.x, color4Y.x, color4Z.x, color4A.x);
-    vec4 second = vec4(color4X.y, color4Y.y, color4Z.y, color4A.y);
-    vec4 third = vec4(color4X.z, color4Y.z, color4Z.z, color4A.z);
-    vec4 fourth = vec4(color4X.a, color4Y.a, color4Z.a, color4A.a);
-    vec4 color = (first + second + third + fourth) / 4.0;
-    float alpha = clamp(uv.z, 0.0, 1.0);
+  vec3 L_in = uv.rgb;
+  vec3 f_r = texture(lightBuffer, TexCoords).rgb;
+  vec3 color;
 
-    FragColor = vec4(mix(vec3(0.0), color.rgb, alpha), alpha);
+  // following the regular rendering equation
+  // \int f_r * L_in * NdotL
+  if (uv.w != 0.0) {
+    color = L_in; // uv.w;
+    // color = vec3(0.3,0,0);
+  } else {
+    color = f_r;
   }
+
+  // hdr
+  // color = color / (color + vec3(1.0));
+
+  //// gamma correct
+  // color = pow(color, vec3(1.0 / 2.2));
+
+  FragColor = vec4(color, 1);
+  // FragColor = vec4(L_in, 1);
 }

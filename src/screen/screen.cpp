@@ -121,7 +121,7 @@ Shader loadBrdfShader() {
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.useProgram();
   envShader.shaderName = "brdfShader";
-  envShader.setIntUni("envMap", 0);
+  // envShader.setIntUni("envMap", 0);
   return envShader;
 }
 Shader loadPbrShader() {
@@ -186,13 +186,14 @@ Shader loadSsaoBlurShader() {
 }
 Shader loadUvShader() {
   fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "ssruv.frag";
+  fs::path fpath = shaderDirPath / "screen" / "ssruv2.frag";
   Shader uvs(vpath.c_str(), fpath.c_str());
   uvs.shaderName = "uvShader";
   uvs.useProgram();
   uvs.setIntUni("gPosition", 0);
   uvs.setIntUni("gNormal", 1);
   uvs.setIntUni("lightBuffer", 2);
+  uvs.setIntUni("gMaterial", 3);
 
   return uvs;
 }
@@ -203,7 +204,7 @@ Shader loadQuadShader() {
   uvs.shaderName = "quadShader";
   uvs.useProgram();
   uvs.setIntUni("uvBuffer", 0);
-  uvs.setIntUni("uvBuffer", 1);
+  uvs.setIntUni("lightBuffer", 1);
 
   return uvs;
 }
@@ -1040,6 +1041,20 @@ int main() {
   glm::mat4 projection =
       glm::perspective(glm::radians(camera.zoom),
                        (float)WINWIDTH / (float)WINHEIGHT, nearPlane, farPlane);
+
+  // view projection matrix
+  // from here
+  // http://glasnost.itcarlow.ie/~powerk/GeneralGraphicsNotes/projection/viewport_transformation.html
+  float whalf = (float)WINWIDTH / 2.0;
+  float hhalf = (float)WINHEIGHT / 2.0;
+  float viewPortArr[16] = {
+      whalf, 0,     0,   0, // 1. column
+      0,     hhalf, 0,   0, // 2. column
+      0,     0,     0.5, 0, // 3. column
+      whalf, hhalf, 0.5, 1  // 4. column
+  };
+  glm::mat4 viewProjection = glm::make_mat4(viewPortArr);
+
   pbrShader.useProgram();
   pbrShader.setMat4Uni("projection", projection);
 
@@ -1059,28 +1074,20 @@ int main() {
   gerr();
 
   Shader uvShader = loadUvShader();
+
   uvShader.useProgram();
   uvShader.setMat4Uni("projection", projection);
+  glm::mat4 invp = glm::inverse(projection);
+  uvShader.setMat4Uni("invprojection", invp);
+  // uvShader.setMat4Uni("viewProjection", viewProjection);
+  // uvShader.setFloatUni("cb_nearPlaneZ", -nearPlane);
 
   Shader quadShader = loadQuadShader();
 
   // rayConeShader.useProgram();
   // rayConeShader.setMat4Uni("projection", projection);
-  glm::mat4 invp = glm::inverse(projection);
+  // glm::mat4 invp = glm::inverse(projection);
   // rayConeShader.setMat4Uni("invprojection", invp);
-
-  // view projection matrix
-  // from here
-  // http://glasnost.itcarlow.ie/~powerk/GeneralGraphicsNotes/projection/viewport_transformation.html
-  float whalf = (float)WINWIDTH / 2.0;
-  float hhalf = (float)WINHEIGHT / 2.0;
-  float viewPortArr[16] = {
-      whalf, 0,     0,   0, // 1. column
-      0,     hhalf, 0,   0, // 2. column
-      0,     0,     0.5, 0, // 3. column
-      whalf, hhalf, 0.5, 1  // 4. column
-  };
-  glm::mat4 viewProjection = glm::make_mat4(viewPortArr);
 
   // geometryShader.setIntUni();
   std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
@@ -1111,63 +1118,9 @@ int main() {
                 normalMap2, roughnessMap2, metallicMap, baseColorMap, normalMap,
                 roughnessMap, aoMap, irradianceCubemap, prefilterMap,
                 brdfLutTexture);
+      gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // 2. Hi-Z buffer pass: generate hierarchical depth buffer
-    {
-        // glClear(GL_COLOR_BUFFER_BIT);
-        // glm::vec2 offs = glm::vec2(0);
-        // offs.x = WINWIDTH % 2 == 0 ? 1 : 2;
-        // offs.y = WINHEIGHT % 2 == 0 ? 1 : 2;
-
-        // glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
-        // // first copy from screen space depth texture of gBuffer
-        // genHiZBuffer(hizShader, model, view, mipRbo, WINWIDTH, WINHEIGHT,
-        //              HiZBufferTexture, 0, gSDepth, offs,
-        //              VisibilityBufferTexture,
-        //              visibilityMap, nearFar);
-        // //
-        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
-        //                    HiZBCopyTexture, GL_TEXTURE_2D, 0, 0, 0, 0,
-        //                    WINWIDTH,
-        //                    WINHEIGHT,
-        //                    0); // copy previously written mipmap to current
-        // gerr();
-        // glCopyImageSubData(VisibilityBufferTexture, GL_TEXTURE_2D, 0, 0, 0,
-        // 0,
-        //                    visibilityMap, GL_TEXTURE_2D, 0, 0, 0, 0,
-        //                    WINWIDTH,
-        //                    WINHEIGHT,
-        //                    0); // copy previously written mipmap to current
-
-        // glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
-
-        // // now sample previous mipmaps from hiz buffer and hiz copy buffer
-        // for (unsigned int i = 1; i < mipmaps.size(); i++) {
-        //   MipMapInfo minfo = mipmaps[i];
-        //   int mw = minfo.width;
-        //   int mh = minfo.height;
-        //   offs.x = mw % 2 == 0 ? 1 : 2;
-        //   offs.y = mh % 2 == 0 ? 1 : 2;
-        //   auto level = minfo.level;
-        //   glViewport(0, 0, mw, mh);
-        //   glCopyImageSubData(HiZBufferTexture, GL_TEXTURE_2D, level, 0, 0, 0,
-        //                      HiZBCopyTexture, GL_TEXTURE_2D, level, 0, 0, 0,
-        //                      mw,
-        //                      mh,
-        //                      0); // copy previously written mipmap to current
-        //   gerr();
-
-        //   genHiZBuffer(hizShader, model, view, mipRbo, mw, mh,
-        //   HiZBufferTexture,
-        //                level, HiZBCopyTexture, offs, VisibilityBufferTexture,
-        //                visibilityMap, nearFar);
-        //   gerr();
-        // }
-        // glViewport(0, 0, WINWIDTH, WINHEIGHT);
-        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
 
     // 2. lightening pass: render lightening to be refined later on
     {
@@ -1197,7 +1150,7 @@ int main() {
       pbrShader.setVec3Uni(
           "LightPosVS", glm::vec3(view * glm::vec4(spotLight.position, 1.0)));
 
-      pbrShader.setVec3Uni("lightColor", glm::vec3(30.0));
+      pbrShader.setVec3Uni("lightColor", glm::vec3(300.0));
       // if doing phong lightening
       // pbrShader.setVec3Uni("inLightDir", spotLight.front);
 
@@ -1220,50 +1173,36 @@ int main() {
       glActiveTexture(GL_TEXTURE2);
       glBindTexture(GL_TEXTURE_2D, lightTexture);
 
+      glActiveTexture(GL_TEXTURE3);
+      glBindTexture(GL_TEXTURE_2D, gMaterial);
+
       uvShader.useProgram();
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, spotLight.position);
+      model = glm::scale(model, glm::vec3(0.2f));
+
+      glm::vec4 lpos = view * model * glm::vec4(spotLight.position, 1.0);
+      // uvShader.setVec3Uni("lightPos", glm::vec3(lpos));
+      uvShader.setMat4Uni("view", view);
+      glm::mat4 invv = glm::inverse(view);
+      uvShader.setMat4Uni("invView", invv);
+
       renderQuad();
+      gerr();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, uvTexture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, lightTexture);
-
-    quadShader.useProgram();
-    renderQuad();
-
-    // 4. cone tracing pass:
+    // shader new uvs
     {
-      // glClear(GL_COLOR_BUFFER_BIT);
-      // glActiveTexture(GL_TEXTURE0);
-      // glBindTexture(GL_TEXTURE_2D, gPosition);
+      glClear(GL_COLOR_BUFFER_BIT);
 
-      // glActiveTexture(GL_TEXTURE1);
-      // glBindTexture(GL_TEXTURE_2D, gSDepth);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, uvTexture);
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, lightTexture);
 
-      // glActiveTexture(GL_TEXTURE2);
-      // glBindTexture(GL_TEXTURE_2D, lightTexture);
-
-      // glActiveTexture(GL_TEXTURE3);
-      // glBindTexture(GL_TEXTURE_2D, gNormal);
-
-      // glActiveTexture(GL_TEXTURE4);
-      // glBindTexture(GL_TEXTURE_2D, gMaterial);
-
-      // rayConeShader.useProgram();
-      // glm::mat4 view = camera.getViewMatrix();
-      // rayConeShader.setMat4Uni("view", view);
-      // rayConeShader.setVec3Uni("viewPos", camera.pos);
-      // rayConeShader.setMat4Uni("viewProjection", viewProjection);
-      // glm::mat4 invProjView = glm::inverse(projection * view);
-      // glm::mat4 invV = glm::inverse(view);
-      // rayConeShader.setMat4Uni("invView", invV);
-      // rayConeShader.setMat4Uni("invProjView", invProjView);
-      // // rayConeShader.setFloatUni("mipCount",
-      // // static_cast<float>(mipmaps.size()));
-
-      // renderQuad();
+      quadShader.useProgram();
+      renderQuad();
+      gerr();
     }
 
     // 3.5 draw light source

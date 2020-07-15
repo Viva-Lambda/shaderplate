@@ -6,11 +6,11 @@ in vec2 TexCoord;
 in vec3 ViewRay;
 
 // material parameters
-uniform sampler2D gDepth;    // from GBuffer
-uniform sampler2D gNormal;   // from GBuffer
-uniform sampler2D gAlbedo;   // from GBuffer
-uniform sampler2D gMaterial; // from GBuffer
-uniform sampler2D gAmbient;  // from GBuffer
+layout(binding = 0) uniform sampler2D gPosition; // from GBuffer
+layout(binding = 1) uniform sampler2D gNormal;   // from GBuffer
+layout(binding = 2) uniform sampler2D gAlbedo;   // from GBuffer
+layout(binding = 3) uniform sampler2D gMaterial; // from GBuffer
+layout(binding = 4) uniform sampler2D gAmbient;  // from GBuffer
 
 // lights
 uniform vec3 LightPosVS; // in view space
@@ -366,7 +366,7 @@ vec3 getLightDir(vec3 FragPosVS) { return normalize(FragPosVS - LightPosVS); }
 vec3 getViewDir(vec3 FragPosVS) { return normalize(FragPosVS - ViewPosVS); }
 
 void main() {
-  vec3 FragPosVS = texture(gDepth, TexCoord).rgb;
+  vec3 FragPosVS = texture(gPosition, TexCoord).rgb;
 
   // material properties
   vec3 albedo = pow(texture(gAlbedo, TexCoord).rgb, vec3(2.2));

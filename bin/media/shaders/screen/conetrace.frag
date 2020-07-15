@@ -353,6 +353,7 @@ void swap(inout float a, inout float b) {
   a = b;
   b = t;
 }
+
 /**
  * Another ray tracing implementation adapted from
  * http://roar11.com/2015/07/screen-space-glossy-reflections/
