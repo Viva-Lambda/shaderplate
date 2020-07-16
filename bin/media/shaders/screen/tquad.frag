@@ -45,6 +45,8 @@ void main() {
   }
   vec3 blurred = blurColor();
   vec3 color = (alpha * blurred) + (1 - alpha) * uv.rgb;
+  // vec3 color = uv.rgb;
+  // vec3 color = uv.rgb * f_r;
 
   // hdr
   color = color / (color + vec3(1.0));

@@ -4,6 +4,7 @@ layout(binding = 0) uniform sampler2D gPosition;   // position in viewspace
 layout(binding = 1) uniform sampler2D gNormal;     // normals in viewspace
 layout(binding = 2) uniform sampler2D lightBuffer; // normals in viewspace
 layout(binding = 3) uniform sampler2D gMaterial;   // normals in viewspace
+layout(binding = 4) uniform sampler2D gAlbedo;     // normals in viewspace
 // normal buffer - from g-buffer in in view space
 layout(location = 0) out vec4 FragColor;
 float PI = 3.1415926535;
@@ -13,12 +14,12 @@ uniform vec3 lightPos; // view space
 // -----------------------------
 // mcguire implementation related
 uniform float maxDistance = 89.0;
-uniform float stride = 0.0;
+uniform float stride = 0.4;
 uniform float strideZCutoff = 103.0;
 uniform float cMaxSteps = 182.0;
-uniform float zThickness = 1.0;
-uniform float jitter = 0.67;
-uniform float cNearPlaneZ = 0.1;
+uniform float zThickness = 100.0;
+uniform float jitter = 0.1;
+uniform float cNearPlaneZ = -0.1;
 uniform float bounceNb = 3.0;
 
 uniform mat4 viewProjection; // projection matrix from ndc to screen space
@@ -76,18 +77,15 @@ vec3 viewToTextureSpace(vec3 p_vs) {
   // p_ts.y = -p_ts.y;
   return p_ts;
 }
-
-vec3 getPosition(vec2 TexCoords) { return texture(gPosition, TexCoords).xyz; }
-vec4 viewToScreenSpace(vec3 p_vs) {
-  return viewProjection * projection * vec4(p_vs, 1);
-}
-vec4 screenToViewSpace(vec3 p_ss) {
-  return inverse(viewProjection * projection) * vec4(p_ss, 1);
-}
 vec2 screenToTextureSpace(vec2 p_ss) {
   p_ss /= vec2(textureSize(gPosition, 0));
   p_ss *= 2;
   return p_ss - 1.0;
+}
+
+vec3 getPosition(vec2 TexCoords) { return texture(gPosition, TexCoords).xyz; }
+vec4 viewToScreenSpace(vec3 p_vs) {
+  return viewProjection * projection * vec4(p_vs, 1);
 }
 vec3 screenToViewSpace(vec2 p_ss) {
   vec2 textureCoord = screenToTextureSpace(p_ss);
@@ -180,6 +178,7 @@ bool traceScreenSpaceRay1(vec3 csOrigin,    // current fragment
   vec3 csEndvec = csDirection * rayLength + csOrigin;
 
   // Project into screen space
+
   vec4 H0 = projectToPixelMatrix * vec4(csOrigin, 1.0);
   vec4 H1 = projectToPixelMatrix * vec4(csEndvec, 1.0);
 
@@ -300,32 +299,30 @@ bool traceScreenSpaceRay1(vec3 csOrigin,    // current fragment
   // Matches the new loop condition:
   return (rayZMax >= sceneZMax - csZThickness) && (rayZMin <= sceneZMax);
 }
-
-void main() {
-  float fuzz = texture(gMaterial, TexCoords).y;
+vec2 bounceRay(vec2 texCoords, out bool intersected) {
+  float fuzz = texture(gMaterial, texCoords).y;
   float gloss = 1 - fuzz;
 
   if (gloss <= 0.001) {
-    FragColor.xyz = texture(lightBuffer, TexCoords).rgb;
+    FragColor.xyz = texture(lightBuffer, texCoords).rgb;
     FragColor.w = 1.0;
-    return;
+    intersected = false;
+    return texCoords;
   }
-  float metallic = texture(gMaterial, TexCoords).r;
+  float metallic = texture(gMaterial, texCoords).r;
   if (metallic < 0.2) {
-    FragColor.xyz = texture(lightBuffer, TexCoords).rgb;
-    FragColor.w = 0.0;
-    return;
+    intersected = false;
+    return texCoords;
   }
 
-  vec3 normal = texture(gNormal, TexCoords).xyz;
-  vec3 viewPos = getPosition(TexCoords);
+  vec3 normal = texture(gNormal, texCoords).xyz;
+  vec3 viewPos = getPosition(texCoords);
   float NdotL = dot(normalize(normal), normalize(viewPos));
   if (NdotL <= 0.001) {
     // then the surface does not scatter the ray as per
     // https://raytracing.github.io/books/RayTracingInOneWeekend.html#metal
-    FragColor.xyz = texture(lightBuffer, TexCoords).rgb;
-    FragColor.w = 0.0;
-    return;
+    intersected = false;
+    return texCoords;
   }
 
   vec3 worldPos = vec3(vec4(viewPos, 1.0) * inverse(view));
@@ -333,7 +330,7 @@ void main() {
 
   // Reflection vector
   vec3 reflected = normalize(reflect(normalize(viewPos), normalize(normal)));
-  // reflected += (fuzz * random_in_unit_sphere());
+  reflected += (fuzz * random_in_unit_sphere());
 
   // Ray cast
   float dDepth;
@@ -353,13 +350,46 @@ void main() {
       nearPlaneZ, stride, jitterFraction, maxSteps, maxRayTraceDistance,
       hitPixel, csHitVec);
 
-  if (isTraced == true) {
-    vec2 tcoord = viewToTextureSpace(csHitVec).xy;
-    FragColor.xyz = texelFetch(lightBuffer, ivec2(hitPixel), 0).rgb;
-    // FragColor.xyz = vec3(0.5);
+  intersected = isTraced;
+  if (intersected) {
+    return hitPixel;
+  } else {
+    return texCoords;
+  }
+}
+
+vec3 multiBounce(vec2 texCoords) {
+  float bounce = 1;
+  vec2 temp = texCoords;
+  vec3 current = vec3(1);
+  bool intersected;
+  while (true) {
+    if (bounce < 0) {
+      vec2 t = screenToTextureSpace(temp);
+      return texture(lightBuffer, t).rgb;
+    }
+    vec2 tcoord = bounceRay(temp, intersected);
+    if (intersected) {
+      temp = screenToTextureSpace(tcoord);
+      current = texture(lightBuffer, temp).rgb;
+      bounce--;
+    } else {
+      current = texture(lightBuffer, temp).rgb;
+      return current;
+      break;
+    }
+  }
+  return current;
+}
+
+void main() {
+  bool inter;
+  vec2 tco = bounceRay(TexCoords, inter);
+  if (inter) {
+    FragColor.rgb = texelFetch(lightBuffer, ivec2(tco), 0).rgb;
     FragColor.w = 1.0;
   } else {
-    FragColor.xyz = texture(lightBuffer, TexCoords).rgb;
+    FragColor.rgb = texture(lightBuffer, TexCoords).rgb;
     FragColor.w = 0.0;
   }
 }

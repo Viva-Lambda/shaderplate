@@ -68,11 +68,11 @@ uniform vec3 lightPos; // view space
 // -----------------------------
 // mcguire implementation related
 uniform float cb_maxDistance = 100.0;
-uniform float cb_stride = 0.1;
+uniform float cb_stride = 1.0;
 uniform float cb_strideZCutoff = 100.0;
-uniform float cb_maxSteps = 5.0;
+uniform float cb_maxSteps = 50.0;
 uniform float cb_zThickness = 1.0;
-uniform float cb_jtter = 0.0;
+uniform float cb_jtter = 0.6;
 uniform float cb_nearPlaneZ = -0.1;
 uniform float bounceNb = 3.0;
 

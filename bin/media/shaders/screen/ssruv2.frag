@@ -10,13 +10,13 @@ layout(binding = 2) uniform sampler2D lightBuffer; // normals in viewspace
 layout(binding = 3) uniform sampler2D gMaterial;   // normals in viewspace
 uniform mat4 projection, view;
 
-uniform int binarySearchCount = 30;
-uniform int rayMarchCount = 31; // 60
+uniform int binarySearchCount = 130;
+uniform int rayMarchCount = 10; // 60
 uniform float rayStep = 0.025;  // 0.025
 uniform float minRayStep = 0.1;
 uniform vec3 lightPos;  // in view space
 uniform vec3 cameraPos; // in world space
-uniform float depthEpsilon = 0.01;
+uniform float depthEpsilon = 0.001;
 
 in vec2 TexCoords;
 
@@ -104,7 +104,8 @@ vec2 binary_search(inout vec3 dir,      // world space
 
     dDepth = distance(hitCoord, wpos); // view space depth difference
 
-    dir *= 0.5;
+    // dir *= 0.5;
+    dir *= minRayStep;
     if (dDepth > 0.0)
       hitCoord += dir;
     else
@@ -199,7 +200,6 @@ float fresnel(vec3 direction, vec3 normal) {
   return factor;
 }
 
-
 void main() {
   float fuzz = texture(gMaterial, TexCoords).y;
   float gloss = 1 - fuzz;
@@ -240,16 +240,16 @@ void main() {
   // Ray cast
   vec3 hitPos = viewPos;
   float dDepth;
+  // vec2 coords =
+  // rayCast(jitt + reflected * max(-viewPos.z, minRayStep), hitPos, dDepth);
   vec2 coords =
-      rayCast(jitter + reflected * max(-viewPos.z, minRayStep), hitPos, dDepth);
-
+      rayCast(reflected * max(-viewPos.z, minRayStep), hitPos, dDepth);
   vec3 color = texture(lightBuffer, coords.xy).rgb;
 
   if (coords.xy != vec2(-1.0)) {
-    fragColor.xyz = color == vec3(0.0) ? vec3(0.5) : color;
+    fragColor.xyz = color;
     fragColor.w = 1.0;
   } else {
-
     fragColor.xyz = texture(lightBuffer, TexCoords).rgb;
     fragColor.w = 0.0;
   }

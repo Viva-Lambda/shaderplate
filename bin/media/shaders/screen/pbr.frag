@@ -373,7 +373,7 @@ void main() {
   float metallic = texture(gMaterial, TexCoord).x;
   float roughness = texture(gMaterial, TexCoord).y;
   float ao = texture(gMaterial, TexCoord).z;
-  // ao = ao == 0.0 ? 1.0 : ao;
+  ao = ao == 0.0 ? 1.0 : ao;
   float nt = texture(gMaterial, TexCoord).w;
 
   // input lighting data
@@ -385,12 +385,12 @@ void main() {
   // for each light source
   vec3 lightDir = getLightDir(FragPosVS);
   float NdotL = dot(NormalVS, lightDir);
-  // vec3 ambient = computeAmbientCT(NdotL);
+  vec3 ambient = computeAmbientCT(NdotL);
 
   vec3 color = CTBrdfColor(s, lightDir, viewDir, NormalVS, NdotL, lightColor);
-  // color *= ao;
+  color *= ao;
   color *= attenuation;
-  // color += ambient;
+  color += ambient;
 
   // HDR tonemapping
   color = color / (color + vec3(1.0));

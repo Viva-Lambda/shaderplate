@@ -186,7 +186,7 @@ Shader loadSsaoBlurShader() {
 }
 Shader loadUvShader() {
   fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "ssruvMorgan.frag";
+  fs::path fpath = shaderDirPath / "screen" / "ssruv2.frag";
   Shader uvs(vpath.c_str(), fpath.c_str());
   uvs.shaderName = "uvShader";
   uvs.useProgram();
@@ -194,6 +194,7 @@ Shader loadUvShader() {
   uvs.setIntUni("gNormal", 1);
   uvs.setIntUni("lightBuffer", 2);
   uvs.setIntUni("gMaterial", 3);
+  uvs.setIntUni("gAlbedo", 4);
 
   return uvs;
 }
@@ -1175,6 +1176,8 @@ int main() {
 
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, gMaterial);
+      glActiveTexture(GL_TEXTURE4);
+      glBindTexture(GL_TEXTURE_2D, gAlbedo);
 
       uvShader.useProgram();
       // model = glm::mat4(1.0f);
@@ -1205,6 +1208,7 @@ int main() {
       renderQuad();
       gerr();
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // 3.5 draw light source
     glBindFramebuffer(GL_READ_FRAMEBUFFER, geometry_fbo);
