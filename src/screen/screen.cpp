@@ -186,7 +186,7 @@ Shader loadSsaoBlurShader() {
 }
 Shader loadUvShader() {
   fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "ssruv2.frag";
+  fs::path fpath = shaderDirPath / "screen" / "ssruvMorgan.frag";
   Shader uvs(vpath.c_str(), fpath.c_str());
   uvs.shaderName = "uvShader";
   uvs.useProgram();
@@ -1078,8 +1078,8 @@ int main() {
   uvShader.useProgram();
   uvShader.setMat4Uni("projection", projection);
   glm::mat4 invp = glm::inverse(projection);
-  uvShader.setMat4Uni("invprojection", invp);
-  // uvShader.setMat4Uni("viewProjection", viewProjection);
+  // uvShader.setMat4Uni("invprojection", invp);
+  uvShader.setMat4Uni("viewProjection", viewProjection);
   // uvShader.setFloatUni("cb_nearPlaneZ", -nearPlane);
 
   Shader quadShader = loadQuadShader();
@@ -1177,15 +1177,16 @@ int main() {
       glBindTexture(GL_TEXTURE_2D, gMaterial);
 
       uvShader.useProgram();
-      model = glm::mat4(1.0f);
-      model = glm::translate(model, spotLight.position);
-      model = glm::scale(model, glm::vec3(0.2f));
+      // model = glm::mat4(1.0f);
+      // model = glm::translate(model, spotLight.position);
+      // model = glm::scale(model, glm::vec3(0.2f));
 
-      glm::vec4 lpos = view * model * glm::vec4(spotLight.position, 1.0);
+      // glm::vec4 lpos = view * model * glm::vec4(spotLight.position, 1.0);
       // uvShader.setVec3Uni("lightPos", glm::vec3(lpos));
+      // uvShader.setVec3Uni("cameraPos", camera.pos);
       uvShader.setMat4Uni("view", view);
-      glm::mat4 invv = glm::inverse(view);
-      uvShader.setMat4Uni("invView", invv);
+      // glm::mat4 invv = glm::inverse(view);
+      // uvShader.setMat4Uni("invView", invv);
 
       renderQuad();
       gerr();

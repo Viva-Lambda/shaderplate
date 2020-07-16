@@ -282,6 +282,7 @@ int main() {
   // rendering pass
   float lastFrame = 0.0;
   while (!glfwWindowShouldClose(window)) {
+
     // per-frame time logic
     // --------------------
     float currentFrame = glfwGetTime();
@@ -351,6 +352,7 @@ int main() {
     glBindTexture(GL_TEXTURE_2D, ssaoColorTexture);
     renderQuad();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     // 4. light pass with ao computed
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     lightShader.useProgram();
