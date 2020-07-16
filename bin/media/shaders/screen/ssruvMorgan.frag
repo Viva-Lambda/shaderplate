@@ -18,7 +18,7 @@ uniform float strideZCutoff = 103.0;
 uniform float cMaxSteps = 182.0;
 uniform float zThickness = 10.0;
 uniform float jitter = 0.67;
-uniform float cNearPlaneZ = -0.1;
+uniform float cNearPlaneZ = 0.1;
 uniform float bounceNb = 3.0;
 
 uniform mat4 viewProjection; // projection matrix from ndc to screen space
