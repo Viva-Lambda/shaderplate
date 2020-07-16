@@ -12,7 +12,7 @@ float PI = 3.1415926535;
 uniform vec3 lightPos; // view space
 // -----------------------------
 // mcguire implementation related
-uniform float maxDistance = 15.0;
+uniform float maxDistance = 89.0;
 uniform float stride = 0.0;
 uniform float strideZCutoff = 103.0;
 uniform float cMaxSteps = 182.0;
