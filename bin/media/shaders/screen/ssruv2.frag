@@ -17,6 +17,7 @@ uniform float minRayStep = 0.1;
 uniform vec3 lightPos;  // in view space
 uniform vec3 cameraPos; // in world space
 uniform float depthEpsilon = 0.001;
+uniform float thickness = 1.2;
 
 in vec2 TexCoords;
 
@@ -172,7 +173,7 @@ vec2 rayCast(vec3 dir,            // in view space
     float depth = getPosition(projectedCoord).z;
     dDepth = hitCoord.z - depth;
 
-    if ((dir.z - dDepth) < 1.2 && dDepth <= 0.0)
+    if ((dir.z - dDepth) < thickness && dDepth <= 0.0)
       return binarySearch(dir, hitCoord, dDepth);
   }
 
