@@ -2,13 +2,12 @@
 in vec3 FragPos;
 out vec4 FragColor;
 
-uniform float roughness;
+uniform float roughness; // float(mip) / float(MaxMipLevel)
 uniform samplerCube envMap;
 uniform float cubemapResolution = 512.0;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
-// learnopengl.com
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
   float a = roughness * roughness;
   float a2 = a * a;

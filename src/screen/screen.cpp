@@ -172,18 +172,6 @@ Shader loadGeometryShader() {
 
   return gShader;
 }
-Shader loadSsaoShader() {
-  fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "ssao.frag";
-  Shader ssaoShader(vpath.c_str(), fpath.c_str());
-  return ssaoShader;
-};
-Shader loadSsaoBlurShader() {
-  fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "ssaoblur.frag";
-  Shader blurShader(vpath.c_str(), fpath.c_str());
-  return blurShader;
-}
 Shader loadUvShader() {
   fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
   fs::path fpath = shaderDirPath / "screen" / "ssruv2.frag";
@@ -210,24 +198,6 @@ Shader loadQuadShader() {
   return uvs;
 }
 
-Shader loadRayConeShader() {
-  fs::path vpath = shaderDirPath / "screen" / "conetrace.vert";
-  fs::path fpath = shaderDirPath / "screen" / "conetrace.frag";
-  Shader coneShader(vpath.c_str(), fpath.c_str());
-  coneShader.shaderName = "coneShader";
-  coneShader.useProgram();
-  return coneShader;
-}
-
-Shader loadHizShader() {
-  fs::path vpath = shaderDirPath / "screen" / "tquad.vert";
-  fs::path fpath = shaderDirPath / "screen" / "hizbuffer.frag";
-  Shader hs(vpath.c_str(), fpath.c_str());
-  hs.shaderName = "hizShader";
-  hs.useProgram();
-  hs.setIntUni("HiZBCopyTexture", 0);
-  return hs;
-}
 
 void setFboTexture(GLuint &tex,
                    GLenum informat,     // GL_RGB16F
@@ -592,144 +562,6 @@ void drawScene(Shader &geometryShader, glm::mat4 view, glm::mat4 model,
                  normalMap2, roughnessMap2, irradianceCubemap, prefilterMap,
                  brdfLutTexture);
 }
-void genHiZBuffer(Shader &hizShader, glm::mat4 view, glm::mat4 model,
-                  GLuint &mipRbo, int mw, int mh, GLuint &HiZBufferTexture,
-                  unsigned int level, GLuint &HiZBCopyTexture, glm::vec2 offs,
-                  GLuint &VisibilityBufferTexture, GLuint &visibilityMap,
-                  glm::vec2 &nearFar) {
-
-  // read from here and write to attached texture of hizFBO
-  glBindRenderbuffer(GL_RENDERBUFFER, mipRbo);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         HiZBufferTexture, // write to this texture
-                         level);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
-                         VisibilityBufferTexture, // write to this texture
-                         level);
-  GLuint attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-  glDrawBuffers(2, attachments);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mw, mh);
-  gerrf();
-  gerr();
-
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, HiZBCopyTexture);
-
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, visibilityMap);
-
-  hizShader.useProgram();
-  hizShader.setIntUni("mipmapLevel", level - 1);
-  hizShader.setVec2Uni("pixelOffset", offs);
-  hizShader.setVec2Uni("nearFar", nearFar);
-  renderQuad();
-  gerr();
-}
-
-struct MipMapInfo {
-  const int width, height;
-  const unsigned int level;
-  MipMapInfo(int w, int h, unsigned int l) : width(w), height(h), level(l) {}
-};
-
-void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms) {
-  glGenTextures(1, &hizTex);
-  float sceneAspectRatio = (float)WINWIDTH / (float)WINHEIGHT;
-  glBindTexture(GL_TEXTURE_2D, hizTex);
-  float imarr[WINWIDTH * WINHEIGHT * 3];
-  std::fill(std::begin(imarr), std::end(imarr), 1.0f);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
-               GL_FLOAT, &imarr);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  ms.clear();
-  int mipw = WINWIDTH;
-  int height = WINHEIGHT;
-  unsigned int level = 0;
-  while (mipw >= 1 && height >= 1) {
-    MipMapInfo msize(mipw, height, level);
-    ms.push_back(msize);
-    mipw = static_cast<int>(mipw / 2);
-    height = static_cast<int>(mipw / sceneAspectRatio);
-    level++;
-  }
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level + 1);
-  for (unsigned int i = 0; i < ms.size(); i++) {
-    MipMapInfo msize = ms[i];
-    std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
-    glTexImage2D(GL_TEXTURE_2D, msize.level, GL_RGB16F, msize.width,
-                 msize.height, 0, GL_RGB, GL_FLOAT, &iarr[0]);
-  }
-}
-void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
-  glGenTextures(1, &hizTexCopy);
-  glBindTexture(GL_TEXTURE_2D, hizTexCopy);
-  float imarr[WINWIDTH * WINHEIGHT * 3];
-  std::fill(std::begin(imarr), std::end(imarr), 1.0f);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
-               GL_FLOAT, &imarr);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, ms.size());
-  for (unsigned int i = 0; i < ms.size(); i++) {
-    MipMapInfo msize = ms[i];
-    std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
-    glTexImage2D(GL_TEXTURE_2D, msize.level, GL_RGB16F, msize.width,
-                 msize.height, 0, GL_RGB, GL_FLOAT, &iarr[0]);
-  }
-}
-
-void genSsaoFbo(GLuint &ssaoFBO, GLuint &ssaoColorTexture) {
-  glGenFramebuffers(1, &ssaoFBO);
-  glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-  glGenTextures(1, &ssaoColorTexture);
-  glBindTexture(GL_TEXTURE_2D, ssaoColorTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, WINWIDTH, WINHEIGHT, 0, GL_RED,
-               GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         ssaoColorTexture, 0);
-  gerrf();
-}
-
-void makeSsaoKernel(std::vector<glm::vec3> &ssaoKernel) {
-  std::uniform_real_distribution<GLfloat> randFloats(0.0, 1.0);
-  std::default_random_engine gen;
-  for (unsigned int i = 0; i < 64; i++) {
-    glm::vec3 sample(randFloats(gen) * 2.0 - 1.0, randFloats(gen) * 2.0 - 1.0,
-                     randFloats(gen));
-    sample = glm::normalize(sample);
-    float scale = float(i) / 64.0;
-    scale = lerp(0.1f, 1.0f, scale * scale);
-    sample *= scale;
-    ssaoKernel.push_back(sample);
-  }
-}
-
-void makeSsaoNoiseVec(std::vector<glm::vec3> &ssaoNoise, GLuint &noiseTexture) {
-  std::uniform_real_distribution<GLfloat> randFloats(0.0, 1.0);
-  std::default_random_engine gen;
-
-  for (unsigned int i = 0; i < 16; i++) {
-    //
-    glm::vec3 noise(randFloats(gen) * 2.0 - 1.0, randFloats(gen) * 2.0 - 1.0,
-                    randFloats(gen));
-    ssaoNoise.push_back(noise);
-  }
-  glGenTextures(1, &noiseTexture);
-  glBindTexture(GL_TEXTURE_2D, noiseTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 4, 0, GL_RGB, GL_FLOAT,
-               &ssaoNoise[0]);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-}
 
 void genUvFbo(GLuint &uvFBO, GLuint &uvTexture) {
   glGenFramebuffers(1, &uvFBO);
@@ -904,50 +736,13 @@ int main() {
 
   // ---------------------- SSAO related ------------------------------------
 
-  GLuint ssaoFBO, ssaoBlurFBO;
-  GLuint ssaoColorTexture = 0, ssaoBlurColorTexture = 0;
-  genSsaoFbo(ssaoFBO, ssaoColorTexture);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  genSsaoFbo(ssaoBlurFBO, ssaoBlurColorTexture);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  std::vector<glm::vec3> ssaoKernel;
-  makeSsaoKernel(ssaoKernel);
-  std::vector<glm::vec3> ssaoNoise;
-  GLuint noiseTexture;
-  makeSsaoNoiseVec(ssaoNoise, noiseTexture);
-
   // uv fbo texture
   GLuint uvFBO, uvTexture;
   genUvFbo(uvFBO, uvTexture);
 
   //--------------------------------- B. rendering ---------------------------
 
-  // hiz buffer
-  GLuint hizFBO, mipRbo;
-  glGenFramebuffers(1, &hizFBO);
-  glBindFramebuffer(GL_FRAMEBUFFER, hizFBO);
-
-  glGenRenderbuffers(1, &mipRbo);
-  glBindRenderbuffer(GL_RENDERBUFFER, mipRbo);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WINWIDTH,
-                        WINHEIGHT);
-
-  // get number of mipmap levels required for texture
-  // generate HiZ texture
-  GLuint HiZBufferTexture = 0;
-  GLuint HiZBCopyTexture = 0;
-  GLuint VisibilityBufferTexture = 0;
-  GLuint visibilityMap = 0;
-  std::vector<MipMapInfo> mipmaps;
-
-  genHiZTexture(HiZBufferTexture, mipmaps);
-  genHiZCopy(HiZBCopyTexture, mipmaps);
-  genHiZCopy(VisibilityBufferTexture, mipmaps);
-  genHiZCopy(visibilityMap, mipmaps);
-
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  Shader hizShader = loadHizShader();
 
   // -----------------------------------------------------------------------
 
@@ -1022,13 +817,6 @@ int main() {
   // ----------------- needed shaders are ------------------------------
   gerr();
 
-  // lightening shader
-  // Shader ssaoShader = loadSsaoShader();
-  // Shader ssaoBlurShader = loadSsaoBlurShader();
-
-  // screen space ray tracing + cone tracing shader
-  // Shader rayConeShader = loadRayConeShader();
-  gerr();
 
   int srcw, srch;
   glfwGetFramebufferSize(window, &srcw, &srch);
@@ -1085,12 +873,6 @@ int main() {
 
   Shader quadShader = loadQuadShader();
 
-  // rayConeShader.useProgram();
-  // rayConeShader.setMat4Uni("projection", projection);
-  // glm::mat4 invp = glm::inverse(projection);
-  // rayConeShader.setMat4Uni("invprojection", invp);
-
-  // geometryShader.setIntUni();
   std::vector<VertexAttrib> geoVa{{0, 3}, {1, 3}, {2, 2}};
   std::vector<VertexAttrib> backVa{{0, 3}};
   std::vector<VertexAttrib> lampVa{{0, 3}, {1, 3}, {2, 2}};

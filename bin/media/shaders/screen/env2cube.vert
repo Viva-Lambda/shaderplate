@@ -9,5 +9,5 @@ uniform mat4 view;
 
 void main() {
   FragPos = aPos;
-  gl_Position = projection * view * vec4(FragPos, 1.0);
+  gl_Position = (projection * view * vec4(FragPos, 1.0)).xyww;
 }

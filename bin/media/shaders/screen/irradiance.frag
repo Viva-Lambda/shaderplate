@@ -49,7 +49,10 @@ void main() {
     float phi = random_double(0.0, 2.0 * PI);
     float theta = random_double(0.0, 0.5 * PI);
     vec3 tansample =
-        vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+        vec3(1.0 * sin(theta) * cos(phi), // x = r * sin(theta)*cos(theta)
+             1.0 * sin(theta) * sin(phi), // y = r *sin(theta) * sin(phi)
+             cos(theta)                   // z
+             );
     vec3 svec = tansample.x * right + tansample.y * up + tansample.z * normal;
     irradiance += texture(envMap, svec).rgb * sin(theta) * cos(theta);
   }

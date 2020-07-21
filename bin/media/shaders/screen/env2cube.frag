@@ -20,6 +20,6 @@ void main() {
   float u, v;
   get_sphere_uv(normalize(FragPos), u, v);
   vec2 uv = vec2(u, v);
-  vec3 color = texture2D(envMap, uv).rgb;
+  vec3 color = texture(envMap, uv).rgb;
   FragColor = vec4(color, 1.0);
 }
