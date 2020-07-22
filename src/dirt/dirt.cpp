@@ -170,7 +170,7 @@ Shader loadEquirectangulareToCubemapShader() {
   return envShader;
 }
 
-Shader multiVCubemapShader() {
+Shader loadMultiVCubemapShader() {
   fs::path vpath = shaderDirPath / "dirt" / "multiCube.vert"; // DONE
   fs::path fpath = shaderDirPath / "dirt" / "multiCube.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
@@ -200,7 +200,7 @@ void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms, GLuint ww,
   glGenTextures(1, &hizTex);
   glBindTexture(GL_TEXTURE_2D, hizTex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
-               GL_FLOAT, &imarr);
+               GL_FLOAT, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -231,34 +231,35 @@ void getSceneViewMats(std::vector<glm::mat4> &sceneViewMats,
   camera.setZoom(CAMERA_FOV);
   sceneViewMats.clear();
   for (GLuint i = 0; i < 6; i++) {
+    float nyaw, npitch;
     switch (i) {
     case 0:
-      float nyaw = 0.0;
+      nyaw = 0.0;
       camera.setYaw(nyaw);
       sceneViewMats[i] = camera.getViewMatrix();
       break;
     case 1:
-      float nyaw = 90.0;
+      nyaw = 90.0;
       camera.setYaw(nyaw);
       sceneViewMats[i] = camera.getViewMatrix();
       break;
     case 2:
-      float nyaw = 180.0;
+      nyaw = 180.0;
       camera.setYaw(nyaw);
       sceneViewMats[i] = camera.getViewMatrix();
       break;
     case 3:
-      float nyaw = 270.0;
+      nyaw = 270.0;
       camera.setYaw(nyaw);
       sceneViewMats[i] = camera.getViewMatrix();
       break;
     case 4:
-      float npitch = -90.0;
+      npitch = -90.0;
       camera.setPitch(npitch);
       sceneViewMats[i] = camera.getViewMatrix();
       break;
     case 5:
-      float npitch = 90.0;
+      npitch = 90.0;
       camera.setPitch(npitch);
       sceneViewMats[i] = camera.getViewMatrix();
       break;
@@ -316,7 +317,7 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
 
 void drawMultiVScene(Shader &multiVCubemapShader, const GLuint SCENE_MAT_NB,
                      const std::vector<glm::mat4> &sceneViewMats,
-                     const float CAMERA_FOV, const glm::mat4 &model,
+                     const float CAMERA_FOV, glm::mat4 &model,
                      const glm::vec2 &nearFar) {
   multiVCubemapShader.useProgram();
   for (GLuint i = 0; i < SCENE_MAT_NB; i++) {
@@ -332,6 +333,7 @@ void drawMultiVScene(Shader &multiVCubemapShader, const GLuint SCENE_MAT_NB,
     renderSphere();
   }
 }
+void drawScene() {}
 
 int main() {
   initializeGLFWMajorMinor(4, 3);
@@ -417,7 +419,7 @@ int main() {
   genCubemapFboTexture(cubemapTex, cubemapFbo, cubemapRbo, WINWIDTH, WINHEIGHT);
 
   // shader multiview cubemap
-  Shader multiVCubemapShader = loadMultiviewCubemapShader();
+  Shader multiVCubemapShader = loadMultiVCubemapShader();
 
   while (!glfwWindowShouldClose(window)) {
     //
@@ -452,7 +454,7 @@ int main() {
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
+    glViewport(0, 0, LOW_WINWIDTH, LOW_WINHEIGHT);
     // 1. Fill depth pass
     // requires: geometry of objects
     // resolution: lower than normal window width/height
@@ -474,7 +476,7 @@ int main() {
     // 3. Direct illumination pass creating a geometry buffer
     // requires: geometry of objects
     // resolution: full screen resolution
-    glViewPort(0, 0, WINWIDTH, WINHEIGHT);
+    glViewport(0, 0, WINWIDTH, WINHEIGHT);
 
     drawScene();
 
@@ -483,14 +485,14 @@ int main() {
     // 4. Trace Pass:
     // requires: screen quad
     // resolution: lower than normal window width/height
-    glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
+    glViewport(0, 0, LOW_WINWIDTH, LOW_WINHEIGHT);
 
     renderQuad();
 
     // 5. Fetch Pass:
     // requires: geometry of objects
     // resolution: full screen
-    glViewPort(0, 0, WINWIDTH, WINHEIGHT);
+    glViewport(0, 0, WINWIDTH, WINHEIGHT);
     drawScene();
 
     // 6. Shade/Resolve Pass:

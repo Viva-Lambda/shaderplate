@@ -171,6 +171,11 @@ add_executable(screenspace.out
     "src/glad.c"
     "src/screen/screen.cpp"
     )
+add_executable(dirt.out 
+    "src/glad.c"
+    "src/dirt/dirt.cpp"
+    )
+
 
 
 #target_link_libraries(myWin.out ${ALL_LIBS})
@@ -204,6 +209,7 @@ target_link_libraries(vct.out ${ALL_LIBS})
 target_link_libraries(defered.out ${ALL_LIBS})
 target_link_libraries(ssao.out ${ALL_LIBS})
 target_link_libraries(screenspace.out ${ALL_LIBS})
+target_link_libraries(dirt.out ${ALL_LIBS})
 #target_link_libraries(simpleCompute.out ${ALL_LIBS})
 #target_link_libraries(compute3d.out ${ALL_LIBS})
 #target_link_libraries(compute01.out ${ALL_LIBS})
@@ -240,6 +246,7 @@ install(TARGETS vct.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS defered.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS ssao.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 install(TARGETS screenspace.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+install(TARGETS dirt.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 #install(TARGETS simpleCompute.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 #install(TARGETS compute3d.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 #install(TARGETS compute01.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
