@@ -3,6 +3,83 @@
 // https://github.com/kvarcg/publications/tree/master/DIRT%20Deferred%20Image-based%20Tracing%20-%20HPG%202016/Shaders%20Only
 #include <custom/utils.hpp>
 
+// --------------------------- processing input etc -------------------------
+
+float deltaTime2 = 0.05;
+void moveCamera2(GLFWwindow *window) {
+  //
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    camera.processKeyboard(FORWARD, deltaTime2);
+  }
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+    camera.processKeyboard(LEFT, deltaTime2);
+  }
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    camera.processKeyboard(BACKWARD, deltaTime2);
+  }
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    camera.processKeyboard(RIGHT, deltaTime2);
+  }
+  if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) {
+    camera.processKeyBoardRotate(LEFT, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) {
+    camera.processKeyBoardRotate(RIGHT, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
+    camera.processKeyBoardRotate(FORWARD, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
+    camera.processKeyBoardRotate(BACKWARD, 0.7f);
+  }
+}
+void moveLight2(GLFWwindow *window) {
+  // move light
+  if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
+    spotLight.position.y += deltaTime2;
+  }
+  if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    spotLight.position.y -= deltaTime2;
+  }
+  if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+    spotLight.position.x += deltaTime2;
+  }
+  if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+    spotLight.position.x -= deltaTime2;
+  }
+  if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+    spotLight.position.z -= deltaTime2; // the axis are inverse
+  }
+  if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+    spotLight.position.z += deltaTime2;
+  }
+}
+
+void rotateLight2(GLFWwindow *window) {
+  // move light
+  if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_LEFT, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_RIGHT, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_FORWARD, 0.7f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
+    spotLight.processKeyBoardRotate(L_BACKWARD, 0.7f);
+  }
+}
+void processInput_proc2(GLFWwindow *window) {
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, true);
+  }
+  moveCamera2(window);
+  moveLight2(window);
+  rotateLight2(window);
+  captureScreen(window);
+}
+
 // --------------------------- texture related --------------------------
 void genTextures1(GLuint &metallicMap, GLuint &baseColorMap, GLuint &normalMap,
                   GLuint &roughnessMap, GLuint &aoMap,
@@ -140,4 +217,26 @@ int main() {
 
   GLuint metallicMap2 = 0, baseColorMap2 = 0, normalMap2 = 0, roughnessMap2 = 0;
   genTextures2(metallicMap2, baseColorMap2, normalMap2, roughnessMap2);
+
+  while (!glfwWindowShouldClose(window)) {
+    //
+    float currentTime = glfwGetTime();
+    deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    processInput_proc2(window);
+    //
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // --------------------------------------------------------------------
+    // shading stages are here
+
+
+    // --------------------------------------------------------------------
+    // swap buffer vs
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
+  glfwTerminate();
+  return 0;
 }
