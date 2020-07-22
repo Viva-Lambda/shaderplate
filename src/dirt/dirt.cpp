@@ -218,6 +218,9 @@ int main() {
   GLuint metallicMap2 = 0, baseColorMap2 = 0, normalMap2 = 0, roughnessMap2 = 0;
   genTextures2(metallicMap2, baseColorMap2, normalMap2, roughnessMap2);
 
+  GLuint LOW_WINHEIGHT = 128;
+  GLuint LOW_WINWIDTH = (GLuint)ASPECT_RATIO * LOW_WINHEIGHT;
+
   while (!glfwWindowShouldClose(window)) {
     //
     float currentTime = glfwGetTime();
@@ -231,6 +234,44 @@ int main() {
     // --------------------------------------------------------------------
     // shading stages are here
 
+    // ----------------------- A. Build Stage -----------------------------
+
+    glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
+    // 1. Fill depth pass
+    // requires: geometry of objects
+    // resolution: lower than normal window width/height
+
+    // 1.1 Mipmap depth pass
+    // requires: full screen quad
+    // resolution: lower than normal window width/height
+
+    renderQuad();
+
+    // 2. Fill primitives pass
+    // requires: geometry of objects
+    // resolution: lower than normal window width/height
+
+    // 3. Direct illumination pass creating a geometry buffer
+    // requires: geometry of objects
+    // resolution: full screen resolution
+    glViewPort(0, 0, WINWIDTH, WINHEIGHT);
+
+    // ----------------------- B. Traversal Stage -------------------------
+
+    // 4. Trace Pass:
+    // requires: screen quad
+    // resolution: lower than normal window width/height
+    glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
+
+    // 5. Fetch Pass:
+    // requires: geometry of objects
+    // resolution: full screen
+    glViewPort(0, 0, WINWIDTH, WINHEIGHT);
+
+    // 6. Shade/Resolve Pass:
+    // requires: full screen quad
+    // resolution: full screen
+    renderQuad();
 
     // --------------------------------------------------------------------
     // swap buffer vs

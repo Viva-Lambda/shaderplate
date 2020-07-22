@@ -25,6 +25,7 @@ fs::path modelPath = current_dir / "media" / "model";
 
 const unsigned int WINWIDTH = 800;
 const unsigned int WINHEIGHT = 600;
+const float ASPECT_RATIO = (float)WINWIDTH / WINHEIGHT;
 
 // camera related
 
