@@ -273,8 +273,8 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
   //
   glGenFramebuffers(1, &cubemapFbo);
   glGenRenderbuffers(1, &cubemapRbo);
-
   glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
+  gerrf();
 
   glGenTextures(1, &cubemapTex);
   glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
@@ -283,6 +283,7 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
   for (GLuint i = 0; i < 6; i++) {
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, ww, wh, 0,
                  GL_RGBA, GL_FLOAT, NULL);
+    gerrf();
   }
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -292,18 +293,12 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
   // bind texture to frame buffer
-  // bind each face to particular attachment
-  GLuint facenb = 6;
-  GLuint attachments[facenb];
-  for (GLuint i = 0; i < facenb; i++) {
-    attachments[i] = GL_COLOR_ATTACHMENT0 + i;
-    glFramebufferTextureLayer(GL_FRAMEBUFFER, attachments[i], cubemapTex,
-                              0, // mipmap level
-                              i  // layer == face for cubemap textures
-                              );
-  }
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex,
+                       0); // mipmap level
+
 
   // setting color attachments
+  GLuint attachments[1] = {GL_COLOR_ATTACHMENT0};
 
   glDrawBuffers(1, attachments);
   gerr();
@@ -313,12 +308,14 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
   glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, ww, wh);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                             GL_RENDERBUFFER, cubemapRbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  gerrf();
 }
 
 void drawMultiVScene(Shader &multiVCubemapShader, const GLuint SCENE_MAT_NB,
                      const std::vector<glm::mat4> &sceneViewMats,
                      const float CAMERA_FOV, glm::mat4 &model,
-                     const glm::vec2 &nearFar) {
+                     GLuint &cubemapTex, const glm::vec2 &nearFar) {
   multiVCubemapShader.useProgram();
   for (GLuint i = 0; i < SCENE_MAT_NB; i++) {
     glm::mat4 view = sceneViewMats[i];
@@ -328,8 +325,9 @@ void drawMultiVScene(Shader &multiVCubemapShader, const GLuint SCENE_MAT_NB,
     multiVCubemapShader.setMat4Uni("view", view);
     multiVCubemapShader.setMat4Uni("model", model);
     multiVCubemapShader.setMat4Uni("projection", projection);
-    multiVCubemapShader.setIntUni("cubeFace", int(i));
-    gerr();
+    glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex,
+                              0, i);
+    gerrf();
     renderSphere();
   }
 }
@@ -439,16 +437,15 @@ int main() {
       // get scene view matrix for setting up cubemap view of the scene
       getSceneViewMats(sceneViewMats, CAMERA_FOV);
       glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
+      gerrf();
 
       // draw gbuffer on steroids
 
-      // shader initialization
-
       // draw scene
       drawMultiVScene(multiVCubemapShader, SCENE_MAT_NB, sceneViewMats,
-                      CAMERA_FOV, model1, nearFar);
+                      CAMERA_FOV, model1, cubemapTex, nearFar);
       drawMultiVScene(multiVCubemapShader, SCENE_MAT_NB, sceneViewMats,
-                      CAMERA_FOV, model2, nearFar);
+                      CAMERA_FOV, model2, cubemapTex, nearFar);
 
       //
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
