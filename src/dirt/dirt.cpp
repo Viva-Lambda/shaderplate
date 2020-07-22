@@ -170,6 +170,24 @@ Shader loadEquirectangulareToCubemapShader() {
   return envShader;
 }
 
+Shader multiVCubemapShader() {
+  fs::path vpath = shaderDirPath / "dirt" / "multiCube.vert"; // DONE
+  fs::path fpath = shaderDirPath / "dirt" / "multiCube.frag"; // DONE
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.shaderName = "multiview";
+  return envShader;
+}
+Shader fillDepthShader() {
+  fs::path vpath = shaderDirPath / "dirt" / "fillDepth.vert"; // DONE
+  fs::path gpath = shaderDirPath / "dirt" / "fillDepth.geom"; // DONE
+  fs::path fpath = shaderDirPath / "dirt" / "fillDepth.frag"; // DONE
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.shaderName = "envShader";
+  envShader.useProgram();
+  envShader.setIntUni("envMap", 0);
+  return envShader;
+}
+
 // hiz buffer related
 
 struct MipMapInfo {
@@ -296,7 +314,24 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
                             GL_RENDERBUFFER, cubemapRbo);
 }
 
-void drawScene();
+void drawMultiVScene(Shader &multiVCubemapShader, const GLuint SCENE_MAT_NB,
+                     const std::vector<glm::mat4> &sceneViewMats,
+                     const float CAMERA_FOV, const glm::mat4 &model,
+                     const glm::vec2 &nearFar) {
+  multiVCubemapShader.useProgram();
+  for (GLuint i = 0; i < SCENE_MAT_NB; i++) {
+    glm::mat4 view = sceneViewMats[i];
+    glm::mat4 projection = glm::perspective(glm::radians(CAMERA_FOV),
+                                            (float)WINWIDTH / (float)WINHEIGHT,
+                                            nearFar.x, nearFar.y);
+    multiVCubemapShader.setMat4Uni("view", view);
+    multiVCubemapShader.setMat4Uni("model", model);
+    multiVCubemapShader.setMat4Uni("projection", projection);
+    multiVCubemapShader.setIntUni("cubeFace", int(i));
+    gerr();
+    renderSphere();
+  }
+}
 
 int main() {
   initializeGLFWMajorMinor(4, 3);
@@ -360,13 +395,29 @@ int main() {
   float farPlane = SCENE_FAR_PLANE;
   glm::vec2 nearFar(nearPlane, farPlane);
   const float CAMERA_FOV = 90.0;
+  const GLuint SCENE_MAT_NB = 6;
 
-  std::vector<glm::mat4> sceneViewMats(6);
+  // scene objects
+  glm::vec3 objectPos = glm::vec3(3.0, -0.5, -3.0);
+  glm::vec3 objectPos2 = glm::vec3(0.5, -0.5, -5.0);
+  glm::mat4 model1 = glm::mat4(1);
+  glm::mat4 model2 = glm::mat4(1);
+
+  model1 = glm::translate(model1, objectPos);
+  model1 = glm::scale(model1, glm::vec3(1.0f));
+
+  model2 = glm::translate(model2, objectPos2);
+  model2 = glm::scale(model2, glm::vec3(1.0f));
+
+  std::vector<glm::mat4> sceneViewMats(SCENE_MAT_NB);
   // generate scene view matrix
 
   // get cubemap render fbo and texture
   GLuint cubemapFbo, cubemapRbo, cubemapTex;
   genCubemapFboTexture(cubemapTex, cubemapFbo, cubemapRbo, WINWIDTH, WINHEIGHT);
+
+  // shader multiview cubemap
+  Shader multiVCubemapShader = loadMultiviewCubemapShader();
 
   while (!glfwWindowShouldClose(window)) {
     //
@@ -376,21 +427,29 @@ int main() {
 
     processInput_proc2(window);
     //
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // --------------------------------------------------------------------
     // shading stages are here
 
     // ----------------------- A. Build Stage -----------------------------
-    // get scene view matrix for setting up cubemap view of the scene
     {
-        getSceneViewMats(sceneViewMats, CAMERA_FOV); 
-        glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
+      // get scene view matrix for setting up cubemap view of the scene
+      getSceneViewMats(sceneViewMats, CAMERA_FOV);
+      glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
 
-        // draw gbuffer on steroids
+      // draw gbuffer on steroids
 
-        //
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      // shader initialization
+
+      // draw scene
+      drawMultiVScene(multiVCubemapShader, SCENE_MAT_NB, sceneViewMats,
+                      CAMERA_FOV, model1, nearFar);
+      drawMultiVScene(multiVCubemapShader, SCENE_MAT_NB, sceneViewMats,
+                      CAMERA_FOV, model2, nearFar);
+
+      //
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
