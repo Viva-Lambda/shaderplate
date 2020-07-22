@@ -273,10 +273,18 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
   // bind texture to frame buffer
-  glFramebufferTexture3D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex, 0);
+  // bind each face to particular attachment
+  GLuint facenb = 6;
+  GLuint attachments[facenb];
+  for (GLuint i = 0; i < facenb; i++) {
+    attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+    glFramebufferTextureLayer(GL_FRAMEBUFFER, attachments[i], cubemapTex,
+                              0, // mipmap level
+                              i  // layer == face for cubemap textures
+                              );
+  }
 
   // setting color attachments
-  GLuint attachments[1] = {GL_COLOR_ATTACHMENT0};
 
   glDrawBuffers(1, attachments);
   gerr();
@@ -375,7 +383,15 @@ int main() {
 
     // ----------------------- A. Build Stage -----------------------------
     // get scene view matrix for setting up cubemap view of the scene
-    getSceneViewMats(sceneViewMats, CAMERA_FOV);
+    {
+        getSceneViewMats(sceneViewMats, CAMERA_FOV); 
+        glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
+
+        // draw gbuffer on steroids
+
+        //
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 
     glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
     // 1. Fill depth pass
