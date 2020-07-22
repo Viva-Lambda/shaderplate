@@ -278,30 +278,43 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
 
   glGenTextures(1, &cubemapTex);
   glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
+  gerr();
 
   // generate faces of cubemap
+  // glTexStorage2D(GL_TEXTURE_CUBE_MAP, 0, GL_RGBA16F, ww, wh);
+  gerr();
+
   for (GLuint i = 0; i < 6; i++) {
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, ww, wh, 0,
-                 GL_RGBA, GL_FLOAT, NULL);
-    gerrf();
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, // level
+                 GL_RGBA16F,                            // internal format
+                 ww, wh,                                // width, height
+                 0, // border
+                 GL_RGBA,                               // format
+                 GL_FLOAT,                              // data type
+                 NULL);
+    gerr();
   }
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
+                  GL_LINEAR);
+  gerr();
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+  gerr();
 
   // bind texture to frame buffer
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex,
                        0); // mipmap level
-
+  gerr();
 
   // setting color attachments
   GLuint attachments[1] = {GL_COLOR_ATTACHMENT0};
 
   glDrawBuffers(1, attachments);
-  gerr();
 
   // create and bind render buffer
   glBindRenderbuffer(GL_RENDERBUFFER, cubemapRbo);
@@ -389,6 +402,9 @@ int main() {
 
   GLuint LOW_WINHEIGHT = 128;
   GLuint LOW_WINWIDTH = (GLuint)ASPECT_RATIO * LOW_WINHEIGHT;
+  GLuint LOW_CUBESIZE =
+      LOW_WINWIDTH > LOW_WINHEIGHT ? LOW_WINWIDTH : LOW_WINHEIGHT;
+  GLuint CUBESIZE = WINWIDTH > WINHEIGHT ? WINWIDTH : WINHEIGHT;
 
   const float SCENE_FAR_PLANE = 1000.0f;
   float nearPlane = 0.1f;
@@ -414,7 +430,7 @@ int main() {
 
   // get cubemap render fbo and texture
   GLuint cubemapFbo, cubemapRbo, cubemapTex;
-  genCubemapFboTexture(cubemapTex, cubemapFbo, cubemapRbo, WINWIDTH, WINHEIGHT);
+  genCubemapFboTexture(cubemapTex, cubemapFbo, cubemapRbo, CUBESIZE, CUBESIZE);
 
   // shader multiview cubemap
   Shader multiVCubemapShader = loadMultiVCubemapShader();
