@@ -1,7 +1,6 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -64,6 +63,15 @@ public:
   Segment getSegmentToPosV4Ortho(glm::vec4 posn);
   glm::vec3 getPosToPosV4Perspective(glm::vec4 posn);
   glm::vec3 getPosToPosV4Ortho(glm::vec4 posn);
+  void setYaw(float nyaw) {
+    yaw = nyaw;
+    updateCameraVectors();
+  }
+  void setPitch(float npitch) {
+    pitch = npitch;
+    updateCameraVectors();
+  }
+  void setZoom(float nzoom) { zoom = nzoom; }
 
 private:
   void updateCameraVectors();

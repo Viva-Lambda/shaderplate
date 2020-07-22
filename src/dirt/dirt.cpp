@@ -4,6 +4,10 @@
 #include <custom/utils.hpp>
 
 // --------------------------- processing input etc -------------------------
+// pitch : up/down
+// yaw : left/right
+// front: target
+// back: -target.z
 
 float deltaTime2 = 0.05;
 void moveCamera2(GLFWwindow *window) {
@@ -166,6 +170,126 @@ Shader loadEquirectangulareToCubemapShader() {
   return envShader;
 }
 
+// hiz buffer related
+
+struct MipMapInfo {
+  const int width, height;
+  const unsigned int level;
+  MipMapInfo(int w, int h, unsigned int l) : width(w), height(h), level(l) {}
+};
+void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms, GLuint ww,
+                   GLuint wh) {
+  glGenTextures(1, &hizTex);
+  glBindTexture(GL_TEXTURE_2D, hizTex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
+               GL_FLOAT, &imarr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glGenerateMipmap(GL_TEXTURE_2D);
+}
+void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
+  glGenTextures(1, &hizTexCopy);
+  glBindTexture(GL_TEXTURE_2D, hizTexCopy);
+  float imarr[WINWIDTH * WINHEIGHT * 3];
+  std::fill(std::begin(imarr), std::end(imarr), 1.0f);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
+               GL_FLOAT, &imarr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  for (unsigned int i = 0; i < ms.size(); i++) {
+    MipMapInfo msize = ms[i];
+    std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
+    glTexImage2D(GL_TEXTURE_2D, msize.level, GL_RGB16F, msize.width,
+                 msize.height, 0, GL_RGB, GL_FLOAT, &iarr[0]);
+  }
+}
+
+void getSceneViewMats(std::vector<glm::mat4> &sceneViewMats,
+                      const float CAMERA_FOV) {
+  camera.setZoom(CAMERA_FOV);
+  sceneViewMats.clear();
+  for (GLuint i = 0; i < 6; i++) {
+    switch (i) {
+    case 0:
+      float nyaw = 0.0;
+      camera.setYaw(nyaw);
+      sceneViewMats[i] = camera.getViewMatrix();
+      break;
+    case 1:
+      float nyaw = 90.0;
+      camera.setYaw(nyaw);
+      sceneViewMats[i] = camera.getViewMatrix();
+      break;
+    case 2:
+      float nyaw = 180.0;
+      camera.setYaw(nyaw);
+      sceneViewMats[i] = camera.getViewMatrix();
+      break;
+    case 3:
+      float nyaw = 270.0;
+      camera.setYaw(nyaw);
+      sceneViewMats[i] = camera.getViewMatrix();
+      break;
+    case 4:
+      float npitch = -90.0;
+      camera.setPitch(npitch);
+      sceneViewMats[i] = camera.getViewMatrix();
+      break;
+    case 5:
+      float npitch = 90.0;
+      camera.setPitch(npitch);
+      sceneViewMats[i] = camera.getViewMatrix();
+      break;
+    }
+  }
+  camera.setZoom(45.0f); // default value
+}
+
+void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
+                          GLuint &cubemapRbo, GLuint ww, GLuint wh) {
+  //
+  glGenFramebuffers(1, &cubemapFbo);
+  glGenRenderbuffers(1, &cubemapRbo);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
+
+  glGenTextures(1, &cubemapTex);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
+
+  // generate faces of cubemap
+  for (GLuint i = 0; i < 6; i++) {
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, ww, wh, 0,
+                 GL_RGBA, GL_FLOAT, NULL);
+  }
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+  // bind texture to frame buffer
+  glFramebufferTexture3D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex, 0);
+
+  // setting color attachments
+  GLuint attachments[1] = {GL_COLOR_ATTACHMENT0};
+
+  glDrawBuffers(1, attachments);
+  gerr();
+
+  // create and bind render buffer
+  glBindRenderbuffer(GL_RENDERBUFFER, cubemapRbo);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, ww, wh);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, cubemapRbo);
+}
+
+void drawScene();
+
 int main() {
   initializeGLFWMajorMinor(4, 3);
   GLFWwindow *window = glfwCreateWindow(
@@ -218,8 +342,23 @@ int main() {
   GLuint metallicMap2 = 0, baseColorMap2 = 0, normalMap2 = 0, roughnessMap2 = 0;
   genTextures2(metallicMap2, baseColorMap2, normalMap2, roughnessMap2);
 
+  // ------------------------------------------------------------------------
+
   GLuint LOW_WINHEIGHT = 128;
   GLuint LOW_WINWIDTH = (GLuint)ASPECT_RATIO * LOW_WINHEIGHT;
+
+  const float SCENE_FAR_PLANE = 1000.0f;
+  float nearPlane = 0.1f;
+  float farPlane = SCENE_FAR_PLANE;
+  glm::vec2 nearFar(nearPlane, farPlane);
+  const float CAMERA_FOV = 90.0;
+
+  std::vector<glm::mat4> sceneViewMats(6);
+  // generate scene view matrix
+
+  // get cubemap render fbo and texture
+  GLuint cubemapFbo, cubemapRbo, cubemapTex;
+  genCubemapFboTexture(cubemapTex, cubemapFbo, cubemapRbo, WINWIDTH, WINHEIGHT);
 
   while (!glfwWindowShouldClose(window)) {
     //
@@ -235,11 +374,15 @@ int main() {
     // shading stages are here
 
     // ----------------------- A. Build Stage -----------------------------
+    // get scene view matrix for setting up cubemap view of the scene
+    getSceneViewMats(sceneViewMats, CAMERA_FOV);
 
     glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
     // 1. Fill depth pass
     // requires: geometry of objects
     // resolution: lower than normal window width/height
+
+    drawScene();
 
     // 1.1 Mipmap depth pass
     // requires: full screen quad
@@ -251,10 +394,14 @@ int main() {
     // requires: geometry of objects
     // resolution: lower than normal window width/height
 
+    drawScene();
+
     // 3. Direct illumination pass creating a geometry buffer
     // requires: geometry of objects
     // resolution: full screen resolution
     glViewPort(0, 0, WINWIDTH, WINHEIGHT);
+
+    drawScene();
 
     // ----------------------- B. Traversal Stage -------------------------
 
@@ -263,10 +410,13 @@ int main() {
     // resolution: lower than normal window width/height
     glViewport(0, 0 LOW_WINWIDTH, LOW_WINHEIGHT);
 
+    renderQuad();
+
     // 5. Fetch Pass:
     // requires: geometry of objects
     // resolution: full screen
     glViewPort(0, 0, WINWIDTH, WINHEIGHT);
+    drawScene();
 
     // 6. Shade/Resolve Pass:
     // requires: full screen quad
