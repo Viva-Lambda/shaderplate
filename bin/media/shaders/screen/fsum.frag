@@ -252,10 +252,14 @@ vec2 IntegrateBRDF(float NdotV, float roughness) {
 
 void main() {
   float u, v;
-  get_sphere_uv(normalize(FragPos), u, v);
-  vec3 irradiance = getIrradianceColor(FragPos);
+  vec3 normal = normalize(FragPos);
+  get_sphere_uv(normal, u, v);
+  vec3 irradiance = getIrradianceColor(normal);
+  vec3 prefilter = getPrefilterColor(normal, roughness);
 
   vec3 V = normalize(viewPos - fpos);
+  float NdotV = dot(normal, V);
+  vec2 brdf = IntegrateBRDF(NdotV, roughness);
   vec2 uv = vec2(u, v);
   vec3 ecolor = texture(envMap, uv).rgb;
   FragColor = vec4(color, 1.0);
