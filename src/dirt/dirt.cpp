@@ -3,7 +3,7 @@
 // https://github.com/kvarcg/publications/tree/master/DIRT%20Deferred%20Image-based%20Tracing%20-%20HPG%202016/Shaders%20Only
 #include <custom/utils.hpp>
 
-// texture related
+// --------------------------- texture related --------------------------
 void genTextures1(GLuint &metallicMap, GLuint &baseColorMap, GLuint &normalMap,
                   GLuint &roughnessMap, GLuint &aoMap,
                   GLuint &environmentHdrMap) {
@@ -76,6 +76,17 @@ void activateTextures2(GLuint &metallicMap2, GLuint &baseColorMap2,
   glActiveTexture(GL_TEXTURE3);
   glBindTexture(GL_TEXTURE_2D, metallicMap2);
   gerr();
+}
+
+// ---------------------- Shaders -------------------------------------
+Shader loadEquirectangulareToCubemapShader() {
+  fs::path vpath = shaderDirPath / "dirt" / "env2cube.vert"; // DONE
+  fs::path fpath = shaderDirPath / "dirt" / "env2cube.frag"; // DONE
+  Shader envShader(vpath.c_str(), fpath.c_str());
+  envShader.shaderName = "envShader";
+  envShader.useProgram();
+  envShader.setIntUni("envMap", 0);
+  return envShader;
 }
 
 int main() {
