@@ -230,7 +230,6 @@ void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
 void getSceneViewMats(std::vector<glm::mat4> &sceneViewMats,
                       const float CAMERA_FOV) {
   camera.setZoom(CAMERA_FOV);
-  sceneViewMats.clear();
   for (GLuint i = 0; i < 6; i++) {
     float nyaw, npitch;
     switch (i) {
@@ -363,7 +362,7 @@ struct CubemapInfo {
   glm::vec4 viewport;
   std::vector<glm::vec4> frustum_corners;
 };
-CubemapInfo getCubeInfo(std::vector<glm::mat4> sceneViewMats,
+CubemapInfo getCubeInfo(std::vector<glm::mat4> &sceneViewMats,
                         glm::mat4 projection, float cubeSize, int cubeIndex) {
   CubemapInfo cinfo;
   glm::mat4 view = sceneViewMats[cubeIndex];
@@ -383,7 +382,7 @@ CubemapInfo getCubeInfo(std::vector<glm::mat4> sceneViewMats,
 }
 
 void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
-                     const std::vector<glm::mat4> &sceneViewMats,
+                     std::vector<glm::mat4> &sceneViewMats,
                      const float CAMERA_FOV, glm::mat4 &model, GLuint CUBESIZE,
                      GLuint &cubemapTex, const glm::vec2 &nearFar) {
   fillDepthShader.useProgram();
@@ -400,8 +399,8 @@ void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
     fillDepthShader.setMat4Uni("model", model); // vertex shader
     fillDepthShader.setMat4Uni("ModelViewProjection[" + std::to_string(i) + "]",
                                MVP);
-    fillDepthShader.setMat4Uni("ModelView" + std::to_string(i) + "]", MV);
-    fillDepthShader.setVec4Uni("Viewports" + std::to_string(i) + "]",
+    fillDepthShader.setMat4Uni("ModelView[" + std::to_string(i) + "]", MV);
+    fillDepthShader.setVec4Uni("Viewports[" + std::to_string(i) + "]",
                                cinfo.viewport);
     fillDepthShader.setVec2Uni("NearFar[" + std::to_string(i) + "]",
                                cinfo.NearFar);
@@ -459,6 +458,7 @@ int main() {
   // define opengl states
   // -----------------------------
   glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LEQUAL); 
 
   // setting up textures
   // --------------------
@@ -542,8 +542,9 @@ int main() {
     {
       // get scene view matrix for setting up cubemap view of the scene
       getSceneViewMats(sceneViewMats, CAMERA_FOV);
-      glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
       gerrf();
+      gerr();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       // draw gbuffer on steroids

@@ -142,9 +142,9 @@ vec2 clip(int cface, vec3 p1, vec3 p2, vec3 p3) {
 }
 
 void main() {
-  vec3 p1 = triangle_vertices_ws[0];
-  vec3 p2 = triangle_vertices_ws[1];
-  vec3 p3 = triangle_vertices_ws[2];
+  vec3 p1 = triangle_vertices_ws[0].xyz;
+  vec3 p2 = triangle_vertices_ws[1].xyz;
+  vec3 p3 = triangle_vertices_ws[2].xyz;
   vec2 depth_bound = clip(cube_face, p1, p2, p3);
   FragDepthBound.xy = vec2(-depth_bound.x, depth_bound.y);
 }

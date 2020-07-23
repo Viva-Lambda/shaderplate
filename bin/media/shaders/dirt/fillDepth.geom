@@ -2,8 +2,8 @@
 layout(triangles) in;
 // geometry shader for rendering to cubemap
 // in a single pass
-//
-layout(triangle_strip, max_vertices = 6 * 3) out;
+// 6*3
+layout(triangle_strip, max_vertices = 18) out; // 6 * 3
 layout(binding = 2, std430) writeonly buffer TriangleBuffer {
   mat4 triangle_vertices_normal;
   mat4 triangle_tangents;
@@ -28,8 +28,9 @@ vec3 computeTriangleNormal(vec3 p1, vec3 p2, vec3 p3) {
 }
 
 void main() {
-  for (uint i = 0; i < 3; i++) {
-    triangle_vertices_ws[i] = FragPosWS[i];
+  for (int i = 0; i < 3; i++) {
+    triangle_vertices_ws[i].xyz = FragPosWS[i];
+    triangle_vertices_ws[i].w = 0.0;
     triangle_vertices_normal[i].xyz = FragPosWS[i];
     triangle_vertices_normal[i].w = 0.0;
     triangle_tangents[i].xyz = TangentWS[i];
@@ -42,13 +43,13 @@ void main() {
   vec3 p3 = FragPosWS[2];
 
   triangle_vertices_normal[3].xyz = computeTriangleNormal(p1, p2, p3);
-  triangle_vertices_normal[4].w = 0.0;
+  triangle_vertices_normal[3].w = 0.0;
 
-  for (uint i = 0; i < NB_FACES; i++) {
+  for (int i = 0; i < NB_FACES; i++) {
     gl_ViewportIndex = i;
     cube_face = i;
 
-    for (uint k = 0; k < gl_in.length(); k++) {
+    for (int k = 0; k < gl_in.length(); k++) {
       gl_Position = ModelViewProjection[i] * vec4(FragPosWS[k], 1.0);
 
       //
