@@ -445,4 +445,30 @@ GLuint loadA2DTexture() {
   return stone_texture;
 }
 
+glm::vec4 getNdcFromFrag(glm::vec4 frag, glm::vec4 viewport,
+                         glm::vec2 nearFar) {
+  //
+  glm::vec4 ndc;
+  glm::vec2 viewxy = glm::vec2(viewport.x, viewport.y);
+  glm::vec2 viewzw = glm::vec2(viewport.z, viewport.w);
+  glm::vec2 fragxy = glm::vec2(frag.x, frag.y);
+  fragxy *= 2.0;
+  viewxy *= 2.0;
+  fragxy -= viewxy;
+  fragxy /= viewzw;
+  fragxy -= 1.0;
+  glm::vec2 nd2 = fragxy;
+  ndc.x = nd2.x;
+  ndc.y = nd2.y;
+  ndc.z = (2.0 * frag.z - nearFar.x - nearFar.y) / (nearFar.y - nearFar.x);
+  ndc.w = 1.0;
+  return ndc;
+}
+
+glm::vec4 getClipFromFrag(glm::vec4 frag, glm::vec4 viewport,
+                          glm::vec2 nearFar) {
+  glm::vec4 ndc = getNdcFromFrag(frag, viewport, nearFar);
+  return ndc / frag.w;
+}
+
 #endif

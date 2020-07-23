@@ -172,19 +172,20 @@ Shader loadEquirectangulareToCubemapShader() {
 
 Shader loadMultiVCubemapShader() {
   fs::path vpath = shaderDirPath / "dirt" / "multiCube.vert"; // DONE
+  fs::path gpath = shaderDirPath / "dirt" / "multiCube.geom"; // DONE
   fs::path fpath = shaderDirPath / "dirt" / "multiCube.frag"; // DONE
   Shader envShader(vpath.c_str(), fpath.c_str());
   envShader.shaderName = "multiview";
   return envShader;
 }
-Shader fillDepthShader() {
-  fs::path vpath = shaderDirPath / "dirt" / "fillDepth.vert"; // DONE
-  fs::path gpath = shaderDirPath / "dirt" / "fillDepth.geom"; // DONE
-  fs::path fpath = shaderDirPath / "dirt" / "fillDepth.frag"; // DONE
-  Shader envShader(vpath.c_str(), fpath.c_str());
-  envShader.shaderName = "envShader";
-  envShader.useProgram();
-  envShader.setIntUni("envMap", 0);
+Shader loadFillDepthShader() {
+  std::vector<fs::path> paths = {
+      shaderDirPath / "dirt" / "fillDepth.vert",
+      shaderDirPath / "dirt" / "fillDepth.geom",  // DONE
+      shaderDirPath / "dirt" / "fillDepth.frag"}; // DONE
+  std::vector<std::string> strs = {"VERTEX", "GEOMETRY", "FRAGMENT"};
+  Shader envShader(paths, strs);
+  envShader.shaderName = "fillDepthShader";
   return envShader;
 }
 
@@ -268,16 +269,54 @@ void getSceneViewMats(std::vector<glm::mat4> &sceneViewMats,
   camera.setZoom(45.0f); // default value
 }
 
+void getFrustumCorners(glm::mat4 invVP, std::vector<glm::vec4> &corners) {
+  //
+  glm::vec4 localCorner[8] = {
+      glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f),
+      glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f),  glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f),
+      glm::vec4(1.0f, -1.0f, 1.0f, 1.0f),  glm::vec4(1.0f, -1.0f, -1.0f, 1.0f),
+      glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),   glm::vec4(1.0f, 1.0f, -1.0f, 1.0f)};
+  for (GLuint i = 0; i < 8; i++) {
+    corners[i] = invVP * localCorner[i];
+    corners[i] /= corners[i].w;
+  }
+}
+void getViewPort(glm::mat4 projection, glm::vec4 &viewport, float cubeSize) {
+  glm::vec4 localCorners[4] = {
+      glm::vec4(0.0, 0.0, 1.0, 1.0), // bottom left
+      glm::vec4(1.0, 0.0, 1.0, 1.0), // bottom right
+      glm::vec4(0.0, 1.0, 1.0, 1.0), // top left
+      glm::vec4(1.0, 1.0, 1.0, 1.0)  // top right
+  };
+  for (GLuint i = 0; i < 4; i++) {
+    glm::vec4 viewp = glm::vec4(0, 0, cubeSize, cubeSize);
+    glm::vec2 nearFar = glm::vec2(cubeSize);
+    glm::vec2 localClip = getClipFromFrag(localCorners[i], viewp, nearFar);
+  }
+}
+
 void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
                           GLuint &cubemapRbo, GLuint ww, GLuint wh) {
   //
   glGenFramebuffers(1, &cubemapFbo);
   glGenRenderbuffers(1, &cubemapRbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
-  gerrf();
-
   glGenTextures(1, &cubemapTex);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
+  gerrf();
+  gerr();
+
   glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
+  gerr();
+
+  // setup texture parameters
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
   gerr();
 
   // generate faces of cubemap
@@ -288,21 +327,12 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, // level
                  GL_RGBA16F,                            // internal format
                  ww, wh,                                // width, height
-                 0, // border
+                 0,                                     // border
                  GL_RGBA,                               // format
                  GL_FLOAT,                              // data type
                  NULL);
     gerr();
   }
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR_MIPMAP_LINEAR);
-  gerr();
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
-                  GL_LINEAR);
-  gerr();
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
   glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
   gerr();
 
@@ -325,26 +355,75 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
   gerrf();
 }
 
-void drawMultiVScene(Shader &multiVCubemapShader, const GLuint SCENE_MAT_NB,
+struct CubemapInfo {
+  glm::vec2 NearFar;
+  int cube_index;
+  glm::mat4 view;
+  glm::mat4 projection;
+  glm::vec4 viewport;
+  std::vector<glm::vec4> frustum_corners;
+};
+CubemapInfo getCubeInfo(std::vector<glm::mat4> sceneViewMats,
+                        glm::mat4 projection, float cubeSize, int cubeIndex) {
+  CubemapInfo cinfo;
+  glm::mat4 view = sceneViewMats[cubeIndex];
+  glm::mat4 invVP = glm::inverse(projection * view);
+  glm::vec2 nfar = glm::vec2(0.1,     // near
+                             cubeSize // far
+                             );
+  std::vector<glm::vec4> corners(8);
+  getFrustumCorners(invVP, corners);
+  cinfo.view = view;
+  cinfo.projection = projection;
+  cinfo.viewport = glm::vec4(0, 0, cubeSize, cubeSize);
+  cinfo.frustum_corners = corners;
+  cinfo.cube_index = cubeIndex;
+  cinfo.NearFar = nfar;
+  return cinfo;
+}
+
+void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
                      const std::vector<glm::mat4> &sceneViewMats,
-                     const float CAMERA_FOV, glm::mat4 &model,
+                     const float CAMERA_FOV, glm::mat4 &model, GLuint CUBESIZE,
                      GLuint &cubemapTex, const glm::vec2 &nearFar) {
-  multiVCubemapShader.useProgram();
+  fillDepthShader.useProgram();
+  glm::mat4 projection = glm::perspective(glm::radians(CAMERA_FOV),
+                                          (float)WINWIDTH / (float)WINHEIGHT,
+                                          nearFar.x, nearFar.y);
+
   for (GLuint i = 0; i < SCENE_MAT_NB; i++) {
-    glm::mat4 view = sceneViewMats[i];
-    glm::mat4 projection = glm::perspective(glm::radians(CAMERA_FOV),
-                                            (float)WINWIDTH / (float)WINHEIGHT,
-                                            nearFar.x, nearFar.y);
-    multiVCubemapShader.setMat4Uni("view", view);
-    multiVCubemapShader.setMat4Uni("model", model);
-    multiVCubemapShader.setMat4Uni("projection", projection);
-    glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex,
-                              0, i);
+    CubemapInfo cinfo =
+        getCubeInfo(sceneViewMats, projection, CUBESIZE, int(i));
+
+    glm::mat4 MVP = cinfo.projection * cinfo.view * model;
+    glm::mat4 MV = cinfo.view * model;
+    fillDepthShader.setMat4Uni("model", model); // vertex shader
+    fillDepthShader.setMat4Uni("ModelViewProjection[" + std::to_string(i) + "]",
+                               MVP);
+    fillDepthShader.setMat4Uni("ModelView" + std::to_string(i) + "]", MV);
+    fillDepthShader.setVec4Uni("Viewports" + std::to_string(i) + "]",
+                               cinfo.viewport);
+    fillDepthShader.setVec2Uni("NearFar[" + std::to_string(i) + "]",
+                               cinfo.NearFar);
+    fillDepthShader.setIntUni("cube_index", cinfo.cube_index);
+    for (GLuint c = 0; c < 8; c++) {
+      glm::vec4 corner = cinfo.frustum_corners[c];
+      glm::vec3 fcorner = glm::vec3(corner.x, corner.y, corner.z);
+      fillDepthShader.setVec3Uni(
+          "FrustumCorners[" + std::to_string(i * c) + "]", fcorner);
+    }
     gerrf();
+    gerr();
     renderSphere();
   }
 }
 void drawScene() {}
+
+struct TriangleBuffer {
+  glm::mat4 triangle_vertices_normal;
+  glm::mat4 triangle_tangents;
+  glm::mat2 triangle_textures;
+};
 
 int main() {
   initializeGLFWMajorMinor(4, 3);
@@ -398,6 +477,14 @@ int main() {
   GLuint metallicMap2 = 0, baseColorMap2 = 0, normalMap2 = 0, roughnessMap2 = 0;
   genTextures2(metallicMap2, baseColorMap2, normalMap2, roughnessMap2);
 
+  // ------------------- make ssbo --------------------
+  GLuint triangleBlock;
+  glGenBuffers(1, &triangleBlock);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(TriangleBuffer), NULL,
+               GL_STATIC_DRAW);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, triangleBlock);
+
   // ------------------------------------------------------------------------
 
   GLuint LOW_WINHEIGHT = 128;
@@ -428,12 +515,15 @@ int main() {
   std::vector<glm::mat4> sceneViewMats(SCENE_MAT_NB);
   // generate scene view matrix
 
+  // scene cubemap properties
+
   // get cubemap render fbo and texture
-  GLuint cubemapFbo, cubemapRbo, cubemapTex;
-  genCubemapFboTexture(cubemapTex, cubemapFbo, cubemapRbo, CUBESIZE, CUBESIZE);
+  GLuint cubemapFbo, cubemapRbo, cubemapDepthTex;
+  genCubemapFboTexture(cubemapDepthTex, cubemapFbo, cubemapRbo, CUBESIZE,
+                       CUBESIZE);
 
   // shader multiview cubemap
-  Shader multiVCubemapShader = loadMultiVCubemapShader();
+  Shader fillDepthShader = loadFillDepthShader();
 
   while (!glfwWindowShouldClose(window)) {
     //
@@ -454,14 +544,15 @@ int main() {
       getSceneViewMats(sceneViewMats, CAMERA_FOV);
       glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
       gerrf();
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       // draw gbuffer on steroids
 
       // draw scene
-      drawMultiVScene(multiVCubemapShader, SCENE_MAT_NB, sceneViewMats,
-                      CAMERA_FOV, model1, cubemapTex, nearFar);
-      drawMultiVScene(multiVCubemapShader, SCENE_MAT_NB, sceneViewMats,
-                      CAMERA_FOV, model2, cubemapTex, nearFar);
+      drawMultiVScene(fillDepthShader, SCENE_MAT_NB, sceneViewMats, CAMERA_FOV,
+                      model1, CUBESIZE, cubemapDepthTex, nearFar);
+      drawMultiVScene(fillDepthShader, SCENE_MAT_NB, sceneViewMats, CAMERA_FOV,
+                      model2, CUBESIZE, cubemapDepthTex, nearFar);
 
       //
       glBindFramebuffer(GL_FRAMEBUFFER, 0);

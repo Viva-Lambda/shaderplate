@@ -2,19 +2,19 @@
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec2 aTangent;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
 
-out vec2 TexCoord;
-out vec3 Normal;
-out vec4 FragPosVS;
+out vec3 FragPosWS; // output just positions for now
+out vec2 TexCoords; // output just positions for now
+out vec3 Normal;    // output just positions for now
+out vec3 TangentWS; // output just positions for now
 
 void main() {
-  vec3 FragPos = vec3(model * vec4(aPos, 1.0));
-  FragPosVS = view * vec4(FragPos, 1.0);
+  FragPosWS = vec3(model * vec4(aPos, 1.0));
   Normal = vec3(model * vec4(aNormal, 1.0));
-  TexCoord = aTexCoord;
-  gl_Position = projection * FragPosVS;
+  TangentWS = vec3(model * vec4(aTangent, 1.0));
+  TexCoords = aTexCoord;
+  gl_Position = FragPosWS;
 }
