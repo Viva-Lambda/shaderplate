@@ -280,7 +280,7 @@ void genCubemapTexture(GLuint &cubeArrTex, std::vector<MipMapInfo> &ms,
   glGenTextures(1, &cubeArrTex);
   gerr();
   glBindTexture(GL_TEXTURE_2D_ARRAY, cubeArrTex);
-  int nblayer = 0;
+  int nblayer = 6;
 
   glTexStorage3D(GL_TEXTURE_2D_ARRAY,
                  0, // mipmap level count
@@ -322,7 +322,7 @@ void genCubemapCopyTexture(GLuint &cubemapArrTex, std::vector<MipMapInfo> &ms,
   glGenTextures(1, &cubemapArrTex);
   gerr();
   glBindTexture(GL_TEXTURE_2D_ARRAY, cubemapArrTex);
-  int nblayer = 0;
+  int nblayer = 6;
   glTexStorage3D(GL_TEXTURE_2D_ARRAY,
                  0, // mipmap level count
                  GL_RGBA16F, cubeSize, cubeSize, nblayer);
@@ -355,7 +355,6 @@ void genCubemapCopyTexture(GLuint &cubemapArrTex, std::vector<MipMapInfo> &ms,
                     cubeSize,                               // height
                     nblayer,                                // num layer
                     GL_RGBA, GL_FLOAT, NULL);
-
   }
 
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevel + 1);
@@ -363,20 +362,20 @@ void genCubemapCopyTexture(GLuint &cubemapArrTex, std::vector<MipMapInfo> &ms,
   // glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
   gerr();
 }
-void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubeCopy,
+void genCubemapFboTexture(GLuint &cube2dArrTex, GLuint &cube2dArrCopy,
                           std::vector<MipMapInfo> ms, GLuint &cubemapFbo,
                           GLuint &cubemapRbo, GLuint ww, GLuint wh) {
   //
   glGenFramebuffers(1, &cubemapFbo);
   gerr();
-  genCubemapTexture(cubemapTex, ms, ww);
-  genCubemapCopyTexture(cubeCopy, ms, ww);
+  genCubemapTexture(cube2dArrTex, ms, ww);
+  genCubemapCopyTexture(cube2dArrCopy, ms, ww);
 
   glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
   gerrf();
 
   // bind texture to frame buffer
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex,
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cube2dArrTex,
                        0); // mipmap level
   gerr();
 
@@ -391,7 +390,7 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubeCopy,
 
 struct CubemapInfo {
   glm::vec2 NearFar;
-  int cube_index;
+  int cube_index_layer;
   glm::mat4 view;
   glm::mat4 projection;
   glm::vec4 viewport;
@@ -411,16 +410,16 @@ CubemapInfo getCubeInfo(std::vector<glm::mat4> &sceneViewMats,
   cinfo.projection = projection;
   cinfo.viewport = glm::vec4(0, 0, cubeSize, cubeSize);
   cinfo.frustum_corners = corners;
-  cinfo.cube_index = cubeIndex;
+  cinfo.cube_index_layer = cubeIndex;
   cinfo.NearFar = nfar;
   return cinfo;
 }
 
-void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
-                     std::vector<glm::mat4> &sceneViewMats,
-                     const float CAMERA_FOV, glm::mat4 &model, GLuint CUBESIZE,
-                     GLuint &cubemapTex, const glm::vec2 &nearFar, GLuint ww,
-                     GLuint wh) {
+void drawFillDepthPass(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
+                       std::vector<glm::mat4> &sceneViewMats,
+                       const float CAMERA_FOV, glm::mat4 &model,
+                       GLuint CUBESIZE, GLuint &cubemapTex,
+                       const glm::vec2 &nearFar, GLuint ww, GLuint wh) {
   fillDepthShader.useProgram();
   glm::mat4 projection = glm::perspective(
       glm::radians(CAMERA_FOV), (float)ww / (float)wh, nearFar.x, nearFar.y);
@@ -439,7 +438,7 @@ void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
                                cinfo.viewport);
     fillDepthShader.setVec2Uni("NearFar[" + std::to_string(i) + "]",
                                cinfo.NearFar);
-    fillDepthShader.setIntUni("cube_index", cinfo.cube_index);
+    fillDepthShader.setIntUni("cube_index", cinfo.cube_index_layer);
     for (GLuint c = 0; c < 8; c++) {
       glm::vec4 corner = cinfo.frustum_corners[c];
       glm::vec3 fcorner = glm::vec3(corner.x, corner.y, corner.z);
@@ -451,12 +450,14 @@ void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
     renderSphere();
   }
 }
-void drawScreenQuad(Shader mipmapShader, GLuint &cubemapCopyTex) {
+void drawMipmapDepthPass(Shader mipmapShader, GLuint &cube2dArrCopyTex,
+                         GLuint cube_index_layer) {
   mipmapShader.useProgram();
   mipmapShader.setIntUni("cubeDepth", 0);
+  mipmapShader.setIntUni("cube_face", static_cast<int>(cube_index_layer));
 
-  glActiveTexture(cubemapCopyTex);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapCopyTex);
+  glActiveTexture(cube2dArrCopyTex);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, cube2dArrCopyTex);
 
   renderQuad();
 }
@@ -604,12 +605,12 @@ int main() {
       // draw gbuffer on steroids
 
       // draw scene
-      drawMultiVScene(fillDepthShader, SCENE_MAT_NB, sceneViewMats, CAMERA_FOV,
-                      model1, CUBESIZE, cubemapDepthTex, nearFar, LOW_WINWIDTH,
-                      LOW_WINHEIGHT);
-      drawMultiVScene(fillDepthShader, SCENE_MAT_NB, sceneViewMats, CAMERA_FOV,
-                      model2, CUBESIZE, cubemapDepthTex, nearFar, LOW_WINWIDTH,
-                      LOW_WINHEIGHT);
+      drawFillDepthPass(fillDepthShader, SCENE_MAT_NB, sceneViewMats,
+                        CAMERA_FOV, model1, CUBESIZE, cubemapDepthTex, nearFar,
+                        LOW_WINWIDTH, LOW_WINHEIGHT);
+      drawFillDepthPass(fillDepthShader, SCENE_MAT_NB, sceneViewMats,
+                        CAMERA_FOV, model2, CUBESIZE, cubemapDepthTex, nearFar,
+                        LOW_WINWIDTH, LOW_WINHEIGHT);
 
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -618,24 +619,46 @@ int main() {
     // requires: full screen quad
     // resolution: lower than normal window width/height
     {
+      glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
       glClear(GL_COLOR_BUFFER_BIT);
-      glCopyImageSubData(cubemapDepthTex, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
-                         cubemapDepthCopyTex, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+
+      // copy previously drawn to copy texture
+      glCopyImageSubData(cubemapDepthTex, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0,
+                         cubemapDepthCopyTex, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0,
                          LOW_WINWIDTH, LOW_WINHEIGHT, 0);
       gerr();
-      // copy previously written mipmap to current
+
+      // implement mipmap logic:
+      // 1. write to texture by sampling from copy
+      // 2. copy drawn to copy texture
       for (GLuint i = 0; i < ms.size(); i++) {
         MipMapInfo minfo = ms[i];
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         int width = minfo.width;
         int height = minfo.height;
         GLuint level = minfo.level;
         glViewport(0, 0, width, height);
+        // 1. write to texture by sampling from copy for each layer
+        // cube == 6 layers
+        for (GLuint f = 0; f < 6; f++) {
+          drawMipmapDepthPass(mipmapShader, cubemapDepthCopyTex, f);
+        }
 
-        glCopyImageSubData(cubemapDepthTex, GL_TEXTURE_CUBE_MAP, level, 0, 0, 0,
-                           cubemapDepthCopyTex, GL_TEXTURE_CUBE_MAP, level, 0,
-                           0, 0, width, height, 0);
+        // 2. copy drawn to copy texture
+        //
+        glCopyImageSubData(cubemapDepthTex, GL_TEXTURE_2D_ARRAY, level,
+                           0,                   // srcX
+                           0,                   // srcY
+                           0,                   // srcZ == start layer
+                           cubemapDepthCopyTex, // destname
+                           GL_TEXTURE_2D_ARRAY, // dest target
+                           level,               // dest level
+                           0,                   // destX
+                           0,                   // destY
+                           0,                   //  destZ == start layer
+                           width, height,       // srcWidth, srcHeight
+                           6                    // srcDepth == nb layer to copy
+                           );
         gerr();
       }
       glViewport(0, 0, LOW_WINWIDTH, LOW_WINHEIGHT);
