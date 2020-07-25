@@ -7,6 +7,7 @@ include_directories(
     # my headers
     "./include/"
     )
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 set( GLFW_SHARED_LIB
@@ -38,7 +39,7 @@ set( ASSIMP_LIBS
 
 set (CMAKE_CXX_FLAGS "-std=c++17")
 
-set (FLAGS "-ldl -ggdb -Wall -Wextra")
+set (FLAGS "-ldl -ggdb -Wall -Wextra -pedantic -Wextra-tokens")
 
 set ( ALL_LIBS
     ${OpenGL}

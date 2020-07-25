@@ -1,6 +1,7 @@
 // implementing dirt from
 // Kostas Vardis Phd with help from
 // https://github.com/kvarcg/publications/tree/master/DIRT%20Deferred%20Image-based%20Tracing%20-%20HPG%202016/Shaders%20Only
+#include "custom/renderer.hpp"
 #include <custom/utils.hpp>
 
 // --------------------------- processing input etc -------------------------
@@ -188,6 +189,15 @@ Shader loadFillDepthShader() {
   envShader.shaderName = "fillDepthShader";
   return envShader;
 }
+Shader loadMipmapFillDepthShader() {
+  std::vector<fs::path> paths = {shaderDirPath / "dirt" / "tquad.vert",
+                                 shaderDirPath / "dirt" /
+                                     "fillDepthMipmap.frag"}; // DONE
+  std::vector<std::string> strs = {"VERTEX", "FRAGMENT"};
+  Shader envShader(paths, strs);
+  envShader.shaderName = "fillDepthMipmapShader";
+  return envShader;
+}
 
 // hiz buffer related
 
@@ -196,36 +206,6 @@ struct MipMapInfo {
   const unsigned int level;
   MipMapInfo(int w, int h, unsigned int l) : width(w), height(h), level(l) {}
 };
-void genHiZTexture(GLuint &hizTex, std::vector<MipMapInfo> &ms, GLuint ww,
-                   GLuint wh) {
-  glGenTextures(1, &hizTex);
-  glBindTexture(GL_TEXTURE_2D, hizTex);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
-               GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glGenerateMipmap(GL_TEXTURE_2D);
-}
-void genHiZCopy(GLuint &hizTexCopy, std::vector<MipMapInfo> &ms) {
-  glGenTextures(1, &hizTexCopy);
-  glBindTexture(GL_TEXTURE_2D, hizTexCopy);
-  float imarr[WINWIDTH * WINHEIGHT * 3];
-  std::fill(std::begin(imarr), std::end(imarr), 1.0f);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WINWIDTH, WINHEIGHT, 0, GL_RGB,
-               GL_FLOAT, &imarr);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  for (unsigned int i = 0; i < ms.size(); i++) {
-    MipMapInfo msize = ms[i];
-    std::vector<float> iarr(msize.width * msize.height * 3, 1.0f);
-    glTexImage2D(GL_TEXTURE_2D, msize.level, GL_RGB16F, msize.width,
-                 msize.height, 0, GL_RGB, GL_FLOAT, &iarr[0]);
-  }
-}
 
 void getSceneViewMats(std::vector<glm::mat4> &sceneViewMats,
                       const float CAMERA_FOV) {
@@ -294,46 +274,106 @@ void getViewPort(glm::mat4 projection, glm::vec4 &viewport, float cubeSize) {
   }
 }
 
-void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
+void genCubemapTexture(GLuint &cubeArrTex, std::vector<MipMapInfo> &ms,
+                       GLuint cubeSize) {
+  //
+  glGenTextures(1, &cubeArrTex);
+  gerr();
+  glBindTexture(GL_TEXTURE_2D_ARRAY, cubeArrTex);
+  int nblayer = 0;
+
+  glTexStorage3D(GL_TEXTURE_2D_ARRAY,
+                 0, // mipmap level count
+                 GL_RGBA16F, cubeSize, cubeSize, nblayer);
+
+  gerr();
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, cubeSize, // width
+                  cubeSize,                                  // height
+                  nblayer,                                   // num layer
+                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+  // setup texture parameters
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  gerr();
+  int mipw = static_cast<int>(cubeSize);
+  ms.clear();
+  GLuint mipLevel = 1;
+  while (mipw >= 1) {
+    MipMapInfo minfo = MipMapInfo(mipw, mipw, mipLevel);
+    ms.push_back(minfo);
+    mipw = static_cast<int>((float)mipw / 2);
+    mipLevel++;
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, mipLevel, GL_RGBA16F, mipw, mipw, nblayer,
+                 0, GL_RGBA, GL_FLOAT, NULL);
+  }
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevel + 1);
+
+  // glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+  gerr();
+}
+void genCubemapCopyTexture(GLuint &cubemapArrTex, std::vector<MipMapInfo> &ms,
+                           GLuint cubeSize) {
+  //
+  glGenTextures(1, &cubemapArrTex);
+  gerr();
+  glBindTexture(GL_TEXTURE_2D_ARRAY, cubemapArrTex);
+  int nblayer = 0;
+  glTexStorage3D(GL_TEXTURE_2D_ARRAY,
+                 0, // mipmap level count
+                 GL_RGBA16F, cubeSize, cubeSize, nblayer);
+
+  gerr();
+  // setup texture parameters
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, cubeSize, // width
+                  cubeSize,                                  // height
+                  nblayer,                                   // num layer
+                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+  // setup texture parameters
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  gerr();
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  gerr();
+  int mipw = static_cast<int>(cubeSize);
+  ms.clear();
+  GLuint mipLevel = 0;
+  for (GLuint i = 0; i < ms.size(); i++) {
+    MipMapInfo minfo = ms[i];
+    int mwidth = minfo.width;
+    mipLevel = minfo.level;
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, mipLevel, 0, 0, 0, // x,y,z offset
+                    cubeSize,                               // width
+                    cubeSize,                               // height
+                    nblayer,                                // num layer
+                    GL_RGBA, GL_FLOAT, NULL);
+
+  }
+
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevel + 1);
+
+  // glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+  gerr();
+}
+void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubeCopy,
+                          std::vector<MipMapInfo> ms, GLuint &cubemapFbo,
                           GLuint &cubemapRbo, GLuint ww, GLuint wh) {
   //
   glGenFramebuffers(1, &cubemapFbo);
-  glGenRenderbuffers(1, &cubemapRbo);
-  glGenTextures(1, &cubemapTex);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
+  gerr();
+  genCubemapTexture(cubemapTex, ms, ww);
+  genCubemapCopyTexture(cubeCopy, ms, ww);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
   gerrf();
-  gerr();
-
-  glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
-  gerr();
-
-  // setup texture parameters
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR_MIPMAP_LINEAR);
-  gerr();
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  gerr();
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-  gerr();
-
-  // generate faces of cubemap
-  // glTexStorage2D(GL_TEXTURE_CUBE_MAP, 0, GL_RGBA16F, ww, wh);
-  gerr();
-
-  for (GLuint i = 0; i < 6; i++) {
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, // level
-                 GL_RGBA16F,                            // internal format
-                 ww, wh,                                // width, height
-                 0,                                     // border
-                 GL_RGBA,                               // format
-                 GL_FLOAT,                              // data type
-                 NULL);
-    gerr();
-  }
-  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-  gerr();
 
   // bind texture to frame buffer
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cubemapTex,
@@ -345,11 +385,6 @@ void genCubemapFboTexture(GLuint &cubemapTex, GLuint &cubemapFbo,
 
   glDrawBuffers(1, attachments);
 
-  // create and bind render buffer
-  glBindRenderbuffer(GL_RENDERBUFFER, cubemapRbo);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, ww, wh);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                            GL_RENDERBUFFER, cubemapRbo);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   gerrf();
 }
@@ -384,11 +419,11 @@ CubemapInfo getCubeInfo(std::vector<glm::mat4> &sceneViewMats,
 void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
                      std::vector<glm::mat4> &sceneViewMats,
                      const float CAMERA_FOV, glm::mat4 &model, GLuint CUBESIZE,
-                     GLuint &cubemapTex, const glm::vec2 &nearFar) {
+                     GLuint &cubemapTex, const glm::vec2 &nearFar, GLuint ww,
+                     GLuint wh) {
   fillDepthShader.useProgram();
-  glm::mat4 projection = glm::perspective(glm::radians(CAMERA_FOV),
-                                          (float)WINWIDTH / (float)WINHEIGHT,
-                                          nearFar.x, nearFar.y);
+  glm::mat4 projection = glm::perspective(
+      glm::radians(CAMERA_FOV), (float)ww / (float)wh, nearFar.x, nearFar.y);
 
   for (GLuint i = 0; i < SCENE_MAT_NB; i++) {
     CubemapInfo cinfo =
@@ -415,6 +450,15 @@ void drawMultiVScene(Shader &fillDepthShader, const GLuint SCENE_MAT_NB,
     gerr();
     renderSphere();
   }
+}
+void drawScreenQuad(Shader mipmapShader, GLuint &cubemapCopyTex) {
+  mipmapShader.useProgram();
+  mipmapShader.setIntUni("cubeDepth", 0);
+
+  glActiveTexture(cubemapCopyTex);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapCopyTex);
+
+  renderQuad();
 }
 void drawScene() {}
 
@@ -458,7 +502,9 @@ int main() {
   // define opengl states
   // -----------------------------
   glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LEQUAL); 
+  glDepthFunc(GL_LEQUAL);
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
   // setting up textures
   // --------------------
@@ -518,12 +564,14 @@ int main() {
   // scene cubemap properties
 
   // get cubemap render fbo and texture
-  GLuint cubemapFbo, cubemapRbo, cubemapDepthTex;
-  genCubemapFboTexture(cubemapDepthTex, cubemapFbo, cubemapRbo, CUBESIZE,
-                       CUBESIZE);
+  GLuint cubemapFbo, cubemapRbo, cubemapDepthTex, cubemapDepthCopyTex;
+  std::vector<MipMapInfo> ms;
+  genCubemapFboTexture(cubemapDepthTex, cubemapDepthCopyTex, ms, cubemapFbo,
+                       cubemapRbo, CUBESIZE, CUBESIZE);
 
   // shader multiview cubemap
   Shader fillDepthShader = loadFillDepthShader();
+  Shader mipmapShader = loadMipmapFillDepthShader();
 
   while (!glfwWindowShouldClose(window)) {
     //
@@ -533,16 +581,22 @@ int main() {
 
     processInput_proc2(window);
     //
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // --------------------------------------------------------------------
     // shading stages are here
 
     // ----------------------- A. Build Stage -----------------------------
+
+    glViewport(0, 0, LOW_WINWIDTH, LOW_WINHEIGHT);
+    // 1. Fill depth pass
+    // requires: geometry of objects
+    // resolution: lower than normal window width/height
     {
       // get scene view matrix for setting up cubemap view of the scene
       getSceneViewMats(sceneViewMats, CAMERA_FOV);
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cubemapFbo);
+      glBindFramebuffer(GL_FRAMEBUFFER, cubemapFbo);
       gerrf();
       gerr();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -551,24 +605,41 @@ int main() {
 
       // draw scene
       drawMultiVScene(fillDepthShader, SCENE_MAT_NB, sceneViewMats, CAMERA_FOV,
-                      model1, CUBESIZE, cubemapDepthTex, nearFar);
+                      model1, CUBESIZE, cubemapDepthTex, nearFar, LOW_WINWIDTH,
+                      LOW_WINHEIGHT);
       drawMultiVScene(fillDepthShader, SCENE_MAT_NB, sceneViewMats, CAMERA_FOV,
-                      model2, CUBESIZE, cubemapDepthTex, nearFar);
+                      model2, CUBESIZE, cubemapDepthTex, nearFar, LOW_WINWIDTH,
+                      LOW_WINHEIGHT);
 
-      //
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
-
-    glViewport(0, 0, LOW_WINWIDTH, LOW_WINHEIGHT);
-    // 1. Fill depth pass
-    // requires: geometry of objects
-    // resolution: lower than normal window width/height
-
-    drawScene();
 
     // 1.1 Mipmap depth pass
     // requires: full screen quad
     // resolution: lower than normal window width/height
+    {
+      glClear(GL_COLOR_BUFFER_BIT);
+      glCopyImageSubData(cubemapDepthTex, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                         cubemapDepthCopyTex, GL_TEXTURE_CUBE_MAP, 0, 0, 0, 0,
+                         LOW_WINWIDTH, LOW_WINHEIGHT, 0);
+      gerr();
+      // copy previously written mipmap to current
+      for (GLuint i = 0; i < ms.size(); i++) {
+        MipMapInfo minfo = ms[i];
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        int width = minfo.width;
+        int height = minfo.height;
+        GLuint level = minfo.level;
+        glViewport(0, 0, width, height);
+
+        glCopyImageSubData(cubemapDepthTex, GL_TEXTURE_CUBE_MAP, level, 0, 0, 0,
+                           cubemapDepthCopyTex, GL_TEXTURE_CUBE_MAP, level, 0,
+                           0, 0, width, height, 0);
+        gerr();
+      }
+      glViewport(0, 0, LOW_WINWIDTH, LOW_WINHEIGHT);
+    }
 
     renderQuad();
 
