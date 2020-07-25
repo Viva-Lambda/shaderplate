@@ -8,6 +8,7 @@ layout(binding = 2, std430) writeonly buffer TriangleBuffer {
   mat4 triangle_vertices_normal;
   mat4 triangle_tangents;
   mat4 triangle_textures;
+  int triangleId;
 };
 flat out int cube_face;
 flat out vec4 triangle_vertices_ws[3]; // outputs triangle
@@ -38,6 +39,7 @@ void main() {
     triangle_textures[i].xy = TexCoords[i];
     triangle_textures[i].zw = vec2(0.0);
   }
+  triangleId = gl_PrimitiveIDIn;
   vec3 p1 = FragPosWS[0];
   vec3 p2 = FragPosWS[1];
   vec3 p3 = FragPosWS[2];

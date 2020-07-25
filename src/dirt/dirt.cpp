@@ -198,6 +198,16 @@ Shader loadMipmapFillDepthShader() {
   envShader.shaderName = "fillDepthMipmapShader";
   return envShader;
 }
+Shader loadFillPrimitesShader() {
+  std::vector<fs::path> paths = {
+      shaderDirPath / "dirt" / "fillDepth.vert",
+      shaderDirPath / "dirt" / "fillPrimitive.geom",  // DONE
+      shaderDirPath / "dirt" / "fillPrimitive.frag"}; // DONE
+  std::vector<std::string> strs = {"VERTEX", "GEOMETRY", "FRAGMENT"};
+  Shader envShader(paths, strs);
+  envShader.shaderName = "fillPrimitiveShader";
+  return envShader;
+}
 
 // hiz buffer related
 
@@ -462,7 +472,8 @@ void drawScene() {}
 struct TriangleBuffer {
   glm::mat4 triangle_vertices_normal;
   glm::mat4 triangle_tangents;
-  glm::mat2 triangle_textures;
+  glm::mat4 triangle_textures;
+  int triangleId;
 };
 
 int main() {
