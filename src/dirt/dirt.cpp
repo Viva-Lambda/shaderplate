@@ -280,17 +280,16 @@ void genCubemapTexture(GLuint &cubeArrTex, std::vector<MipMapInfo> &ms,
   glGenTextures(1, &cubeArrTex);
   gerr();
   glBindTexture(GL_TEXTURE_2D_ARRAY, cubeArrTex);
+  gerr();
   int nblayer = 6;
 
-  glTexStorage3D(GL_TEXTURE_2D_ARRAY,
-                 0, // mipmap level count
-                 GL_RGBA16F, cubeSize, cubeSize, nblayer);
+  // glTexStorage3D(GL_TEXTURE_2D_ARR
+  //               0,          // mipmap level cou
+  //               GL_RGBA16F, // internal form
+  //               cubeSize,   // wid
+  //               cubeSize,   // heig
+  //               nblayer);   // depth
 
-  gerr();
-  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, cubeSize, // width
-                  cubeSize,                                  // height
-                  nblayer,                                   // num layer
-                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
   // setup texture parameters
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
@@ -302,37 +301,36 @@ void genCubemapTexture(GLuint &cubeArrTex, std::vector<MipMapInfo> &ms,
   gerr();
   int mipw = static_cast<int>(cubeSize);
   ms.clear();
-  GLuint mipLevel = 1;
+  GLuint mipLevel = 0;
   while (mipw >= 1) {
     MipMapInfo minfo = MipMapInfo(mipw, mipw, mipLevel);
     ms.push_back(minfo);
-    mipw = static_cast<int>((float)mipw / 2);
-    mipLevel++;
     glTexImage3D(GL_TEXTURE_2D_ARRAY, mipLevel, GL_RGBA16F, mipw, mipw, nblayer,
                  0, GL_RGBA, GL_FLOAT, NULL);
+    mipw = static_cast<int>((float)mipw / 2);
+    mipLevel++;
   }
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevel + 1);
 
   // glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
   gerr();
 }
-void genCubemapCopyTexture(GLuint &cubemapArrTex, std::vector<MipMapInfo> &ms,
+void genCubemapCopyTexture(GLuint &cubeArrTex, std::vector<MipMapInfo> &ms,
                            GLuint cubeSize) {
   //
-  glGenTextures(1, &cubemapArrTex);
+  glGenTextures(1, &cubeArrTex);
   gerr();
-  glBindTexture(GL_TEXTURE_2D_ARRAY, cubemapArrTex);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, cubeArrTex);
+  gerr();
   int nblayer = 6;
-  glTexStorage3D(GL_TEXTURE_2D_ARRAY,
-                 0, // mipmap level count
-                 GL_RGBA16F, cubeSize, cubeSize, nblayer);
 
-  gerr();
-  // setup texture parameters
-  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, cubeSize, // width
-                  cubeSize,                                  // height
-                  nblayer,                                   // num layer
-                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+  // glTexStorage3D(GL_TEXTURE_2D_ARR
+  //               0,          // mipmap level cou
+  //               GL_RGBA16F, // internal form
+  //               cubeSize,   // wid
+  //               cubeSize,   // heig
+  //               nblayer);   // depth
+
   // setup texture parameters
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
@@ -341,25 +339,23 @@ void genCubemapCopyTexture(GLuint &cubemapArrTex, std::vector<MipMapInfo> &ms,
   gerr();
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
   gerr();
-  int mipw = static_cast<int>(cubeSize);
-  ms.clear();
-  GLuint mipLevel = 0;
+  int mipLevel = 0;
   for (GLuint i = 0; i < ms.size(); i++) {
     MipMapInfo minfo = ms[i];
-    int mwidth = minfo.width;
     mipLevel = minfo.level;
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, mipLevel, 0, 0, 0, // x,y,z offset
-                    cubeSize,                               // width
-                    cubeSize,                               // height
-                    nblayer,                                // num layer
-                    GL_RGBA, GL_FLOAT, NULL);
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, // target
+                 mipLevel,            // level
+                 GL_RGBA16F,          // internal format
+                 minfo.width,         // width
+                 minfo.height,        // height
+                 nblayer,             // depth == layer == index
+                 0,                   // border
+                 GL_RGBA,             // format
+                 GL_FLOAT,            // type
+                 NULL);
   }
-
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipLevel + 1);
-
-  // glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
   gerr();
 }
 void genCubemapFboTexture(GLuint &cube2dArrTex, GLuint &cube2dArrCopy,
@@ -503,9 +499,6 @@ int main() {
   // define opengl states
   // -----------------------------
   glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LEQUAL);
-  glEnable(GL_CULL_FACE);
-  glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
   // setting up textures
   // --------------------
@@ -529,8 +522,11 @@ int main() {
   glGenBuffers(1, &triangleBlock);
   glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(TriangleBuffer), NULL,
                GL_STATIC_DRAW);
+  gerr();
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+  gerr();
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, triangleBlock);
+  gerr();
 
   // ------------------------------------------------------------------------
 
@@ -565,7 +561,8 @@ int main() {
   // scene cubemap properties
 
   // get cubemap render fbo and texture
-  GLuint cubemapFbo, cubemapRbo, cubemapDepthTex, cubemapDepthCopyTex;
+  GLuint cubemapFbo = 0, cubemapRbo = 0, cubemapDepthTex = 0,
+         cubemapDepthCopyTex = 0;
   std::vector<MipMapInfo> ms;
   genCubemapFboTexture(cubemapDepthTex, cubemapDepthCopyTex, ms, cubemapFbo,
                        cubemapRbo, CUBESIZE, CUBESIZE);

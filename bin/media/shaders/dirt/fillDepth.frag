@@ -147,5 +147,5 @@ void main() {
   vec3 p3 = triangle_vertices_ws[2].xyz;
   vec2 depth_bound = clip(cube_face, p1, p2, p3);
   FragDepthBound.xy = vec2(-depth_bound.x, depth_bound.y);
-  FragDepthBound.zw = vec2(gl_Position.z, cube_face);
+  FragDepthBound.zw = vec2(gl_FragCoord.z, cube_face);
 }
